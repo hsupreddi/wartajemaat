@@ -1,0 +1,644 @@
+import { isSupabaseConfigured, supabase } from './supabase';
+import {
+  Keluarga,
+  Anggota,
+  CalonSidi,
+  StatistikWijk,
+  UlangTahunItem,
+  UlangTahunRpcResult
+} from '../types';
+
+export type NotificationType = 'success' | 'error' | 'info' | 'warning';
+export type NotificationHandler = (type: NotificationType, message: string) => void;
+
+let globalNotificationHandler: NotificationHandler | null = null;
+
+export function setJemaatNotificationHandler(handler: NotificationHandler | null) {
+  globalNotificationHandler = handler;
+}
+
+export function notify(type: NotificationType, message: string) {
+  if (globalNotificationHandler) {
+    globalNotificationHandler(type, message);
+  } else {
+    // Fallback console log with readable prefix
+    if (type === 'error') {
+      console.error(`[Jemaat API Error]: ${message}`);
+    } else {
+      console.log(`[Jemaat API ${type}]: ${message}`);
+    }
+  }
+}
+
+/**
+ * Storage keys for Demo / Local Mode persistence
+ */
+const JEMAAT_STORAGE_KEYS = {
+  KELUARGA: 'hkbp_jemaat_keluarga_v2',
+  ANGGOTA: 'hkbp_jemaat_anggota_v2'
+};
+
+/**
+ * Anonymous Demo Dataset (Digunakan hanya jika Supabase belum terkonfigurasi)
+ * Tanpa data jemaat asli.
+ */
+const INITIAL_DEMO_KELUARGA: Keluarga[] = [
+  { registrasi: '0101', wijk: 'Lingkungan Letare', nama_kk: 'Keluarga Contoh A', kk_wafat: false, jalan: 'Jl. Persada No. 10', hp: '0812-0000-0001', jumlah_anggota: 4 },
+  { registrasi: '0102', wijk: 'Lingkungan Letare', nama_kk: 'Keluarga Contoh B', kk_wafat: false, jalan: 'Jl. Persada No. 14', hp: '0812-0000-0002', jumlah_anggota: 3 },
+  { registrasi: '0201', wijk: 'Lingkungan Galatia', nama_kk: 'Keluarga Contoh C', kk_wafat: false, jalan: 'Desa Hutarakyat No. 5', hp: '0812-0000-0003', jumlah_anggota: 5 },
+  { registrasi: '0202', wijk: 'Lingkungan Galatia', nama_kk: 'Keluarga Contoh D', kk_wafat: false, jalan: 'Desa Hutarakyat No. 8', hp: '0812-0000-0004', jumlah_anggota: 2 },
+  { registrasi: '0301', wijk: 'Lingkungan Efesus', nama_kk: 'Keluarga Contoh E', kk_wafat: false, jalan: 'Jl. FL. Tobing No. 22', hp: '0812-0000-0005', jumlah_anggota: 4 },
+  { registrasi: '0401', wijk: 'Lingkungan Exaudi', nama_kk: 'Keluarga Contoh F', kk_wafat: false, jalan: 'Gg. Damai No. 3', hp: '0812-0000-0006', jumlah_anggota: 3 },
+  { registrasi: '0501', wijk: 'Lingkungan Judika', nama_kk: 'Keluarga Contoh G', kk_wafat: false, jalan: 'Kompleks Asri No. 1', hp: '0812-0000-0007', jumlah_anggota: 4 },
+  { registrasi: '0601', wijk: 'Lingkungan Jeremia', nama_kk: 'Keluarga Contoh H', kk_wafat: false, jalan: 'Jl. Sidikalang No. 88', hp: '0812-0000-0008', jumlah_anggota: 3 }
+];
+
+const INITIAL_DEMO_ANGGOTA: Anggota[] = [
+  // Letare (with birthdays in 2-8 Nov 2026 week)
+  { id: 'ang-d-1', registrasi: '0101', nama: 'St. Ramses Sitohang', jenis_kelamin: 'L', tgl_lahir: '1970-11-02', tgl_baptis: '1970-12-25', tgl_sidi: '1987-04-12', hub_keluarga: 'Kepala Keluarga', wijk: 'Lingkungan Letare', aktif: true },
+  { id: 'ang-d-2', registrasi: '0101', nama: 'Ny. Sitohang br. Sinaga', jenis_kelamin: 'P', tgl_lahir: '1974-11-03', tgl_baptis: '1975-01-01', tgl_sidi: '1990-04-10', hub_keluarga: 'Istri', wijk: 'Lingkungan Letare', aktif: true },
+  { id: 'ang-d-3', registrasi: '0101', nama: 'Daniel Kevin Sitohang', jenis_kelamin: 'L', tgl_lahir: '2004-11-04', tgl_baptis: '2005-01-09', tgl_sidi: '2021-05-23', hub_keluarga: 'Anak', wijk: 'Lingkungan Letare', aktif: true },
+  { id: 'ang-d-4', registrasi: '0101', nama: 'Grace Maria Sitohang', jenis_kelamin: 'P', tgl_lahir: '2010-09-15', tgl_baptis: '2010-11-20', tgl_sidi: null, hub_keluarga: 'Anak', wijk: 'Lingkungan Letare', aktif: true },
+
+  // Galatia
+  { id: 'ang-d-5', registrasi: '0201', nama: 'Bona Tua Silalahi', jenis_kelamin: 'L', tgl_lahir: '1982-11-05', tgl_baptis: '1983-01-01', tgl_sidi: '1998-05-15', hub_keluarga: 'Kepala Keluarga', wijk: 'Lingkungan Galatia', aktif: true },
+  { id: 'ang-d-6', registrasi: '0201', nama: 'Ny. Silalahi br. Manalu', jenis_kelamin: 'P', tgl_lahir: '1985-11-05', tgl_baptis: '1986-02-02', tgl_sidi: '2001-04-18', hub_keluarga: 'Istri', wijk: 'Lingkungan Galatia', aktif: true },
+  { id: 'ang-d-7', registrasi: '0201', nama: 'Yosua Pratama Silalahi', jenis_kelamin: 'L', tgl_lahir: '2010-04-10', tgl_baptis: '2010-06-12', tgl_sidi: null, hub_keluarga: 'Anak', wijk: 'Lingkungan Galatia', aktif: true },
+  { id: 'ang-d-8', registrasi: '0202', nama: 'Jonathan Silalahi', jenis_kelamin: 'L', tgl_lahir: '2009-08-20', tgl_baptis: '2009-10-10', tgl_sidi: null, hub_keluarga: 'Anak', wijk: 'Lingkungan Galatia', aktif: true }, // Calon Sidi
+
+  // Efesus
+  { id: 'ang-d-9', registrasi: '0301', nama: 'St. Marudut Simarmata', jenis_kelamin: 'L', tgl_lahir: '1965-11-06', tgl_baptis: '1966-01-10', tgl_sidi: '1982-04-04', hub_keluarga: 'Kepala Keluarga', wijk: 'Lingkungan Efesus', aktif: true },
+  { id: 'ang-d-10', registrasi: '0301', nama: 'Ruth Yohana br. Simarmata', jenis_kelamin: 'P', tgl_lahir: '2001-11-07', tgl_baptis: '2002-01-05', tgl_sidi: '2018-05-20', hub_keluarga: 'Anak', wijk: 'Lingkungan Efesus', aktif: true },
+  { id: 'ang-d-11', registrasi: '0301', nama: 'Gabriel Simarmata', jenis_kelamin: 'L', tgl_lahir: '2010-01-12', tgl_baptis: '2010-03-14', tgl_sidi: null, hub_keluarga: 'Anak', wijk: 'Lingkungan Efesus', aktif: true }, // Calon Sidi
+
+  // Exaudi
+  { id: 'ang-d-12', registrasi: '0401', nama: 'CSt. Parlindungan Sihombing', jenis_kelamin: 'L', tgl_lahir: '1978-11-08', tgl_baptis: '1979-01-01', tgl_sidi: '1995-04-20', hub_keluarga: 'Kepala Keluarga', wijk: 'Lingkungan Exaudi', aktif: true },
+  { id: 'ang-d-13', registrasi: '0401', nama: 'Debora Gloria Sihombing', jenis_kelamin: 'P', tgl_lahir: '2012-11-08', tgl_baptis: '2013-02-10', tgl_sidi: null, hub_keluarga: 'Anak', wijk: 'Lingkungan Exaudi', aktif: true },
+  { id: 'ang-d-14', registrasi: '0401', nama: 'Samuel Sihombing', jenis_kelamin: 'L', tgl_lahir: '2009-11-15', tgl_baptis: '2010-01-01', tgl_sidi: null, hub_keluarga: 'Anak', wijk: 'Lingkungan Exaudi', aktif: true }, // Calon Sidi
+
+  // Judika
+  { id: 'ang-d-15', registrasi: '0501', nama: 'St. Jansen Nababan', jenis_kelamin: 'L', tgl_lahir: '1968-11-02', tgl_baptis: '1969-01-01', tgl_sidi: '1985-04-14', hub_keluarga: 'Kepala Keluarga', wijk: 'Lingkungan Judika', aktif: true },
+  { id: 'ang-d-16', registrasi: '0501', nama: 'Ny. Nababan br. Lumbantobing', jenis_kelamin: 'P', tgl_lahir: '1972-11-07', tgl_baptis: '1973-02-02', tgl_sidi: '1989-04-10', hub_keluarga: 'Istri', wijk: 'Lingkungan Judika', aktif: true },
+  { id: 'ang-d-17', registrasi: '0501', nama: 'Lydia br. Nababan', jenis_kelamin: 'P', tgl_lahir: null, tgl_baptis: '2015-05-10', tgl_sidi: null, hub_keluarga: 'Anak', wijk: 'Lingkungan Judika', aktif: true }, // Example of nullable tgl_lahir
+
+  // Jeremia
+  { id: 'ang-d-18', registrasi: '0601', nama: 'Samuel Andrew Simanjuntak', jenis_kelamin: 'L', tgl_lahir: '2008-11-04', tgl_baptis: '2009-01-01', tgl_sidi: '2024-05-19', hub_keluarga: 'Anak', wijk: 'Lingkungan Jeremia', aktif: true }
+];
+
+// Helper to get demo keluarga from local storage
+function getLocalDemoKeluarga(): Keluarga[] {
+  try {
+    const raw = localStorage.getItem(JEMAAT_STORAGE_KEYS.KELUARGA);
+    if (!raw) {
+      localStorage.setItem(JEMAAT_STORAGE_KEYS.KELUARGA, JSON.stringify(INITIAL_DEMO_KELUARGA));
+      return INITIAL_DEMO_KELUARGA;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_DEMO_KELUARGA;
+  }
+}
+
+function saveLocalDemoKeluarga(list: Keluarga[]) {
+  try {
+    localStorage.setItem(JEMAAT_STORAGE_KEYS.KELUARGA, JSON.stringify(list));
+  } catch (err) {
+    console.error('Error saving local demo keluarga', err);
+  }
+}
+
+// Helper to get demo anggota from local storage
+function getLocalDemoAnggota(): Anggota[] {
+  try {
+    const raw = localStorage.getItem(JEMAAT_STORAGE_KEYS.ANGGOTA);
+    if (!raw) {
+      localStorage.setItem(JEMAAT_STORAGE_KEYS.ANGGOTA, JSON.stringify(INITIAL_DEMO_ANGGOTA));
+      return INITIAL_DEMO_ANGGOTA;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_DEMO_ANGGOTA;
+  }
+}
+
+function saveLocalDemoAnggota(list: Anggota[]) {
+  try {
+    localStorage.setItem(JEMAAT_STORAGE_KEYS.ANGGOTA, JSON.stringify(list));
+  } catch (err) {
+    console.error('Error saving local demo anggota', err);
+  }
+}
+
+/**
+ * 1. GET ULANG TAHUN PERIODE
+ * Memanggil Supabase RPC 'ulang_tahun_periode(p_mulai, p_akhir)'
+ * Jika belum dikonfigurasi, menggunakan fallback demo.
+ */
+export async function getUlangTahun(mulaiDateStr: string, akhirDateStr: string): Promise<UlangTahunItem[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.rpc('ulang_tahun_periode', {
+        p_mulai: mulaiDateStr,
+        p_akhir: akhirDateStr
+      });
+
+      if (error) {
+        notify('error', `Gagal memuat ulang tahun dari database: ${error.message}`);
+        throw error;
+      }
+
+      if (data && Array.isArray(data)) {
+        return (data as UlangTahunRpcResult[]).map((r, idx) => {
+          let dayMonthStr = '-';
+          if (r.tgl_lahir) {
+            const parts = r.tgl_lahir.split('-');
+            if (parts.length >= 3) {
+              dayMonthStr = `${parts[2]}/${parts[1]}`;
+            }
+          }
+          return {
+            no: idx + 1,
+            nama: r.nama,
+            jenis_kelamin: r.jenis_kelamin,
+            tanggal_lahir: r.tgl_lahir || '',
+            hari_bulan: dayMonthStr,
+            usia: r.usia || 0,
+            wijk: r.wijk
+          };
+        });
+      }
+    } catch (err: any) {
+      notify('warning', `Beralih ke mode demo untuk tabel ulang tahun: ${err?.message || 'Koneksi gagal'}`);
+    }
+  }
+
+  // Fallback demo calculation
+  const anggotaList = getLocalDemoAnggota();
+  const dStart = new Date(mulaiDateStr + 'T00:00:00');
+  const dEnd = new Date(akhirDateStr + 'T00:00:00');
+  const refYear = isNaN(dEnd.getFullYear()) ? 2026 : dEnd.getFullYear();
+
+  // Create set of all month-day in the range
+  const matchedDates: { month: number; day: number }[] = [];
+  const cur = new Date(dStart);
+  while (cur <= dEnd) {
+    matchedDates.push({ month: cur.getMonth() + 1, day: cur.getDate() });
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  const results: {
+    nama: string;
+    jenis_kelamin: 'L' | 'P';
+    tanggal_lahir: string;
+    dayMonthVal: number;
+    dayMonthStr: string;
+    usia: number;
+    wijk: string;
+  }[] = [];
+
+  for (const m of anggotaList) {
+    if (!m.aktif || !m.tgl_lahir) continue;
+    const parts = m.tgl_lahir.split('-').map(Number);
+    if (parts.length < 3 || isNaN(parts[0])) continue;
+    const [bYear, bMonth, bDay] = parts;
+
+    const match = matchedDates.find((md) => md.month === bMonth && md.day === bDay);
+    if (match) {
+      let usia = refYear - bYear;
+      const hadBirthday =
+        dEnd.getMonth() + 1 > bMonth || (dEnd.getMonth() + 1 === bMonth && dEnd.getDate() >= bDay);
+      if (!hadBirthday) usia -= 1;
+
+      results.push({
+        nama: m.nama,
+        jenis_kelamin: m.jenis_kelamin,
+        tanggal_lahir: m.tgl_lahir,
+        dayMonthVal: bMonth * 100 + bDay,
+        dayMonthStr: `${String(bDay).padStart(2, '0')}/${String(bMonth).padStart(2, '0')}`,
+        usia: Math.max(1, usia),
+        wijk: m.wijk
+      });
+    }
+  }
+
+  results.sort((a, b) => a.dayMonthVal - b.dayMonthVal);
+
+  return results.map((r, idx) => ({
+    no: idx + 1,
+    nama: r.nama,
+    jenis_kelamin: r.jenis_kelamin,
+    tanggal_lahir: r.tanggal_lahir,
+    hari_bulan: r.dayMonthStr,
+    usia: r.usia,
+    wijk: r.wijk
+  }));
+}
+
+/**
+ * 2. LIST KELUARGA
+ * Filter wijk, pencarian query q (nama_kk, registrasi, jalan), dan pagination
+ */
+export async function listKeluarga(params?: {
+  wijk?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ data: Keluarga[]; totalCount: number; isDemo: boolean }> {
+  const page = params?.page || 1;
+  const limit = params?.limit || 50;
+  const offset = (page - 1) * limit;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      let query = supabase.from('keluarga').select('*', { count: 'exact' });
+
+      if (params?.wijk && params.wijk !== 'all') {
+        query = query.eq('wijk', params.wijk);
+      }
+      if (params?.q && params.q.trim()) {
+        const term = `%${params.q.trim()}%`;
+        query = query.or(`nama_kk.ilike.${term},registrasi.ilike.${term},jalan.ilike.${term}`);
+      }
+
+      query = query.order('registrasi', { ascending: true }).range(offset, offset + limit - 1);
+
+      const { data, error, count } = await query;
+      if (error) {
+        notify('error', `Gagal memuat data keluarga dari Supabase: ${error.message}`);
+        throw error;
+      }
+
+      return {
+        data: (data as Keluarga[]) || [],
+        totalCount: count || 0,
+        isDemo: false
+      };
+    } catch (err: any) {
+      notify('warning', `Beralih ke mode demo data keluarga: ${err?.message || 'Koneksi gagal'}`);
+    }
+  }
+
+  // Local demo fallback
+  let list = getLocalDemoKeluarga();
+  if (params?.wijk && params.wijk !== 'all') {
+    list = list.filter((k) => k.wijk === params.wijk);
+  }
+  if (params?.q && params.q.trim()) {
+    const s = params.q.trim().toLowerCase();
+    list = list.filter(
+      (k) =>
+        k.nama_kk.toLowerCase().includes(s) ||
+        k.registrasi.toLowerCase().includes(s) ||
+        (k.jalan && k.jalan.toLowerCase().includes(s))
+    );
+  }
+
+  const totalCount = list.length;
+  const paginated = list.slice(offset, offset + limit);
+
+  return {
+    data: paginated,
+    totalCount,
+    isDemo: true
+  };
+}
+
+/**
+ * 3. LIST ANGGOTA
+ * Filter wijk, pencarian query q (nama, registrasi), dan pagination 50 baris
+ */
+export async function listAnggota(params?: {
+  wijk?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+  registrasi?: string;
+}): Promise<{ data: Anggota[]; totalCount: number; isDemo: boolean }> {
+  const page = params?.page || 1;
+  const limit = params?.limit || 50;
+  const offset = (page - 1) * limit;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      let query = supabase.from('anggota').select('*', { count: 'exact' });
+
+      if (params?.registrasi) {
+        query = query.eq('registrasi', params.registrasi);
+      }
+      if (params?.wijk && params.wijk !== 'all') {
+        query = query.eq('wijk', params.wijk);
+      }
+      if (params?.q && params.q.trim()) {
+        const term = `%${params.q.trim()}%`;
+        query = query.or(`nama.ilike.${term},registrasi.ilike.${term}`);
+      }
+
+      query = query.order('registrasi', { ascending: true }).order('nama', { ascending: true }).range(offset, offset + limit - 1);
+
+      const { data, error, count } = await query;
+      if (error) {
+        notify('error', `Gagal memuat data anggota dari Supabase: ${error.message}`);
+        throw error;
+      }
+
+      return {
+        data: (data as Anggota[]) || [],
+        totalCount: count || 0,
+        isDemo: false
+      };
+    } catch (err: any) {
+      notify('warning', `Beralih ke mode demo data anggota: ${err?.message || 'Koneksi gagal'}`);
+    }
+  }
+
+  // Local demo fallback
+  let list = getLocalDemoAnggota();
+  if (params?.registrasi) {
+    list = list.filter((a) => a.registrasi === params.registrasi);
+  }
+  if (params?.wijk && params.wijk !== 'all') {
+    list = list.filter((a) => a.wijk === params.wijk);
+  }
+  if (params?.q && params.q.trim()) {
+    const s = params.q.trim().toLowerCase();
+    list = list.filter((a) => a.nama.toLowerCase().includes(s) || a.registrasi.toLowerCase().includes(s));
+  }
+
+  const totalCount = list.length;
+  const paginated = list.slice(offset, offset + limit);
+
+  return {
+    data: paginated,
+    totalCount,
+    isDemo: true
+  };
+}
+
+/**
+ * 4. GET CALON SIDI
+ * Membaca dari view 'v_calon_sidi'
+ */
+export async function getCalonSidi(): Promise<{ data: CalonSidi[]; isDemo: boolean }> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('v_calon_sidi').select('*');
+      if (error) {
+        notify('error', `Gagal memuat view calon sidi: ${error.message}`);
+        throw error;
+      }
+      return { data: (data as CalonSidi[]) || [], isDemo: false };
+    } catch (err: any) {
+      notify('warning', `Beralih ke mode demo calon sidi: ${err?.message || 'Koneksi gagal'}`);
+    }
+  }
+
+  // Demo calculation: Anggota usia 14 s/d 18 tahun yang belum sidi
+  const anggota = getLocalDemoAnggota();
+  const currentYear = new Date().getFullYear();
+  const calon: CalonSidi[] = [];
+
+  for (const a of anggota) {
+    if (!a.aktif || a.tgl_sidi) continue;
+    let usia = 0;
+    if (a.tgl_lahir) {
+      const bYear = parseInt(a.tgl_lahir.split('-')[0], 10);
+      if (!isNaN(bYear)) {
+        usia = currentYear - bYear;
+      }
+    }
+    // Syarat marguru sidi: usia 14-19 tahun atau belum sidi
+    if (usia >= 14 && usia <= 20) {
+      calon.push({
+        id: a.id,
+        registrasi: a.registrasi,
+        nama: a.nama,
+        jenis_kelamin: a.jenis_kelamin,
+        tgl_lahir: a.tgl_lahir,
+        usia,
+        wijk: a.wijk,
+        tgl_baptis: a.tgl_baptis,
+        hub_keluarga: a.hub_keluarga
+      });
+    }
+  }
+
+  return { data: calon, isDemo: true };
+}
+
+/**
+ * 5. GET STATISTIK WIJK
+ * Membaca dari view 'v_statistik_wijk'
+ */
+export async function getStatistikWijk(): Promise<{ data: StatistikWijk[]; isDemo: boolean }> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('v_statistik_wijk').select('*');
+      if (error) {
+        notify('error', `Gagal memuat statistik wijk: ${error.message}`);
+        throw error;
+      }
+      return { data: (data as StatistikWijk[]) || [], isDemo: false };
+    } catch (err: any) {
+      notify('warning', `Beralih ke mode demo statistik wijk: ${err?.message || 'Koneksi gagal'}`);
+    }
+  }
+
+  // Demo calculation from local dataset
+  const keluargaList = getLocalDemoKeluarga();
+  const anggotaList = getLocalDemoAnggota();
+
+  const wijkSet = new Set<string>();
+  keluargaList.forEach((k) => k.wijk && wijkSet.add(k.wijk));
+  anggotaList.forEach((a) => a.wijk && wijkSet.add(a.wijk));
+
+  const stats: StatistikWijk[] = Array.from(wijkSet).map((wijk) => {
+    const wKeluarga = keluargaList.filter((k) => k.wijk === wijk);
+    const wAnggota = anggotaList.filter((a) => a.wijk === wijk && a.aktif);
+    const laki = wAnggota.filter((a) => a.jenis_kelamin === 'L').length;
+    const peremp = wAnggota.filter((a) => a.jenis_kelamin === 'P').length;
+    const sidi = wAnggota.filter((a) => Boolean(a.tgl_sidi)).length;
+
+    return {
+      wijk,
+      jumlah_keluarga: wKeluarga.length,
+      total_keluarga: wKeluarga.length,
+      jumlah_anggota: wAnggota.length,
+      total_anggota: wAnggota.length,
+      laki_laki: laki,
+      perempuan: peremp,
+      sudah_sidi: sidi,
+      belum_sidi: wAnggota.length - sidi
+    };
+  });
+
+  return { data: stats, isDemo: true };
+}
+
+/**
+ * 6. CRUD KELUARGA
+ */
+export async function upsertKeluarga(keluarga: Keluarga): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('keluarga').upsert(keluarga, { onConflict: 'registrasi' });
+    if (error) {
+      notify('error', `Gagal menyimpan data keluarga: ${error.message}`);
+      throw error;
+    }
+    notify('success', `Keluarga ${keluarga.nama_kk} (${keluarga.registrasi}) berhasil disimpan.`);
+    return;
+  }
+
+  // Local demo fallback
+  const list = getLocalDemoKeluarga();
+  const idx = list.findIndex((k) => k.registrasi === keluarga.registrasi);
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...keluarga };
+  } else {
+    list.push(keluarga);
+  }
+  saveLocalDemoKeluarga(list);
+  notify('success', `[Demo] Keluarga ${keluarga.nama_kk} tersimpan.`);
+}
+
+export async function deleteKeluarga(registrasi: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('keluarga').delete().eq('registrasi', registrasi);
+    if (error) {
+      notify('error', `Gagal menghapus keluarga: ${error.message}`);
+      throw error;
+    }
+    notify('success', `Keluarga ${registrasi} berhasil dihapus.`);
+    return;
+  }
+
+  // Local demo fallback
+  const list = getLocalDemoKeluarga().filter((k) => k.registrasi !== registrasi);
+  saveLocalDemoKeluarga(list);
+  notify('success', `[Demo] Keluarga ${registrasi} dihapus.`);
+}
+
+/**
+ * 7. CRUD ANGGOTA
+ */
+export async function upsertAnggota(anggota: Partial<Anggota> & { nama: string; registrasi: string }): Promise<Anggota> {
+  const item: Anggota = {
+    id: anggota.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `ang-${Date.now()}`),
+    registrasi: anggota.registrasi,
+    nama: anggota.nama,
+    jenis_kelamin: anggota.jenis_kelamin || 'L',
+    tgl_lahir: anggota.tgl_lahir || null,
+    tgl_baptis: anggota.tgl_baptis || null,
+    tgl_sidi: anggota.tgl_sidi || null,
+    hub_keluarga: anggota.hub_keluarga || 'Anggota',
+    wijk: anggota.wijk || 'Lingkungan Letare',
+    aktif: anggota.aktif !== undefined ? anggota.aktif : true
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('anggota').upsert(item, { onConflict: 'id' }).select().single();
+    if (error) {
+      notify('error', `Gagal menyimpan data anggota: ${error.message}`);
+      throw error;
+    }
+    notify('success', `Anggota ${item.nama} berhasil disimpan.`);
+    return (data as Anggota) || item;
+  }
+
+  // Local demo fallback
+  const list = getLocalDemoAnggota();
+  const idx = list.findIndex((a) => a.id === item.id);
+  if (idx >= 0) {
+    list[idx] = item;
+  } else {
+    list.unshift(item);
+  }
+  saveLocalDemoAnggota(list);
+  notify('success', `[Demo] Anggota ${item.nama} tersimpan.`);
+  return item;
+}
+
+export async function deleteAnggota(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('anggota').delete().eq('id', id);
+    if (error) {
+      notify('error', `Gagal menghapus anggota: ${error.message}`);
+      throw error;
+    }
+    notify('success', `Data anggota berhasil dihapus.`);
+    return;
+  }
+
+  // Local demo fallback
+  const list = getLocalDemoAnggota().filter((a) => a.id !== id);
+  saveLocalDemoAnggota(list);
+  notify('success', `[Demo] Data anggota dihapus.`);
+}
+
+/**
+ * 8. BATCH IMPORT CSV (Upsert 500 rows per batch)
+ * Keluarga dulu, baru Anggota.
+ * Registrasi WAJIB string murni untuk menjaga leading zero.
+ */
+export async function batchUpsertKeluarga(
+  rows: Keluarga[],
+  onProgress?: (processed: number, total: number) => void
+): Promise<{ successCount: number; errors: string[] }> {
+  const batchSize = 500;
+  let successCount = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('keluarga').upsert(batch, { onConflict: 'registrasi' });
+      if (error) {
+        errors.push(`Batch ${i / batchSize + 1}: ${error.message}`);
+        notify('error', `Gagal mengimpor batch keluarga: ${error.message}`);
+      } else {
+        successCount += batch.length;
+      }
+    } else {
+      // Demo Mode batch
+      const current = getLocalDemoKeluarga();
+      const map = new Map<string, Keluarga>(current.map((k) => [k.registrasi, k]));
+      batch.forEach((k) => map.set(k.registrasi, k));
+      saveLocalDemoKeluarga(Array.from(map.values()));
+      successCount += batch.length;
+    }
+    onProgress?.(Math.min(i + batchSize, rows.length), rows.length);
+  }
+
+  return { successCount, errors };
+}
+
+export async function batchUpsertAnggota(
+  rows: Anggota[],
+  onProgress?: (processed: number, total: number) => void
+): Promise<{ successCount: number; errors: string[] }> {
+  const batchSize = 500;
+  let successCount = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('anggota').upsert(batch, { onConflict: 'id' });
+      if (error) {
+        errors.push(`Batch ${i / batchSize + 1}: ${error.message}`);
+        notify('error', `Gagal mengimpor batch anggota: ${error.message}`);
+      } else {
+        successCount += batch.length;
+      }
+    } else {
+      // Demo Mode batch
+      const current = getLocalDemoAnggota();
+      const map = new Map<string, Anggota>(current.map((a) => [a.id, a]));
+      batch.forEach((a) => map.set(a.id, a));
+      saveLocalDemoAnggota(Array.from(map.values()));
+      successCount += batch.length;
+    }
+    onProgress?.(Math.min(i + batchSize, rows.length), rows.length);
+  }
+
+  return { successCount, errors };
+}

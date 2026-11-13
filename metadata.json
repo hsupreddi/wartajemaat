@@ -1,0 +1,6 @@
+{
+  "name": "Warta Jemaat HKBP Ressort Hutaraja",
+  "description": "Sistem Informasi & Penyusunan Warta Jemaat Digital HKBP Ressort Hutaraja (Distrik VI Dairi) - Tata Ibadah, Tingting Namarragam, dan Tingting Parhepengon.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

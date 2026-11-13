@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-hkbp-navy: #0b2545;
+    --color-hkbp-royal: #133c55;
+    --color-hkbp-gold: #c59b27;
+    --color-hkbp-gold-light: #fef9e7;
+    --color-hkbp-parchment: #fcfaf7;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #f7f5f0;
+  }
+
+  .font-display {
+    font-family: 'Cinzel', serif;
+  }
+
+  .font-serif-body {
+    font-family: 'Lora', Georgia, serif;
+  }
+
+  .font-mono-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Luxury Card and Surface Motifs */
+.hkbp-card-gradient {
+  background: linear-gradient(135deg, #0b2545 0%, #133c55 100%);
+}
+
+.hkbp-gold-border {
+  border-color: #c59b27;
+}
+
+.hkbp-gold-text {
+  color: #c59b27;
+}
+
+.hkbp-parchment {
+  background-color: #fcfaf7;
+}
+
+/* Print Specific Rules for authentic A4 Church Bulletin */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 6mm 8mm 6mm 8mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 10pt;
+    line-height: 1.25;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print,
+  nav,
+  header,
+  footer:not(.print-footer),
+  .toolbar-actions,
+  button,
+  .btn-print-hide {
+    display: none !important;
+  }
+
+  .page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Remove screen shadow and force natural printable height */
+  .a4-sheet-preview {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .a4-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-width: none !important;
+    border: none !important;
+  }
+
+  table {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
+/* Screen A4 sheet simulation preview */
+.a4-sheet-preview {
+  width: 210mm;
+  min-height: 297mm;
+  box-sizing: border-box;
+}
+
+@media screen and (max-width: 860px) {
+  .a4-sheet-preview {
+    width: 100%;
+    min-height: auto;
+  }
+}
+
