@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --breakpoint-xs: 24rem;
+}
+
 @layer base {
   :root {
     --color-hkbp-navy: #0b2545;
@@ -12,6 +16,7 @@
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     background-color: #f7f5f0;
+    overflow-x: clip;
   }
 
   .font-display {

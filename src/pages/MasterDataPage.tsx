@@ -561,25 +561,23 @@ export const MasterDataPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F7F5F0] text-stone-900 pb-16">
       {/* Top Header */}
-      <header className="bg-[#0B2545] text-white shadow-md border-b border-amber-500/20 px-4 py-3 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="bg-[#0B2545] text-white shadow-md border-b border-amber-500/20 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <button
               onClick={() => navigate('/admin')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-200 hover:text-white hover:bg-white/10 transition cursor-pointer min-h-[40px] shrink-0"
             >
-              <ArrowLeft className="w-4 h-4" /> Kembali ke Dasbor
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden xs:inline">Dasbor</span>
             </button>
-            <div className="h-4 w-px bg-stone-700 hidden sm:block" />
-            <div>
-              <h1 className="text-sm md:text-base font-bold text-white tracking-tight flex items-center gap-2">
-                Master Data & Pengaturan Huria
-                <span className="text-[10px] font-bold uppercase bg-amber-400 text-stone-950 px-2 py-0.5 rounded">
-                  Distrik VI Dairi
-                </span>
+            <div className="h-4 w-px bg-stone-700 hidden sm:block shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+                Master Data &amp; Pengaturan Huria
               </h1>
-              <p className="text-xs text-stone-300">
-                HKBP Ressort Hutaraja · Hubungan Data Jemaat, Jadwal & Liturgi
+              <p className="text-[11px] text-stone-300 truncate">
+                HKBP Ressort Hutaraja · Distrik VI Dairi
               </p>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { HkbpCrossLogo } from '../components/logos/HkbpCrossLogo';
+import { HkbpTransformasiLogo } from '../components/logos/HkbpTransformasiLogo';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { Shield, UserCheck, ArrowRight, Lock, Mail, Key, UserPlus, CheckCircle2 } from 'lucide-react';
 
@@ -79,9 +80,11 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-[#0B2545]/15 via-[#F7F5F0] to-[#F7F5F0] flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-stone-200/80 overflow-hidden">
         {/* Header */}
-        <div className="bg-[#0B2545] text-white p-6 sm:p-7 text-center space-y-2 border-b-2 border-amber-500">
-          <div className="flex justify-center mb-1">
-            <HkbpCrossLogo size={56} />
+        <div className="bg-[#0B2545] text-white p-6 sm:p-7 text-center space-y-3 border-b-2 border-amber-500">
+          <div className="inline-flex items-center justify-center gap-3.5 bg-white rounded-2xl px-4 py-2 shadow-md">
+            <HkbpCrossLogo className="w-12 h-12 sm:w-13 sm:h-13" />
+            <div className="h-9 w-px bg-stone-200" />
+            <HkbpTransformasiLogo className="w-14 h-14 sm:w-15 sm:h-15" />
           </div>
           <h2 className="font-display font-bold text-base sm:text-lg tracking-wider uppercase text-white">
             Warta Jemaat HKBP Ressort Hutaraja

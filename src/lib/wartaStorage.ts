@@ -60,8 +60,16 @@ function initializeLocalStorage(forceSeed = false) {
   } else {
     try {
       const parsed = JSON.parse(existingPeng);
+      let updated = false;
       if (!parsed.logo_salib_url) {
         parsed.logo_salib_url = '/assets/aistudio/Logo-HKBP_02090ed7.png';
+        updated = true;
+      }
+      if (!parsed.logo_transformasi_url) {
+        parsed.logo_transformasi_url = '/assets/aistudio/Logo-Tahun-Transformasi-HKBP-2025-Fulcolor_247b231a.png';
+        updated = true;
+      }
+      if (updated) {
         localStorage.setItem(STORAGE_KEYS.PENGATURAN, JSON.stringify(parsed));
       }
     } catch {}
@@ -884,6 +892,9 @@ export async function getPengaturan(): Promise<PengaturanHuria> {
         if (!merged.logo_salib_url) {
           merged.logo_salib_url = '/assets/aistudio/Logo-HKBP_02090ed7.png';
         }
+        if (!merged.logo_transformasi_url) {
+          merged.logo_transformasi_url = '/assets/aistudio/Logo-Tahun-Transformasi-HKBP-2025-Fulcolor_247b231a.png';
+        }
         return merged;
       }
       if (error) {
@@ -899,6 +910,9 @@ export async function getPengaturan(): Promise<PengaturanHuria> {
   const data: PengaturanHuria = raw ? JSON.parse(raw) : { ...DEFAULT_PENGATURAN };
   if (!data.logo_salib_url) {
     data.logo_salib_url = '/assets/aistudio/Logo-HKBP_02090ed7.png';
+  }
+  if (!data.logo_transformasi_url) {
+    data.logo_transformasi_url = '/assets/aistudio/Logo-Tahun-Transformasi-HKBP-2025-Fulcolor_247b231a.png';
   }
   return data;
 }

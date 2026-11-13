@@ -182,54 +182,54 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
       </div>
 
       {/* 2. MODERN SEGMENTED SECTION NAVIGATION */}
-      <div className="sticky top-14 z-20 bg-stone-100/90 backdrop-blur-md py-2 -mx-2 px-2">
+      <div className="sticky top-[56px] sm:top-[62px] z-20 bg-stone-100/95 backdrop-blur-md py-2 -mx-1 px-1">
         <div className="grid grid-cols-4 gap-1 p-1 bg-white rounded-xl border border-stone-200 shadow-xs">
           <button
             onClick={() => setActiveSection('liturgi')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition cursor-pointer min-h-[44px] ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer min-h-[44px] ${
               activeSection === 'liturgi'
                 ? 'bg-[#0B2545] text-white shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
             }`}
           >
             <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="truncate">Tata Ibadah</span>
+            <span className="truncate max-w-full">Ibadah</span>
           </button>
 
           <button
             onClick={() => setActiveSection('warta')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition cursor-pointer min-h-[44px] ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer min-h-[44px] ${
               activeSection === 'warta'
                 ? 'bg-[#0B2545] text-white shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
             }`}
           >
             <Bell className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="truncate">Warta & Ultah</span>
+            <span className="truncate max-w-full">Tingting</span>
           </button>
 
           <button
             onClick={() => setActiveSection('keuangan')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition cursor-pointer min-h-[44px] ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer min-h-[44px] ${
               activeSection === 'keuangan'
                 ? 'bg-[#0B2545] text-white shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
             }`}
           >
             <DollarSign className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="truncate">Keuangan</span>
+            <span className="truncate max-w-full">Keuangan</span>
           </button>
 
           <button
             onClick={() => setActiveSection('jadwal')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition cursor-pointer min-h-[44px] ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer min-h-[44px] ${
               activeSection === 'jadwal'
                 ? 'bg-[#0B2545] text-white shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
             }`}
           >
             <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="truncate">Jadwal Huria</span>
+            <span className="truncate max-w-full">Jadwal</span>
           </button>
         </div>
       </div>
@@ -635,7 +635,7 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
               </div>
             </div>
 
-            <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-xs text-center space-y-1">
+            <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-xs text-center space-y-1 col-span-2 sm:col-span-1">
               <span className="text-[10px] uppercase font-bold text-indigo-800 block">
                 Transitori
               </span>

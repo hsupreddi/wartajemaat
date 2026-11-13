@@ -32,6 +32,7 @@ export const DEFAULT_PENGATURAN: PengaturanHuria = {
   distrik: 'DISTRIK VI DAIRI – RESSORT HUTARAJA',
   alamat: 'Jl. Persada No. 205 Desa Hutarakyat, Kec. Sidikalang',
   logo_salib_url: '/assets/aistudio/Logo-HKBP_02090ed7.png',
+  logo_transformasi_url: '/assets/aistudio/Logo-Tahun-Transformasi-HKBP-2025-Fulcolor_247b231a.png',
   ayat_tetap_default: 'Alai anggo ahu dohot donganku sajabu, ingkon Jahowa do oloannami.',
   ayat_ref_default: 'Josua 24:15b',
   teks_ucapan_ulang_tahun:

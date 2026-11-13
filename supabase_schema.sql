@@ -747,7 +747,7 @@ CREATE POLICY "Kelola pengeluaran" ON public.pengeluaran FOR ALL TO authenticate
 -- ============================================================================
 
 INSERT INTO public.pengaturan_huria (
-  id, nama_huria, sk_pengakuan, distrik, alamat, logo_salib_url,
+  id, nama_huria, sk_pengakuan, distrik, alamat, logo_salib_url, logo_transformasi_url,
   ayat_tetap_default, ayat_ref_default, teks_ucapan_ulang_tahun, teks_penutup_keuangan
 ) VALUES (
   'pengaturan-hutaraja',
@@ -756,6 +756,7 @@ INSERT INTO public.pengaturan_huria (
   'DISTRIK VI DAIRI – RESSORT HUTARAJA',
   'Jl. Persada No. 205 Desa Hutarakyat, Kec. Sidikalang',
   '/assets/aistudio/Logo-HKBP_02090ed7.png',
+  '/assets/aistudio/Logo-Tahun-Transformasi-HKBP-2025-Fulcolor_247b231a.png',
   'Alai anggo ahu dohot donganku sajabu, ingkon Jahowa do oloannami.',
   'Josua 24:15b',
   'Alai angka na marhaposan tu Jahowa dapotan gogo imbaru, manangkup angka habong songon pidoli, marlojong nasida ndang marnaloja, mardalan nasida ndang marnatep. (Jesayas 40:31)',

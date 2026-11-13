@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { formatTanggalIndo, formatTanggalLengkap, BULAN_INDONESIA } from '../lib/dateUtils';
 import { HkbpCrossLogo } from '../components/logos/HkbpCrossLogo';
+import { HkbpTransformasiLogo } from '../components/logos/HkbpTransformasiLogo';
 
 export const ArsipWartaPage: React.FC = () => {
   const navigate = useNavigate();
@@ -77,46 +78,48 @@ export const ArsipWartaPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F7F5F0] text-stone-900 pb-24 md:pb-16 flex flex-col justify-between">
       {/* Top Header */}
-      <header className="bg-[#0B2545] text-white shadow-md border-b border-amber-500/20 px-4 py-3 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <header className="bg-[#0B2545] text-white shadow-md border-b border-amber-500/20 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => navigate('/')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-300 hover:text-white hover:bg-white/10 transition cursor-pointer min-h-[38px]"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-200 hover:text-white hover:bg-white/10 transition cursor-pointer min-h-[40px] shrink-0"
             >
-              <ArrowLeft className="w-4 h-4" /> Beranda
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden xs:inline">Beranda</span>
             </button>
-            <div className="h-4 w-px bg-stone-700 hidden sm:block" />
-            <div className="flex items-center gap-2.5">
-              <HkbpCrossLogo size={36} />
-              <div>
-                <h1 className="text-sm md:text-base font-bold text-white tracking-tight flex items-center gap-2">
+            <div className="h-4 w-px bg-stone-700 hidden sm:block shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="inline-flex items-center gap-1.5 bg-white rounded-xl px-2 py-1 shadow-xs shrink-0">
+                <HkbpCrossLogo className="w-7 h-7 sm:w-8 sm:h-8" />
+                <div className="h-5 w-px bg-stone-200 hidden sm:block" />
+                <HkbpTransformasiLogo className="w-8 h-8 sm:w-9 sm:h-9 hidden sm:inline-block" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-xs sm:text-base font-bold text-white tracking-tight truncate">
                   Arsip Warta Jemaat HKBP
-                  <span className="text-[10px] font-bold uppercase bg-amber-400 text-stone-950 px-2 py-0.5 rounded">
-                    Ressort Hutaraja
-                  </span>
                 </h1>
-                <p className="text-[11px] text-amber-200/80">
-                  Distrik VI Dairi · Dokumen Tata Ibadah & Laporan Keuangan
+                <p className="text-[10px] sm:text-[11px] text-amber-200/80 truncate">
+                  Ressort Hutaraja · Distrik VI Dairi
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {isStaff ? (
               <button
                 onClick={() => navigate('/admin')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg text-xs font-bold shadow-md transition cursor-pointer min-h-[38px]"
+                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-bold shadow-md transition cursor-pointer min-h-[40px] whitespace-nowrap"
               >
-                Panel Dasbor Pengurus
+                Dashboard
               </button>
             ) : (
               <button
                 onClick={() => navigate('/login')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/20 transition cursor-pointer min-h-[38px]"
+                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-xl border border-white/20 transition cursor-pointer min-h-[40px] whitespace-nowrap"
               >
-                Masuk Pengurus
+                Masuk
               </button>
             )}
           </div>

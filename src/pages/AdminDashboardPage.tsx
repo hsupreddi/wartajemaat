@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { formatTanggalIndo, formatTanggalLengkap, getNextSunday } from '../lib/dateUtils';
 import { HkbpCrossLogo } from '../components/logos/HkbpCrossLogo';
+import { HkbpTransformasiLogo } from '../components/logos/HkbpTransformasiLogo';
 import { UserManagement } from '../components/admin/UserManagement';
 import { KopLogoEditor } from '../components/admin/KopLogoEditor';
 import { MingguLiturgiDropdown, getLiturgiColorBadge } from '../components/common/MingguLiturgiDropdown';
@@ -173,32 +174,33 @@ export const AdminDashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F7F5F0] text-stone-900 pb-16 flex flex-col justify-between">
       {/* Top Bar with Brand & Fast Role Switcher */}
-      <header className="bg-[#0B2545] text-white shadow-lg border-b border-amber-500/20 px-4 py-3 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <HkbpCrossLogo size={38} />
-            <div>
-              <h1 className="text-sm md:text-base font-bold text-white tracking-tight flex items-center gap-2">
-                Panel Pengurus HKBP Ressort Hutaraja
-                <span className="text-[10px] font-bold uppercase bg-amber-400 text-stone-950 px-2 py-0.5 rounded">
-                  Distrik VI Dairi
-                </span>
+      <header className="bg-[#0B2545] text-white shadow-lg border-b border-amber-500/20 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="inline-flex items-center gap-1.5 bg-white rounded-xl px-2 py-1 shadow-xs shrink-0">
+              <HkbpCrossLogo className="w-7 h-7 sm:w-8 sm:h-8" />
+              <div className="h-5 w-px bg-stone-200 hidden xs:block" />
+              <HkbpTransformasiLogo className="w-8 h-8 sm:w-9 sm:h-9 hidden xs:inline-block" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+                Panel Pengurus HKBP Hutaraja
               </h1>
-              <p className="text-[11px] text-stone-300">
+              <p className="text-[11px] text-stone-300 truncate">
                 Masuk sebagai: <strong className="text-amber-300 capitalize">{currentRole}</strong>{' '}
-                ({currentUser?.nama})
+                {currentUser?.nama ? `(${currentUser.nama})` : ''}
               </p>
             </div>
           </div>
 
           {/* Quick Role Switcher (Demo) / Supabase Auth Status */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between sm:justify-end gap-2 overflow-x-auto scrollbar-none py-0.5">
             {!isSupabaseConfigured ? (
-              <div className="flex items-center gap-1 bg-[#061527] p-1 rounded-lg border border-amber-500/20 text-xs">
-                <span className="text-[11px] text-amber-300/80 px-2 hidden sm:inline">Peran:</span>
+              <div className="flex items-center gap-1 bg-[#061527] p-1 rounded-lg border border-amber-500/20 text-xs shrink-0">
+                <span className="text-[11px] text-amber-300/80 px-2 hidden md:inline">Peran:</span>
                 <button
                   onClick={() => signInAsDemo('admin')}
-                  className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
+                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition cursor-pointer whitespace-nowrap min-h-[34px] ${
                     currentRole === 'admin'
                       ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
                       : 'text-stone-300 hover:text-white'
@@ -209,7 +211,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => signInAsDemo('sekretaris')}
-                  className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
+                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition cursor-pointer whitespace-nowrap min-h-[34px] ${
                     currentRole === 'sekretaris'
                       ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
                       : 'text-stone-300 hover:text-white'
@@ -220,7 +222,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => signInAsDemo('bendahara')}
-                  className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
+                  className={`px-2.5 py-1.5 rounded text-xs font-semibold transition cursor-pointer whitespace-nowrap min-h-[34px] ${
                     currentRole === 'bendahara'
                       ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
                       : 'text-stone-300 hover:text-white'
@@ -231,10 +233,9 @@ export const AdminDashboardPage: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 rounded-lg text-xs font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  Supabase Aktif
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="hidden sm:inline-flex items-center px-2.5 py-1.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 rounded-lg text-xs font-semibold whitespace-nowrap">
+                  Supabase Terhubung
                 </span>
                 {currentUser ? (
                   <button
@@ -242,14 +243,14 @@ export const AdminDashboardPage: React.FC = () => {
                       await signOut();
                       navigate('/login');
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-100 rounded-lg text-xs font-semibold transition border border-red-400/30 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-100 rounded-lg text-xs font-semibold transition border border-red-400/30 cursor-pointer min-h-[38px] whitespace-nowrap"
                   >
                     <LogOut className="w-3.5 h-3.5" /> Keluar
                   </button>
                 ) : (
                   <button
                     onClick={() => navigate('/login')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg text-xs font-bold transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg text-xs font-bold transition cursor-pointer min-h-[38px] whitespace-nowrap"
                   >
                     Masuk Pengurus
                   </button>
@@ -259,9 +260,9 @@ export const AdminDashboardPage: React.FC = () => {
 
             <button
               onClick={() => navigate('/')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition border border-white/20 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition border border-white/20 cursor-pointer min-h-[38px] whitespace-nowrap shrink-0"
             >
-              <Globe className="w-3.5 h-3.5 text-amber-400" /> Beranda Jemaat
+              <Globe className="w-3.5 h-3.5 text-amber-400" /> Beranda
             </button>
           </div>
         </div>
@@ -868,22 +869,22 @@ export const AdminDashboardPage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="relative min-w-[200px]">
-                    <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:min-w-[200px]">
+                    <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
                     <input
                       type="text"
                       placeholder="Cari nama calon sidi..."
                       value={calonSidiSearch}
                       onChange={(e) => setCalonSidiSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-1.5 text-xs border border-stone-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-600"
+                      className="w-full pl-9 pr-3 py-2 text-xs border border-stone-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-600 min-h-[40px]"
                     />
                   </div>
 
                   <select
                     value={calonSidiWijkFilter}
                     onChange={(e) => setCalonSidiWijkFilter(e.target.value)}
-                    className="px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-medium"
+                    className="px-3 py-2 border border-stone-300 rounded-lg bg-white text-xs font-medium min-h-[40px]"
                   >
                     <option value="all">Semua Wijk</option>
                     {statistikWijkList.map((st, i) => (
