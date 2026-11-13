@@ -4,11 +4,13 @@ import {
   formatRupiah,
   parseRupiahInput,
   calculateRowAlokasi,
+  calculateHuriaSentralSplit,
   calculateHamauliateonTotals,
   recalculatePenerimaanRows,
   calculatePengeluaranTotals,
   calculateRekapitulasi
 } from '../../lib/financialMath';
+import { MASTER_KATEGORI_PENERIMAAN } from '../../lib/mockData';
 import { Plus, Trash2, CheckCircle2, AlertCircle, DollarSign, ArrowRight, Search, Filter, Columns, ChevronDown, Eye, Layers } from 'lucide-react';
 import { TambahPenerimaanModal, TambahPengeluaranModal } from './TambahPosKeuanganModal';
 
@@ -106,15 +108,53 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
     updatePenerimaanAndRecalc(updated);
   };
 
+  const hamPenerimaanRow = penerimaan.find(
+    (p) => p.kode === 'HAM_LAIN' || p.no_tampilan === '1.2.17'
+  );
+  const isHamSentral = hamPenerimaanRow ? hamPenerimaanRow.is_sentralisasi !== false : true;
+
+  const transitoriOptions = React.useMemo(() => {
+    const rows13 = (penerimaan || []).filter(
+      (r) =>
+        r.kelompok === '1.3' ||
+        (r.no_tampilan && r.no_tampilan.startsWith('1.3')) ||
+        r.aturan_alokasi === 'transitori'
+    );
+    const source =
+      rows13.length > 0
+        ? rows13
+        : MASTER_KATEGORI_PENERIMAAN.filter((k) => k.kelompok === '1.3');
+    return source.map((r) => ({
+      kode: r.kode,
+      no_tampilan: r.no_tampilan || '',
+      uraian: r.uraian
+    }));
+  }, [penerimaan]);
+
   const handleToggleSentralisasi = (index: number, isSentral: boolean) => {
     const updated = [...penerimaan];
     const item = updated[index];
-    const dist = calculateRowAlokasi(item.jumlah, item.aturan_alokasi, item.dialihkan_ke_pembangunan, isSentral);
-    updated[index] = {
-      ...item,
-      is_sentralisasi: isSentral,
-      ...dist
-    };
+    if (item.kode === 'HAM_LAIN' || item.no_tampilan === '1.2.17') {
+      const hamTotals = calculateHamauliateonTotals(hamauliateon, isSentral);
+      updated[index] = {
+        ...item,
+        is_sentralisasi: isSentral,
+        aturan_alokasi: 'manual',
+        jumlah: hamTotals.totalJumlah,
+        huria_45: hamTotals.totalHuria,
+        sosial: hamTotals.totalSosial,
+        pembangunan: hamTotals.totalPembangunan,
+        sentral_55: hamTotals.totalSentral,
+        transitori: hamTotals.totalTransitori
+      };
+    } else {
+      const dist = calculateRowAlokasi(item.jumlah, item.aturan_alokasi, item.dialihkan_ke_pembangunan, isSentral);
+      updated[index] = {
+        ...item,
+        is_sentralisasi: isSentral,
+        ...dist
+      };
+    }
     updatePenerimaanAndRecalc(updated);
   };
 
@@ -248,15 +288,16 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
     syncPeleanTaonTotalToPenerimaan(updated);
   };
 
-  // C. Hamauliateon handlers - Synchronizes with row 28 (distributes to Kas Huria, Sosial, Pemb, Sentral, Transitori)
+  // C. Hamauliateon handlers - Synchronizes with row 1.2.17 (55%/45% Sentralisasi for Kas Huria, 100% for Sosial/Pemb/Transitori)
   const syncHamauliateonTotalToPenerimaan = (newHamList: HamauliateonItem[]) => {
-    const hamTotals = calculateHamauliateonTotals(newHamList);
+    const hamTotals = calculateHamauliateonTotals(newHamList, isHamSentral);
     const updatedPenerimaan = penerimaan.map((p) => {
       if (p.kode === 'HAM_LAIN' || p.no_tampilan === '1.2.17') {
         return {
           ...p,
           jumlah: hamTotals.totalJumlah,
           aturan_alokasi: 'manual' as const,
+          is_sentralisasi: isHamSentral,
           huria_45: hamTotals.totalHuria,
           sosial: hamTotals.totalSosial,
           pembangunan: hamTotals.totalPembangunan,
@@ -281,6 +322,8 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
       ke_pembangunan: 0,
       ke_sentralisasi: 0,
       ke_transitori: 0,
+      transitori_kode: '',
+      transitori_uraian: '',
       urutan: hamauliateon.length + 1
     };
     syncHamauliateonTotalToPenerimaan([...hamauliateon, newItem]);
@@ -293,23 +336,22 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
       'ke_huria',
       'ke_sosial',
       'ke_pembangunan',
-      'ke_sentralisasi',
       'ke_transitori'
     ].includes(field as string);
 
     const parsedVal = isNumField ? parseRupiahInput(val) : val;
-    const item = { ...updated[index], [field]: parsedVal };
+    const item: HamauliateonItem = { ...updated[index], [field]: parsedVal };
 
     if (
-      ['ke_huria', 'ke_sosial', 'ke_pembangunan', 'ke_sentralisasi', 'ke_transitori'].includes(
+      ['ke_huria', 'ke_sosial', 'ke_pembangunan', 'ke_transitori'].includes(
         field as string
       )
     ) {
+      item.ke_sentralisasi = 0;
       const sum =
         (item.ke_huria || 0) +
         (item.ke_sosial || 0) +
         (item.ke_pembangunan || 0) +
-        (item.ke_sentralisasi || 0) +
         (item.ke_transitori || 0);
       item.jumlah = sum;
     } else if (field === 'jumlah') {
@@ -317,14 +359,25 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
         (item.ke_huria || 0) +
         (item.ke_sosial || 0) +
         (item.ke_pembangunan || 0) +
-        (item.ke_sentralisasi || 0) +
         (item.ke_transitori || 0);
       if (sumPos === 0 || sumPos === updated[index].jumlah) {
         item.ke_huria = parsedVal;
       }
+      item.ke_sentralisasi = 0;
     }
 
     updated[index] = item;
+    syncHamauliateonTotalToPenerimaan(updated);
+  };
+
+  const handleUpdateHamauliateonTransitoriJenis = (index: number, kode: string) => {
+    const updated = [...hamauliateon];
+    const matched = transitoriOptions.find((opt) => opt.kode === kode);
+    updated[index] = {
+      ...updated[index],
+      transitori_kode: kode,
+      transitori_uraian: matched ? matched.uraian : ''
+    };
     syncHamauliateonTotalToPenerimaan(updated);
   };
 
@@ -973,14 +1026,19 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
         <div className="bg-white p-4 rounded-lg border border-stone-200 shadow-sm space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
             <div>
-              <h4 className="font-bold text-stone-900 text-xs uppercase flex items-center gap-1.5">
+              <h4 className="font-bold text-stone-900 text-xs uppercase flex items-center gap-1.5 flex-wrap">
                 <span>C. Rincian Hamauliateon (Ucapan Syukur)</span>
                 <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                   Multi-Pos Kas
                 </span>
+                {isHamSentral && (
+                  <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Kas Huria: 45% Huria / 55% Sentral
+                  </span>
+                )}
               </h4>
               <p className="text-[11px] text-stone-500">
-                Nominal rincian dapat dibagi ke masing-masing pos (Kas Huria, Sosial Huria, Pembangunan, Sentralisasi, Transitori) dan otomatis diakumulasi.
+                Bagi rincian persembahan ke Kas Huria (otomatis dihitung 45% Huria & 55% Sentralisasi), Sosial Huria, Pembangunan, atau Transitori.
               </p>
             </div>
             {!disabled && (
@@ -996,24 +1054,28 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
 
           {/* Quick Pos Summary Banner */}
           {(() => {
-            const totals = calculateHamauliateonTotals(hamauliateon);
+            const totals = calculateHamauliateonTotals(hamauliateon, isHamSentral);
             return (
               <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 text-xs flex flex-wrap items-center justify-between gap-2">
                 <span className="font-bold text-stone-900 font-mono-num">
                   Total Hamauliateon: Rp {formatRupiah(totals.totalJumlah)}
                 </span>
                 <div className="flex flex-wrap gap-2 text-[11px] font-mono-num text-stone-600">
-                  <span className="text-blue-900 font-medium">Huria: Rp {formatRupiah(totals.totalHuria)}</span>
+                  <span className="text-blue-900 font-medium">
+                    {isHamSentral ? 'Huria (45%)' : 'Huria'}: Rp {formatRupiah(totals.totalHuria)}
+                  </span>
+                  {totals.totalSentral > 0 && (
+                    <>
+                      <span>·</span>
+                      <span className="text-amber-900 font-medium">
+                        Sentral (55%): Rp {formatRupiah(totals.totalSentral)}
+                      </span>
+                    </>
+                  )}
                   <span>·</span>
                   <span className="text-rose-900 font-medium">Sosial: Rp {formatRupiah(totals.totalSosial)}</span>
                   <span>·</span>
                   <span className="text-emerald-900 font-medium">Pemb: Rp {formatRupiah(totals.totalPembangunan)}</span>
-                  {totals.totalSentral > 0 && (
-                    <>
-                      <span>·</span>
-                      <span className="text-amber-900 font-medium">Sentral: Rp {formatRupiah(totals.totalSentral)}</span>
-                    </>
-                  )}
                   {totals.totalTransitori > 0 && (
                     <>
                       <span>·</span>
@@ -1026,122 +1088,142 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
           })()}
 
           <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-            {hamauliateon.map((h, idx) => (
-              <div
-                key={h.id || idx}
-                className="p-3 bg-stone-50/80 rounded-lg border border-stone-200 text-xs space-y-2 hover:border-blue-300 transition"
-              >
-                {/* Row 1: Nama, Keterangan, Total, Delete */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-stone-500 font-bold w-5">{idx + 1}.</span>
-                  <input
-                    type="text"
-                    disabled={disabled}
-                    value={h.nama}
-                    onChange={(e) => handleUpdateHamauliateon(idx, 'nama', e.target.value)}
-                    placeholder="Nama Keluarga (contoh: Kel. Op. Gorga)"
-                    className="flex-1 min-w-[140px] px-2.5 py-1.5 border border-stone-300 rounded bg-white font-medium"
-                  />
-                  <input
-                    type="text"
-                    disabled={disabled}
-                    value={h.rincian || ''}
-                    onChange={(e) => handleUpdateHamauliateon(idx, 'rincian', e.target.value)}
-                    placeholder="Keterangan ucapan syukur..."
-                    className="flex-1 min-w-[160px] px-2.5 py-1.5 border border-stone-300 rounded bg-white text-stone-700"
-                  />
-                  <div className="flex items-center gap-1.5 shrink-0 bg-white px-2.5 py-1 rounded border border-stone-300">
-                    <span className="text-[10px] uppercase font-bold text-stone-500">Total:</span>
-                    <span className="font-mono-num font-bold text-stone-900 text-xs">
-                      Rp {formatRupiah(h.jumlah)}
-                    </span>
+            {hamauliateon.map((h, idx) => {
+              const huriaSplit = calculateHuriaSentralSplit(h.ke_huria || 0, isHamSentral);
+              const needsTransJenis = (h.ke_transitori || 0) > 0 && !h.transitori_kode;
+              return (
+                <div
+                  key={h.id || idx}
+                  className="p-3 bg-stone-50/80 rounded-lg border border-stone-200 text-xs space-y-2 hover:border-blue-300 transition"
+                >
+                  {/* Row 1: Nama, Keterangan, Total, Delete */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-stone-500 font-bold w-5">{idx + 1}.</span>
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      value={h.nama}
+                      onChange={(e) => handleUpdateHamauliateon(idx, 'nama', e.target.value)}
+                      placeholder="Nama Keluarga (contoh: Kel. Op. Gorga)"
+                      className="flex-1 min-w-[140px] px-2.5 py-1.5 border border-stone-300 rounded bg-white font-medium"
+                    />
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      value={h.rincian || ''}
+                      onChange={(e) => handleUpdateHamauliateon(idx, 'rincian', e.target.value)}
+                      placeholder="Keterangan ucapan syukur..."
+                      className="flex-1 min-w-[160px] px-2.5 py-1.5 border border-stone-300 rounded bg-white text-stone-700"
+                    />
+                    <div className="flex items-center gap-1.5 shrink-0 bg-white px-2.5 py-1 rounded border border-stone-300">
+                      <span className="text-[10px] uppercase font-bold text-stone-500">Total:</span>
+                      <span className="font-mono-num font-bold text-stone-900 text-xs">
+                        Rp {formatRupiah(h.jumlah)}
+                      </span>
+                    </div>
+                    {!disabled && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteHamauliateon(idx)}
+                        className="p-1.5 text-stone-400 hover:text-red-600 rounded transition cursor-pointer"
+                        title="Hapus baris ini"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                  {!disabled && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteHamauliateon(idx)}
-                      className="p-1.5 text-stone-400 hover:text-red-600 rounded transition cursor-pointer"
-                      title="Hapus baris ini"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+
+                  {/* Row 2: Pembagian Pos Kas (Ke Huria, Sosial, Pembangunan, Transitori) */}
+                  <div className="pt-2 border-t border-stone-200/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+                    <div className="bg-white p-1.5 rounded border border-blue-200 flex flex-col justify-between">
+                      <div>
+                        <label className="block text-[10px] font-bold text-blue-900 mb-0.5">
+                          Ke Kas Huria (Rp):
+                        </label>
+                        <input
+                          type="text"
+                          disabled={disabled}
+                          value={formatRupiah(h.ke_huria)}
+                          onChange={(e) => handleUpdateHamauliateon(idx, 'ke_huria', e.target.value)}
+                          placeholder="0"
+                          className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-blue-950"
+                        />
+                      </div>
+                      {(h.ke_huria || 0) > 0 && (
+                        <div className="mt-1 text-[9.5px] font-mono-num leading-tight text-amber-800 bg-amber-50/80 px-1.5 py-0.5 rounded border border-amber-200/80">
+                          {isHamSentral
+                            ? `45% Huria: ${formatRupiah(huriaSplit.huria45)} · 55% Sentral: ${formatRupiah(huriaSplit.sentral55)}`
+                            : '100% Kas Huria (Non-Sentral)'}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-1.5 rounded border border-rose-200">
+                      <label className="block text-[10px] font-bold text-rose-900 mb-0.5">
+                        Ke Sosial Huria (Rp):
+                      </label>
+                      <input
+                        type="text"
+                        disabled={disabled}
+                        value={formatRupiah(h.ke_sosial)}
+                        onChange={(e) => handleUpdateHamauliateon(idx, 'ke_sosial', e.target.value)}
+                        placeholder="0"
+                        className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-rose-950"
+                      />
+                    </div>
+
+                    <div className="bg-white p-1.5 rounded border border-emerald-200">
+                      <label className="block text-[10px] font-bold text-emerald-900 mb-0.5">
+                        Ke Pembangunan (Rp):
+                      </label>
+                      <input
+                        type="text"
+                        disabled={disabled}
+                        value={formatRupiah(h.ke_pembangunan)}
+                        onChange={(e) => handleUpdateHamauliateon(idx, 'ke_pembangunan', e.target.value)}
+                        placeholder="0"
+                        className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-emerald-950"
+                      />
+                    </div>
+
+                    <div className={`bg-white p-1.5 rounded border ${needsTransJenis ? 'border-amber-400 ring-1 ring-amber-200' : 'border-indigo-200'}`}>
+                      <label className="block text-[10px] font-bold text-indigo-950 mb-0.5">
+                        Ke Transitoris (Rp):
+                      </label>
+                      <div className="space-y-1">
+                        <select
+                          disabled={disabled}
+                          value={h.transitori_kode || ''}
+                          onChange={(e) => handleUpdateHamauliateonTransitoriJenis(idx, e.target.value)}
+                          className="w-full px-1.5 py-0.5 text-[10.5px] border border-stone-200 rounded bg-stone-50 text-stone-800 font-medium cursor-pointer"
+                          title="Pilih jenis penerimaan transitoris"
+                        >
+                          <option value="">-- Pilih Jenis Transitoris --</option>
+                          {transitoriOptions.map((opt) => (
+                            <option key={opt.kode} value={opt.kode}>
+                              {opt.no_tampilan ? `${opt.no_tampilan} ` : ''}{opt.uraian}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          disabled={disabled}
+                          value={formatRupiah(h.ke_transitori)}
+                          onChange={(e) => handleUpdateHamauliateon(idx, 'ke_transitori', e.target.value)}
+                          placeholder="0"
+                          className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-stone-900"
+                        />
+                        {needsTransJenis && (
+                          <span className="block text-[9.5px] text-amber-700 font-semibold">
+                            Pilih tujuan jenis transitoris
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-
-                {/* Row 2: Pembagian Pos Kas (Ke Huria, Sosial, Pembangunan, Sentralisasi, Transitori) */}
-                <div className="pt-2 border-t border-stone-200/60 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-[11px]">
-                  <div className="bg-white p-1.5 rounded border border-blue-200">
-                    <label className="block text-[10px] font-bold text-blue-900 mb-0.5">
-                      Ke Kas Huria (Rp):
-                    </label>
-                    <input
-                      type="text"
-                      disabled={disabled}
-                      value={formatRupiah(h.ke_huria)}
-                      onChange={(e) => handleUpdateHamauliateon(idx, 'ke_huria', e.target.value)}
-                      placeholder="0"
-                      className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-blue-950"
-                    />
-                  </div>
-
-                  <div className="bg-white p-1.5 rounded border border-rose-200">
-                    <label className="block text-[10px] font-bold text-rose-900 mb-0.5">
-                      Ke Sosial Huria (Rp):
-                    </label>
-                    <input
-                      type="text"
-                      disabled={disabled}
-                      value={formatRupiah(h.ke_sosial)}
-                      onChange={(e) => handleUpdateHamauliateon(idx, 'ke_sosial', e.target.value)}
-                      placeholder="0"
-                      className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-rose-950"
-                    />
-                  </div>
-
-                  <div className="bg-white p-1.5 rounded border border-emerald-200">
-                    <label className="block text-[10px] font-bold text-emerald-900 mb-0.5">
-                      Ke Pembangunan (Rp):
-                    </label>
-                    <input
-                      type="text"
-                      disabled={disabled}
-                      value={formatRupiah(h.ke_pembangunan)}
-                      onChange={(e) => handleUpdateHamauliateon(idx, 'ke_pembangunan', e.target.value)}
-                      placeholder="0"
-                      className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-emerald-950"
-                    />
-                  </div>
-
-                  <div className="bg-white p-1.5 rounded border border-amber-200">
-                    <label className="block text-[10px] font-bold text-amber-900 mb-0.5">
-                      Ke Sentralisasi (Rp):
-                    </label>
-                    <input
-                      type="text"
-                      disabled={disabled}
-                      value={formatRupiah(h.ke_sentralisasi)}
-                      onChange={(e) => handleUpdateHamauliateon(idx, 'ke_sentralisasi', e.target.value)}
-                      placeholder="0"
-                      className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-amber-950"
-                    />
-                  </div>
-
-                  <div className="bg-white p-1.5 rounded border border-stone-200 col-span-2 sm:col-span-1">
-                    <label className="block text-[10px] font-bold text-stone-700 mb-0.5">
-                      Ke Transitori (Rp):
-                    </label>
-                    <input
-                      type="text"
-                      disabled={disabled}
-                      value={formatRupiah(h.ke_transitori)}
-                      onChange={(e) => handleUpdateHamauliateon(idx, 'ke_transitori', e.target.value)}
-                      placeholder="0"
-                      className="w-full px-1.5 py-0.5 text-xs border border-stone-200 rounded font-mono-num text-right font-semibold text-stone-900"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

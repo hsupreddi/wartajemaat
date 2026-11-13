@@ -700,8 +700,12 @@ CREATE TABLE IF NOT EXISTS public.hamauliateon (
   ke_pembangunan NUMERIC DEFAULT 0,
   ke_sentralisasi NUMERIC DEFAULT 0,
   ke_transitori NUMERIC DEFAULT 0,
+  transitori_kode TEXT DEFAULT '',
+  transitori_uraian TEXT DEFAULT '',
   urutan INTEGER NOT NULL DEFAULT 1
 );
+ALTER TABLE public.hamauliateon ADD COLUMN IF NOT EXISTS transitori_kode TEXT DEFAULT '';
+ALTER TABLE public.hamauliateon ADD COLUMN IF NOT EXISTS transitori_uraian TEXT DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_hamauliateon_warta ON public.hamauliateon (warta_id, urutan);
 ALTER TABLE public.hamauliateon ENABLE ROW LEVEL SECURITY;
 

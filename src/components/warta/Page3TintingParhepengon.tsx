@@ -5,7 +5,8 @@ import {
   recalculatePenerimaanRows,
   getPrintablePenerimaanRows,
   getPrintablePengeluaranRows,
-  calculatePengeluaranTotals
+  calculatePengeluaranTotals,
+  calculateHuriaSentralSplit
 } from '../../lib/financialMath';
 import { formatTanggalIndo } from '../../lib/dateUtils';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -253,9 +254,19 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
               <tbody className="divide-y divide-stone-200">
                 {hamauliateon.length > 0 ? (
                   hamauliateon.map((h, idx) => {
-                    const posList: { label: string; amount: number; color: string }[] = [];
+                    const hamRow = penerimaan.find((r) => r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17');
+                    const isHamSentral = hamRow ? hamRow.is_sentralisasi !== false : true;
+                    const posList: { label: string; amount: number; color: string; note?: string }[] = [];
                     if (h.ke_huria && h.ke_huria > 0) {
-                      posList.push({ label: 'Ke Huria', amount: h.ke_huria, color: 'bg-emerald-50 text-emerald-900 border-emerald-200' });
+                      const split = calculateHuriaSentralSplit(h.ke_huria, isHamSentral);
+                      posList.push({
+                        label: 'Ke Huria',
+                        amount: h.ke_huria,
+                        color: 'bg-emerald-50 text-emerald-900 border-emerald-200',
+                        note: isHamSentral
+                          ? `(45%: ${formatRupiah(split.huria45)} / Sentral 55%: ${formatRupiah(split.sentral55)})`
+                          : undefined
+                      });
                     }
                     if (h.ke_sosial && h.ke_sosial > 0) {
                       posList.push({ label: 'Ke Sosial', amount: h.ke_sosial, color: 'bg-sky-50 text-sky-900 border-sky-200' });
@@ -267,7 +278,10 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                       posList.push({ label: 'Ke Sentral 55%', amount: h.ke_sentralisasi, color: 'bg-purple-50 text-purple-900 border-purple-200' });
                     }
                     if (h.ke_transitori && h.ke_transitori > 0) {
-                      posList.push({ label: 'Ke Transitori', amount: h.ke_transitori, color: 'bg-rose-50 text-rose-900 border-rose-200' });
+                      const transLabel = h.transitori_uraian
+                        ? `Ke Transitori (${h.transitori_uraian})`
+                        : 'Ke Transitori';
+                      posList.push({ label: transLabel, amount: h.ke_transitori, color: 'bg-rose-50 text-rose-900 border-rose-200' });
                     }
 
                     return (
@@ -283,7 +297,7 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                             <div className="flex flex-wrap gap-x-1 gap-y-0.5 mt-0.5 text-[5.8pt] font-mono-num">
                               {posList.map((p, pIdx) => (
                                 <span key={pIdx} className={`px-1 py-0.2 rounded border ${p.color}`}>
-                                  {p.label}: Rp {formatRupiah(p.amount)}
+                                  {p.label}: Rp {formatRupiah(p.amount)}{p.note ? ` ${p.note}` : ''}
                                 </span>
                               ))}
                             </div>

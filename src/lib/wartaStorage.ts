@@ -144,7 +144,21 @@ async function syncWartaChildTable(
       .from(table)
       .upsert(rows, { onConflict: 'id' });
     if (upsertErr) {
-      throw new Error(`Gagal menyimpan tabel ${table}: ${upsertErr.message}`);
+      const msg = upsertErr.message || '';
+      if (
+        table === 'hamauliateon' &&
+        (msg.includes('transitori_kode') || msg.includes('transitori_uraian'))
+      ) {
+        const legacyRows = rows.map(({ transitori_kode, transitori_uraian, ...rest }) => rest);
+        const { error: retryErr } = await supabase
+          .from(table)
+          .upsert(legacyRows, { onConflict: 'id' });
+        if (retryErr) {
+          throw new Error(`Gagal menyimpan tabel ${table}: ${retryErr.message}`);
+        }
+      } else {
+        throw new Error(`Gagal menyimpan tabel ${table}: ${upsertErr.message}`);
+      }
     }
   }
 
@@ -340,6 +354,8 @@ export async function getWartaById(id: string): Promise<FullWartaData | null> {
       ke_pembangunan: Number(r.ke_pembangunan || 0),
       ke_sentralisasi: Number(r.ke_sentralisasi || 0),
       ke_transitori: Number(r.ke_transitori || 0),
+      transitori_kode: r.transitori_kode || '',
+      transitori_uraian: r.transitori_uraian || '',
       urutan: Number(r.urutan || 1)
     }));
 
@@ -627,6 +643,8 @@ export async function saveWarta(data: FullWartaData): Promise<void> {
       ke_pembangunan: Number(it.ke_pembangunan || 0),
       ke_sentralisasi: Number(it.ke_sentralisasi || 0),
       ke_transitori: Number(it.ke_transitori || 0),
+      transitori_kode: it.transitori_kode || '',
+      transitori_uraian: it.transitori_uraian || '',
       urutan: Number(it.urutan ?? idx + 1)
     }));
 

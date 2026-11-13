@@ -34,16 +34,36 @@ export function parseRupiahInput(value: string | number): number {
 }
 
 /**
- * Calculate multi-pos breakdown totals for Hamauliateon (Ucapan Syukur)
- * Allows donors to split their offering across Kas Huria, Sosial Huria, Pembangunan, Sentralisasi, and Transitori.
+ * Split Kas Huria amount into 45% Kas Huria and 55% Sentralisasi (when centralized)
  */
-export function calculateHamauliateonTotals(items: HamauliateonItem[]): {
+export function calculateHuriaSentralSplit(
+  amount: number,
+  applySentralisasi = true
+): { huria45: number; sentral55: number } {
+  const val = Math.max(0, Math.round(amount || 0));
+  if (!applySentralisasi || val === 0) {
+    return { huria45: val, sentral55: 0 };
+  }
+  const sentral55 = Math.round(val * 0.55);
+  const huria45 = val - sentral55;
+  return { huria45, sentral55 };
+}
+
+/**
+ * Calculate multi-pos breakdown totals for Hamauliateon (Ucapan Syukur)
+ * Allocates across Kas Huria (with 55% Sentralisasi / 45% Huria when active), Sosial Huria, Pembangunan, and Transitori.
+ */
+export function calculateHamauliateonTotals(
+  items: HamauliateonItem[],
+  applyHuriaSentralisasi = true
+): {
   totalJumlah: number;
   totalHuria: number;
   totalSosial: number;
   totalPembangunan: number;
   totalSentral: number;
   totalTransitori: number;
+  totalRawHuria: number;
 } {
   let totalJumlah = 0;
   let totalHuria = 0;
@@ -51,26 +71,32 @@ export function calculateHamauliateonTotals(items: HamauliateonItem[]): {
   let totalPembangunan = 0;
   let totalSentral = 0;
   let totalTransitori = 0;
+  let totalRawHuria = 0;
 
   for (const h of items || []) {
-    const huria = Math.max(0, Math.round(h.ke_huria || 0));
+    const huriaInput = Math.max(0, Math.round(h.ke_huria || 0));
     const sosial = Math.max(0, Math.round(h.ke_sosial || 0));
     const pemb = Math.max(0, Math.round(h.ke_pembangunan || 0));
-    const sentral = Math.max(0, Math.round(h.ke_sentralisasi || 0));
+    const legacySentral = Math.max(0, Math.round(h.ke_sentralisasi || 0));
     const trans = Math.max(0, Math.round(h.ke_transitori || 0));
-    const sumPos = huria + sosial + pemb + sentral + trans;
+    const sumPos = huriaInput + sosial + pemb + legacySentral + trans;
 
     if (sumPos > 0) {
-      totalHuria += huria;
+      const { huria45, sentral55 } = calculateHuriaSentralSplit(huriaInput, applyHuriaSentralisasi);
+      totalRawHuria += huriaInput;
+      totalHuria += huria45;
       totalSosial += sosial;
       totalPembangunan += pemb;
-      totalSentral += sentral;
+      totalSentral += sentral55 + legacySentral;
       totalTransitori += trans;
       totalJumlah += sumPos;
     } else {
       // Default: If no individual pos breakdown is given, allocate to Kas Huria
       const j = Math.max(0, Math.round(h.jumlah || 0));
-      totalHuria += j;
+      const { huria45, sentral55 } = calculateHuriaSentralSplit(j, applyHuriaSentralisasi);
+      totalRawHuria += j;
+      totalHuria += huria45;
+      totalSentral += sentral55;
       totalJumlah += j;
     }
   }
@@ -81,7 +107,8 @@ export function calculateHamauliateonTotals(items: HamauliateonItem[]): {
     totalSosial,
     totalPembangunan,
     totalSentral,
-    totalTransitori
+    totalTransitori,
+    totalRawHuria
   };
 }
 

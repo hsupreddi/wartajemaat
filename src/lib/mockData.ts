@@ -97,7 +97,7 @@ export const MASTER_KATEGORI_PENERIMAAN: KategoriPenerimaanMaster[] = [
   { id: 'k1_2_14', kode: 'PEL_PART_KELUARGA', kelompok: '1.2', no_tampilan: '1.2.14', urutan: 24, uraian: 'Pelean Partangiangan Keluarga', aturan_alokasi: 'split_45_55', is_sentralisasi: true },
   { id: 'k1_2_15', kode: 'PEL_TAON', kelompok: '1.2', no_tampilan: '1.2.15', urutan: 25, uraian: 'Pelean Taon', aturan_alokasi: 'split_45_55', is_sentralisasi: true },
   { id: 'k1_2_16', kode: 'PEL_PERPULUHAN', kelompok: '1.2', no_tampilan: '1.2.16', urutan: 26, uraian: 'Perpuluhan', aturan_alokasi: 'huria', is_sentralisasi: false },
-  { id: 'k1_2_17', kode: 'HAM_LAIN', kelompok: '1.2', no_tampilan: '1.2.17', urutan: 27, uraian: 'Hamauliateon (Ucapan Syukur)', aturan_alokasi: 'manual', is_sentralisasi: false },
+  { id: 'k1_2_17', kode: 'HAM_LAIN', kelompok: '1.2', no_tampilan: '1.2.17', urutan: 27, uraian: 'Hamauliateon (Ucapan Syukur)', aturan_alokasi: 'manual', is_sentralisasi: true },
 
   // 1.3 PENERIMAAN TRANSITORI
   { id: 'k1_3_1', kode: 'TRANS_PENDETA', kelompok: '1.3', no_tampilan: '1.3.1', urutan: 28, uraian: 'Pendeta', aturan_alokasi: 'transitori', is_sentralisasi: false },
@@ -445,6 +445,8 @@ export function createDefaultPenerimaanRows(
     .sort((a, b) => (a.urutan || 0) - (b.urutan || 0))
     .map((k, idx) => {
       if (k.kode === 'HAM_LAIN' || k.no_tampilan === '1.2.17') {
+        const isHamSentral = k.is_sentralisasi !== undefined ? k.is_sentralisasi : true;
+        const hamRowTotals = calculateHamauliateonTotals(hamList, isHamSentral);
         return {
           id: `pen-${k.kode}`,
           kategori_id: k.id,
@@ -454,14 +456,14 @@ export function createDefaultPenerimaanRows(
           urutan: k.urutan ?? idx + 1,
           uraian: k.uraian,
           aturan_alokasi: 'manual',
-          is_sentralisasi: false,
+          is_sentralisasi: isHamSentral,
           dialihkan_ke_pembangunan: false,
-          jumlah: useSampleAmounts ? hamTotals.totalJumlah : hamauliateonTotal || hamTotals.totalJumlah,
-          huria_45: hamTotals.totalHuria,
-          sosial: hamTotals.totalSosial,
-          pembangunan: hamTotals.totalPembangunan,
-          sentral_55: hamTotals.totalSentral,
-          transitori: hamTotals.totalTransitori
+          jumlah: useSampleAmounts ? hamRowTotals.totalJumlah : hamauliateonTotal || hamRowTotals.totalJumlah,
+          huria_45: hamRowTotals.totalHuria,
+          sosial: hamRowTotals.totalSosial,
+          pembangunan: hamRowTotals.totalPembangunan,
+          sentral_55: hamRowTotals.totalSentral,
+          transitori: hamRowTotals.totalTransitori
         };
       }
 

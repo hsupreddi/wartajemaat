@@ -319,8 +319,10 @@ export interface HamauliateonItem {
   ke_huria?: number;
   ke_sosial?: number;
   ke_pembangunan?: number;
-  ke_sentralisasi?: number;
+  ke_sentralisasi?: number; // Legacy field; sentralisasi now auto-calculated 55% from ke_huria when active
   ke_transitori?: number;
+  transitori_kode?: string;
+  transitori_uraian?: string;
   urutan: number;
   [key: string]: any;
 }

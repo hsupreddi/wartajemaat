@@ -141,19 +141,21 @@ describe('HKBP Financial Calculations (keuangan.ts)', () => {
     expect(rekap.total_saldo_akhir).toBe(rekap.total_saldo_awal);
   });
 
-  it('correctly aggregates multi-pos Hamauliateon into respective fund accounts', () => {
+  it('correctly aggregates multi-pos Hamauliateon with 55%/45% Sentralisasi on Ke Kas Huria and detailed Transitori', () => {
     const items = [
       {
         id: 'ham-1',
         urutan: 1,
         nama: 'Kel. Op Gorga / br. Manalu',
         rincian: 'Syukur Ulang Tahun',
-        jumlah: 200000,
+        jumlah: 350000,
         ke_huria: 100000,
         ke_sosial: 100000,
         ke_pembangunan: 0,
         ke_sentralisasi: 0,
-        ke_transitori: 0
+        ke_transitori: 150000,
+        transitori_kode: 'TRANS_PENDETA',
+        transitori_uraian: 'Pendeta'
       },
       {
         id: 'ham-2',
@@ -169,27 +171,38 @@ describe('HKBP Financial Calculations (keuangan.ts)', () => {
       }
     ];
 
-    const hamTotals = calculateHamauliateonTotals(items);
-    expect(hamTotals.totalJumlah).toBe(500000);
-    expect(hamTotals.totalHuria).toBe(100000);
-    expect(hamTotals.totalSosial).toBe(100000);
-    expect(hamTotals.totalPembangunan).toBe(300000);
-    expect(hamTotals.totalSentral).toBe(0);
-    expect(hamTotals.totalTransitori).toBe(0);
+    // Default: Ke Kas Huria dikenakan aturan sentralisasi 55% sentral / 45% kas huria
+    const hamTotalsSentral = calculateHamauliateonTotals(items, true);
+    expect(hamTotalsSentral.totalJumlah).toBe(650000);
+    expect(hamTotalsSentral.totalHuria).toBe(45000);
+    expect(hamTotalsSentral.totalSentral).toBe(55000);
+    expect(hamTotalsSentral.totalSosial).toBe(100000);
+    expect(hamTotalsSentral.totalPembangunan).toBe(300000);
+    expect(hamTotalsSentral.totalTransitori).toBe(150000);
 
-    // Apply hamTotals to row 28 (HAM_LAIN) as manual allocation
+    // Override: Jika user memilih Sentralisasi = Tidak pada baris HAM_LAIN
+    const hamTotalsNonSentral = calculateHamauliateonTotals(items, false);
+    expect(hamTotalsNonSentral.totalJumlah).toBe(650000);
+    expect(hamTotalsNonSentral.totalHuria).toBe(100000);
+    expect(hamTotalsNonSentral.totalSentral).toBe(0);
+    expect(hamTotalsNonSentral.totalSosial).toBe(100000);
+    expect(hamTotalsNonSentral.totalPembangunan).toBe(300000);
+    expect(hamTotalsNonSentral.totalTransitori).toBe(150000);
+
+    // Apply hamTotalsSentral to row 1.2.17 (HAM_LAIN) and verify full balance
     const defaultWarta = getInitialFullWarta();
     const penerimaanWithHam = defaultWarta.penerimaan.map(r => {
       if (r.kode === 'HAM_LAIN' || r.id === 'pen-HAM_LAIN') {
         return {
           ...r,
-          jumlah: hamTotals.totalJumlah,
+          jumlah: hamTotalsSentral.totalJumlah,
           aturan_alokasi: 'manual' as const,
-          huria_45: hamTotals.totalHuria,
-          sosial: hamTotals.totalSosial,
-          pembangunan: hamTotals.totalPembangunan,
-          sentral_55: hamTotals.totalSentral,
-          transitori: hamTotals.totalTransitori
+          is_sentralisasi: true,
+          huria_45: hamTotalsSentral.totalHuria,
+          sosial: hamTotalsSentral.totalSosial,
+          pembangunan: hamTotalsSentral.totalPembangunan,
+          sentral_55: hamTotalsSentral.totalSentral,
+          transitori: hamTotalsSentral.totalTransitori
         };
       }
       return r;
@@ -198,10 +211,16 @@ describe('HKBP Financial Calculations (keuangan.ts)', () => {
     const { updatedRows } = recalculatePenerimaanRows(penerimaanWithHam);
     const hamRow = updatedRows.find(r => r.kode === 'HAM_LAIN' || r.id === 'pen-HAM_LAIN');
     expect(hamRow).toBeDefined();
-    expect(hamRow?.jumlah).toBe(500000);
-    expect(hamRow?.huria_45).toBe(100000);
+    expect(hamRow?.jumlah).toBe(650000);
+    expect(hamRow?.huria_45).toBe(45000);
+    expect(hamRow?.sentral_55).toBe(55000);
     expect(hamRow?.sosial).toBe(100000);
     expect(hamRow?.pembangunan).toBe(300000);
+    expect(hamRow?.transitori).toBe(150000);
+
+    const rekap = calculateRekapitulasi(defaultWarta.warta, updatedRows, defaultWarta.pengeluaran);
+    expect(rekap.is_balanced).toBe(true);
+    expect(rekap.selisih).toBe(0);
   });
 
   it('follows HKBP Hutaraja standard categories (1.1, 1.2, 1.3) and allows user Sentralisasi overrides', () => {

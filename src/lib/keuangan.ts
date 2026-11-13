@@ -3,6 +3,7 @@ export {
   formatCurrencyRp,
   parseRupiahInput,
   calculateRowAlokasi,
+  calculateHuriaSentralSplit,
   calculateHamauliateonTotals,
   recalculatePenerimaanRows,
   getPrintablePenerimaanRows,

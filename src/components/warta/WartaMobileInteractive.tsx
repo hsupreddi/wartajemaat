@@ -780,9 +780,16 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
                   </div>
                   <div className="space-y-1 max-h-64 overflow-y-auto">
                     {hamauliateon.map((ham, idx) => {
+                      const hamRow = penerimaan.find((r) => r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17');
+                      const isHamSentral = hamRow ? hamRow.is_sentralisasi !== false : true;
                       const posList: { label: string; amount: number; color: string }[] = [];
                       if (ham.ke_huria && ham.ke_huria > 0) {
-                        posList.push({ label: 'Ke Huria', amount: ham.ke_huria, color: 'bg-emerald-50 text-emerald-800 border-emerald-200' });
+                        const sentralPart = isHamSentral ? Math.round(ham.ke_huria * 0.55) : 0;
+                        const huriaPart = ham.ke_huria - sentralPart;
+                        const label = isHamSentral
+                          ? `Ke Huria (45%: Rp ${formatRupiah(huriaPart)} · Sentral 55%: Rp ${formatRupiah(sentralPart)})`
+                          : 'Ke Huria';
+                        posList.push({ label, amount: ham.ke_huria, color: 'bg-emerald-50 text-emerald-800 border-emerald-200' });
                       }
                       if (ham.ke_sosial && ham.ke_sosial > 0) {
                         posList.push({ label: 'Ke Sosial', amount: ham.ke_sosial, color: 'bg-sky-50 text-sky-800 border-sky-200' });
@@ -794,7 +801,10 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
                         posList.push({ label: 'Ke Sentral 55%', amount: ham.ke_sentralisasi, color: 'bg-purple-50 text-purple-800 border-purple-200' });
                       }
                       if (ham.ke_transitori && ham.ke_transitori > 0) {
-                        posList.push({ label: 'Ke Transitori', amount: ham.ke_transitori, color: 'bg-rose-50 text-rose-800 border-rose-200' });
+                        const transLabel = ham.transitori_uraian
+                          ? `Ke Transitori (${ham.transitori_uraian})`
+                          : 'Ke Transitori';
+                        posList.push({ label: transLabel, amount: ham.ke_transitori, color: 'bg-rose-50 text-rose-800 border-rose-200' });
                       }
 
                       return (

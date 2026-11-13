@@ -12,6 +12,7 @@ import {
   MASTER_PETUGAS,
   MASTER_PERAN_PARHOBAS,
   MASTER_KELOMPOK_KOOR,
+  MASTER_KATEGORI_PENERIMAAN,
   DEFAULT_ACARA_MINGGU_TEMPLATE,
   DEFAULT_ACARA_PARTANGIANGAN_TEMPLATE,
   SAMPLE_ANGGOTA
@@ -22,7 +23,8 @@ import {
   recalculatePenerimaanRows,
   calculatePengeluaranTotals,
   calculateRekapitulasi,
-  calculateHamauliateonTotals
+  calculateHamauliateonTotals,
+  calculateHuriaSentralSplit
 } from '../../lib/keuangan';
 import { getUlangTahunMingguIni, getSeninMingguRange } from '../../lib/dateUtils';
 import { getUlangTahun, notify } from '../../lib/jemaatApi';
@@ -493,12 +495,51 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
     });
   };
 
+  const hamPenerimaanRow = penerimaan.find(
+    (p) => p.kode === 'HAM_LAIN' || p.no_tampilan === '1.2.17'
+  );
+  const isHamSentral = hamPenerimaanRow ? hamPenerimaanRow.is_sentralisasi !== false : true;
+
+  const transitoriOptions = React.useMemo(() => {
+    const rows13 = (penerimaan || []).filter(
+      (r) =>
+        r.kelompok === '1.3' ||
+        (r.no_tampilan && r.no_tampilan.startsWith('1.3')) ||
+        r.aturan_alokasi === 'transitori'
+    );
+    const source =
+      rows13.length > 0
+        ? rows13
+        : MASTER_KATEGORI_PENERIMAAN.filter((k) => k.kelompok === '1.3');
+    return source.map((r) => ({
+      kode: r.kode,
+      no_tampilan: r.no_tampilan || '',
+      uraian: r.uraian
+    }));
+  }, [penerimaan]);
+
   const handlePenerimaanSentralisasiChange = (index: number, isSentral: boolean) => {
     const updatedRows = [...penerimaan];
-    updatedRows[index] = {
-      ...updatedRows[index],
-      is_sentralisasi: isSentral
-    };
+    const target = updatedRows[index];
+    if (target.kode === 'HAM_LAIN' || target.no_tampilan === '1.2.17') {
+      const hamTotals = calculateHamauliateonTotals(hamauliateon, isSentral);
+      updatedRows[index] = {
+        ...target,
+        is_sentralisasi: isSentral,
+        aturan_alokasi: 'manual' as const,
+        jumlah: hamTotals.totalJumlah,
+        huria_45: hamTotals.totalHuria,
+        sosial: hamTotals.totalSosial,
+        pembangunan: hamTotals.totalPembangunan,
+        sentral_55: hamTotals.totalSentral,
+        transitori: hamTotals.totalTransitori
+      };
+    } else {
+      updatedRows[index] = {
+        ...target,
+        is_sentralisasi: isSentral
+      };
+    }
     const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedRows);
     const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
     onChange({
@@ -641,55 +682,16 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
     });
   };
 
-  // Keuangan: Hamauliateon change with multi-pos breakdown & auto sum to baris 28
-  const handleHamauliateonChange = (index: number, field: string, val: any) => {
-    const updated = [...hamauliateon];
-    const isNumField = [
-      'jumlah',
-      'ke_huria',
-      'ke_sosial',
-      'ke_pembangunan',
-      'ke_sentralisasi',
-      'ke_transitori'
-    ].includes(field);
-
-    const parsedVal = isNumField ? parseRupiahInput(val) : val;
-    const item = { ...updated[index], [field]: parsedVal };
-
-    if (
-      ['ke_huria', 'ke_sosial', 'ke_pembangunan', 'ke_sentralisasi', 'ke_transitori'].includes(
-        field
-      )
-    ) {
-      const sum =
-        (item.ke_huria || 0) +
-        (item.ke_sosial || 0) +
-        (item.ke_pembangunan || 0) +
-        (item.ke_sentralisasi || 0) +
-        (item.ke_transitori || 0);
-      item.jumlah = sum;
-    } else if (field === 'jumlah') {
-      const sumPos =
-        (item.ke_huria || 0) +
-        (item.ke_sosial || 0) +
-        (item.ke_pembangunan || 0) +
-        (item.ke_sentralisasi || 0) +
-        (item.ke_transitori || 0);
-      if (sumPos === 0 || sumPos === updated[index].jumlah) {
-        item.ke_huria = parsedVal;
-      }
-    }
-
-    updated[index] = item;
-    const hamTotals = calculateHamauliateonTotals(updated);
-
-    // Auto-update baris Hamauliateon (HAM_LAIN / 1.2.17) with multi-pos allocation
+  // Keuangan: Hamauliateon change with multi-pos breakdown & auto sum to 1.2.17
+  const syncHamauliateonWizard = (updatedHam: HamauliateonItem[]) => {
+    const hamTotals = calculateHamauliateonTotals(updatedHam, isHamSentral);
     const updatedPen = penerimaan.map((r) =>
       r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17'
         ? {
             ...r,
             jumlah: hamTotals.totalJumlah,
             aturan_alokasi: 'manual' as const,
+            is_sentralisasi: isHamSentral,
             huria_45: hamTotals.totalHuria,
             sosial: hamTotals.totalSosial,
             pembangunan: hamTotals.totalPembangunan,
@@ -703,10 +705,62 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
 
     onChange({
       ...data,
-      hamauliateon: updated,
+      hamauliateon: updatedHam,
       penerimaan: recalculated,
       rekapitulasi: rekap
     });
+  };
+
+  const handleHamauliateonChange = (index: number, field: string, val: any) => {
+    const updated = [...hamauliateon];
+    const isNumField = [
+      'jumlah',
+      'ke_huria',
+      'ke_sosial',
+      'ke_pembangunan',
+      'ke_transitori'
+    ].includes(field);
+
+    const parsedVal = isNumField ? parseRupiahInput(val) : val;
+    const item: HamauliateonItem = { ...updated[index], [field]: parsedVal };
+
+    if (
+      ['ke_huria', 'ke_sosial', 'ke_pembangunan', 'ke_transitori'].includes(
+        field
+      )
+    ) {
+      item.ke_sentralisasi = 0;
+      const sum =
+        (item.ke_huria || 0) +
+        (item.ke_sosial || 0) +
+        (item.ke_pembangunan || 0) +
+        (item.ke_transitori || 0);
+      item.jumlah = sum;
+    } else if (field === 'jumlah') {
+      const sumPos =
+        (item.ke_huria || 0) +
+        (item.ke_sosial || 0) +
+        (item.ke_pembangunan || 0) +
+        (item.ke_transitori || 0);
+      if (sumPos === 0 || sumPos === updated[index].jumlah) {
+        item.ke_huria = parsedVal;
+      }
+      item.ke_sentralisasi = 0;
+    }
+
+    updated[index] = item;
+    syncHamauliateonWizard(updated);
+  };
+
+  const handleHamauliateonTransitoriJenisChange = (index: number, kode: string) => {
+    const updated = [...hamauliateon];
+    const matched = transitoriOptions.find((opt) => opt.kode === kode);
+    updated[index] = {
+      ...updated[index],
+      transitori_kode: kode,
+      transitori_uraian: matched ? matched.uraian : ''
+    };
+    syncHamauliateonWizard(updated);
   };
 
   const handleAddHamauliateonRow = () => {
@@ -721,61 +775,16 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
       ke_pembangunan: 0,
       ke_sentralisasi: 0,
       ke_transitori: 0,
+      transitori_kode: '',
+      transitori_uraian: '',
       urutan: hamauliateon.length + 1
     };
-    const updated = [...hamauliateon, newItem];
-    const hamTotals = calculateHamauliateonTotals(updated);
-    const updatedPen = penerimaan.map((r) =>
-      r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17'
-        ? {
-            ...r,
-            jumlah: hamTotals.totalJumlah,
-            aturan_alokasi: 'manual' as const,
-            huria_45: hamTotals.totalHuria,
-            sosial: hamTotals.totalSosial,
-            pembangunan: hamTotals.totalPembangunan,
-            sentral_55: hamTotals.totalSentral,
-            transitori: hamTotals.totalTransitori
-          }
-        : r
-    );
-    const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedPen);
-    const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
-
-    onChange({
-      ...data,
-      hamauliateon: updated,
-      penerimaan: recalculated,
-      rekapitulasi: rekap
-    });
+    syncHamauliateonWizard([...hamauliateon, newItem]);
   };
 
   const handleDeleteHamauliateonRow = (index: number) => {
     const updated = hamauliateon.filter((_, idx) => idx !== index);
-    const hamTotals = calculateHamauliateonTotals(updated);
-    const updatedPen = penerimaan.map((r) =>
-      r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17'
-        ? {
-            ...r,
-            jumlah: hamTotals.totalJumlah,
-            aturan_alokasi: 'manual' as const,
-            huria_45: hamTotals.totalHuria,
-            sosial: hamTotals.totalSosial,
-            pembangunan: hamTotals.totalPembangunan,
-            sentral_55: hamTotals.totalSentral,
-            transitori: hamTotals.totalTransitori
-          }
-        : r
-    );
-    const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedPen);
-    const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
-
-    onChange({
-      ...data,
-      hamauliateon: updated,
-      penerimaan: recalculated,
-      rekapitulasi: rekap
-    });
+    syncHamauliateonWizard(updated);
   };
 
   // Keuangan: Pengeluaran change
@@ -2186,17 +2195,22 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                 </div>
 
                 {/* C. Hamauliateon */}
-                <div className="space-y-1.5 md:col-span-2 pt-2 border-t border-stone-200">
+                <div className="space-y-2 md:col-span-2 pt-2 border-t border-stone-200">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h5 className="text-xs font-bold text-stone-900 uppercase flex items-center gap-1.5">
+                      <h5 className="text-xs font-bold text-stone-900 uppercase flex items-center gap-1.5 flex-wrap">
                         <span>C. Rincian Hamauliateon (Ucapan Syukur)</span>
                         <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                           Multi-Pos Kas
                         </span>
+                        {isHamSentral && (
+                          <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            Kas Huria: 45% Huria / 55% Sentral
+                          </span>
+                        )}
                       </h5>
                       <span className="text-[11px] text-stone-500">
-                        Bagi rincian persembahan ke Huria, Sosial Huria, Pembangunan, Sentralisasi, atau Transitori.
+                        Bagi rincian persembahan ke Kas Huria (otomatis 45% Huria & 55% Sentralisasi), Sosial Huria, Pembangunan, atau Transitori.
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -2213,100 +2227,165 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     </div>
                   </div>
 
-                  <div className="border border-stone-200 rounded-lg p-2.5 bg-stone-50 space-y-2.5 max-h-[260px] overflow-y-auto">
-                    {hamauliateon.map((ham, idx) => (
-                      <div
-                        key={ham.id || idx}
-                        className="bg-white p-2.5 rounded-lg border border-stone-200 space-y-2 text-xs"
-                      >
-                        {/* Baris 1: Nama, Rincian, Total, Hapus */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-stone-400 font-bold w-4">{idx + 1}.</span>
-                          <input
-                            type="text"
-                            value={ham.nama}
-                            onChange={(e) => handleHamauliateonChange(idx, 'nama', e.target.value)}
-                            placeholder="Nama Keluarga (contoh: Kel. Op. Gorga)"
-                            className="flex-1 min-w-[140px] px-2 py-1 border border-stone-300 rounded font-medium"
-                          />
-                          <input
-                            type="text"
-                            value={ham.rincian || ''}
-                            onChange={(e) => handleHamauliateonChange(idx, 'rincian', e.target.value)}
-                            placeholder="Keterangan ucapan syukur..."
-                            className="flex-1 min-w-[160px] px-2 py-1 border border-stone-300 rounded text-stone-700"
-                          />
-                          <div className="flex items-center gap-1 bg-stone-100 px-2 py-1 rounded border border-stone-200">
-                            <span className="text-[10px] uppercase font-bold text-stone-500">Total:</span>
-                            <span className="font-mono-num font-bold text-stone-900 text-xs">
-                              Rp {formatRupiah(ham.jumlah)}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteHamauliateonRow(idx)}
-                            className="p-1 text-stone-400 hover:text-red-600 rounded transition cursor-pointer"
-                            title="Hapus baris ini"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        {/* Baris 2: Pos Kas Breakdown */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 text-[10px] pt-1.5 border-t border-stone-100">
-                          <div className="bg-blue-50/50 p-1 rounded border border-blue-100">
-                            <span className="block font-bold text-blue-900 mb-0.5">Ke Kas Huria:</span>
-                            <input
-                              type="text"
-                              value={formatRupiah(ham.ke_huria)}
-                              onChange={(e) => handleHamauliateonChange(idx, 'ke_huria', e.target.value)}
-                              placeholder="0"
-                              className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-blue-950"
-                            />
-                          </div>
-                          <div className="bg-rose-50/50 p-1 rounded border border-rose-100">
-                            <span className="block font-bold text-rose-900 mb-0.5">Ke Sosial:</span>
-                            <input
-                              type="text"
-                              value={formatRupiah(ham.ke_sosial)}
-                              onChange={(e) => handleHamauliateonChange(idx, 'ke_sosial', e.target.value)}
-                              placeholder="0"
-                              className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-rose-950"
-                            />
-                          </div>
-                          <div className="bg-emerald-50/50 p-1 rounded border border-emerald-100">
-                            <span className="block font-bold text-emerald-900 mb-0.5">Ke Pembangunan:</span>
-                            <input
-                              type="text"
-                              value={formatRupiah(ham.ke_pembangunan)}
-                              onChange={(e) => handleHamauliateonChange(idx, 'ke_pembangunan', e.target.value)}
-                              placeholder="0"
-                              className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-emerald-950"
-                            />
-                          </div>
-                          <div className="bg-amber-50/50 p-1 rounded border border-amber-100">
-                            <span className="block font-bold text-amber-900 mb-0.5">Ke Sentralisasi:</span>
-                            <input
-                              type="text"
-                              value={formatRupiah(ham.ke_sentralisasi)}
-                              onChange={(e) => handleHamauliateonChange(idx, 'ke_sentralisasi', e.target.value)}
-                              placeholder="0"
-                              className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-amber-950"
-                            />
-                          </div>
-                          <div className="bg-stone-50 p-1 rounded border border-stone-200 col-span-2 sm:col-span-1">
-                            <span className="block font-bold text-stone-700 mb-0.5">Ke Transitori:</span>
-                            <input
-                              type="text"
-                              value={formatRupiah(ham.ke_transitori)}
-                              onChange={(e) => handleHamauliateonChange(idx, 'ke_transitori', e.target.value)}
-                              placeholder="0"
-                              className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-stone-900"
-                            />
-                          </div>
+                  {/* Quick Pos Summary Banner */}
+                  {(() => {
+                    const hamSummary = calculateHamauliateonTotals(hamauliateon, isHamSentral);
+                    return (
+                      <div className="bg-stone-50 px-3 py-2 rounded-lg border border-stone-200 text-[11px] flex flex-wrap items-center justify-between gap-2 font-mono-num">
+                        <span className="font-bold text-stone-800 font-sans">Akumulasi Pos Kas:</span>
+                        <div className="flex flex-wrap gap-2 text-stone-600">
+                          <span className="text-blue-900 font-semibold">
+                            {isHamSentral ? 'Huria (45%)' : 'Huria'}: Rp {formatRupiah(hamSummary.totalHuria)}
+                          </span>
+                          {hamSummary.totalSentral > 0 && (
+                            <>
+                              <span>·</span>
+                              <span className="text-amber-900 font-semibold">
+                                Sentral (55%): Rp {formatRupiah(hamSummary.totalSentral)}
+                              </span>
+                            </>
+                          )}
+                          <span>·</span>
+                          <span className="text-rose-900 font-semibold">
+                            Sosial: Rp {formatRupiah(hamSummary.totalSosial)}
+                          </span>
+                          <span>·</span>
+                          <span className="text-emerald-900 font-semibold">
+                            Pemb: Rp {formatRupiah(hamSummary.totalPembangunan)}
+                          </span>
+                          {hamSummary.totalTransitori > 0 && (
+                            <>
+                              <span>·</span>
+                              <span className="text-indigo-900 font-semibold">
+                                Transitoris: Rp {formatRupiah(hamSummary.totalTransitori)}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
-                    ))}
+                    );
+                  })()}
+
+                  <div className="border border-stone-200 rounded-lg p-2.5 bg-stone-50 space-y-2.5 max-h-[340px] overflow-y-auto">
+                    {hamauliateon.map((ham, idx) => {
+                      const huriaSplit = calculateHuriaSentralSplit(ham.ke_huria || 0, isHamSentral);
+                      const needsTransJenis = (ham.ke_transitori || 0) > 0 && !ham.transitori_kode;
+                      return (
+                        <div
+                          key={ham.id || idx}
+                          className="bg-white p-2.5 rounded-lg border border-stone-200 space-y-2 text-xs"
+                        >
+                          {/* Baris 1: Nama, Rincian, Total, Hapus */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-stone-400 font-bold w-4">{idx + 1}.</span>
+                            <input
+                              type="text"
+                              value={ham.nama}
+                              onChange={(e) => handleHamauliateonChange(idx, 'nama', e.target.value)}
+                              placeholder="Nama Keluarga (contoh: Kel. Op. Gorga)"
+                              className="flex-1 min-w-[140px] px-2 py-1 border border-stone-300 rounded font-medium"
+                            />
+                            <input
+                              type="text"
+                              value={ham.rincian || ''}
+                              onChange={(e) => handleHamauliateonChange(idx, 'rincian', e.target.value)}
+                              placeholder="Keterangan ucapan syukur..."
+                              className="flex-1 min-w-[160px] px-2 py-1 border border-stone-300 rounded text-stone-700"
+                            />
+                            <div className="flex items-center gap-1 bg-stone-100 px-2 py-1 rounded border border-stone-200">
+                              <span className="text-[10px] uppercase font-bold text-stone-500">Total:</span>
+                              <span className="font-mono-num font-bold text-stone-900 text-xs">
+                                Rp {formatRupiah(ham.jumlah)}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHamauliateonRow(idx)}
+                              className="p-1 text-stone-400 hover:text-red-600 rounded transition cursor-pointer"
+                              title="Hapus baris ini"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Baris 2: Pos Kas Breakdown (4 Pos: Kas Huria, Sosial, Pembangunan, Transitori) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[10px] pt-1.5 border-t border-stone-100">
+                            <div className="bg-blue-50/50 p-1.5 rounded border border-blue-100 flex flex-col justify-between">
+                              <div>
+                                <span className="block font-bold text-blue-900 mb-0.5">Ke Kas Huria:</span>
+                                <input
+                                  type="text"
+                                  value={formatRupiah(ham.ke_huria)}
+                                  onChange={(e) => handleHamauliateonChange(idx, 'ke_huria', e.target.value)}
+                                  placeholder="0"
+                                  className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-blue-950 text-xs"
+                                />
+                              </div>
+                              {(ham.ke_huria || 0) > 0 && (
+                                <div className="mt-1 text-[9.5px] font-mono-num leading-tight text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                  {isHamSentral
+                                    ? `45% Huria: ${formatRupiah(huriaSplit.huria45)} · 55% Sentral: ${formatRupiah(huriaSplit.sentral55)}`
+                                    : '100% Kas Huria (Non-Sentral)'}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="bg-rose-50/50 p-1.5 rounded border border-rose-100">
+                              <span className="block font-bold text-rose-900 mb-0.5">Ke Sosial:</span>
+                              <input
+                                type="text"
+                                value={formatRupiah(ham.ke_sosial)}
+                                onChange={(e) => handleHamauliateonChange(idx, 'ke_sosial', e.target.value)}
+                                placeholder="0"
+                                className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-rose-950 text-xs"
+                              />
+                            </div>
+
+                            <div className="bg-emerald-50/50 p-1.5 rounded border border-emerald-100">
+                              <span className="block font-bold text-emerald-900 mb-0.5">Ke Pembangunan:</span>
+                              <input
+                                type="text"
+                                value={formatRupiah(ham.ke_pembangunan)}
+                                onChange={(e) => handleHamauliateonChange(idx, 'ke_pembangunan', e.target.value)}
+                                placeholder="0"
+                                className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-emerald-950 text-xs"
+                              />
+                            </div>
+
+                            <div className={`bg-indigo-50/40 p-1.5 rounded border ${needsTransJenis ? 'border-amber-400 ring-1 ring-amber-200' : 'border-indigo-200'}`}>
+                              <span className="block font-bold text-indigo-950 mb-0.5">Ke Transitoris:</span>
+                              <div className="space-y-1">
+                                <select
+                                  value={ham.transitori_kode || ''}
+                                  onChange={(e) => handleHamauliateonTransitoriJenisChange(idx, e.target.value)}
+                                  className="w-full px-1.5 py-0.5 border border-stone-200 rounded bg-white text-stone-800 font-medium text-[10.5px] cursor-pointer"
+                                  title="Pilih jenis penerimaan transitoris"
+                                >
+                                  <option value="">-- Pilih Jenis Transitoris --</option>
+                                  {transitoriOptions.map((opt) => (
+                                    <option key={opt.kode} value={opt.kode}>
+                                      {opt.no_tampilan ? `${opt.no_tampilan} ` : ''}{opt.uraian}
+                                    </option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="text"
+                                  value={formatRupiah(ham.ke_transitori)}
+                                  onChange={(e) => handleHamauliateonChange(idx, 'ke_transitori', e.target.value)}
+                                  placeholder="0"
+                                  className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-stone-900 text-xs"
+                                />
+                                {needsTransJenis && (
+                                  <span className="block text-[9.5px] text-amber-700 font-semibold">
+                                    Pilih tujuan jenis transitoris
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
