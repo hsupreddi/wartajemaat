@@ -452,7 +452,9 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
                 {filteredPenerimaan.map((item) => {
                   const isAutoLocked = item.kode === 'PEL_TAON' || item.kode === 'HAM_LAIN';
                   const isSentral =
-                    item.is_sentralisasi !== undefined
+                    item.kode === 'HAM_LAIN' || item.no_tampilan === '1.2.17'
+                      ? true
+                      : item.is_sentralisasi !== undefined
                       ? item.is_sentralisasi
                       : item.aturan_alokasi === 'split_45_55';
                   return (

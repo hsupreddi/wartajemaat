@@ -495,10 +495,8 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
     });
   };
 
-  const hamPenerimaanRow = penerimaan.find(
-    (p) => p.kode === 'HAM_LAIN' || p.no_tampilan === '1.2.17'
-  );
-  const isHamSentral = hamPenerimaanRow ? hamPenerimaanRow.is_sentralisasi !== false : true;
+  // Hamauliateon yang ditujukan ke Kas Huria selalu dikenakan 55% Sentralisasi / 45% Kas Huria
+  const isHamSentral = true;
 
   const transitoriOptions = React.useMemo(() => {
     const rows13 = (penerimaan || []).filter(
@@ -2051,18 +2049,27 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                                   )}
                                 </td>
                                 <td className="py-1 px-1 text-center">
-                                  <select
-                                    value={isSentral ? 'ya' : 'tidak'}
-                                    onChange={(e) => handlePenerimaanSentralisasiChange(originalIndex, e.target.value === 'ya')}
-                                    className={`text-[10px] px-1.5 py-0.5 rounded border font-bold cursor-pointer transition ${
-                                      isSentral
-                                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                        : 'bg-stone-100 text-stone-600 border-stone-300'
-                                    }`}
-                                  >
-                                    <option value="ya">Ya (55%)</option>
-                                    <option value="tidak">Tidak (0%)</option>
-                                  </select>
+                                  {r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17' ? (
+                                    <span
+                                      className="inline-block text-[10px] px-1.5 py-0.5 rounded border font-bold bg-amber-100 text-amber-900 border-amber-300"
+                                      title="Pos Ke Kas Huria di Rincian C otomatis dikenakan 55% Sentralisasi / 45% Kas Huria"
+                                    >
+                                      Ya (55% Kas Huria)
+                                    </span>
+                                  ) : (
+                                    <select
+                                      value={isSentral ? 'ya' : 'tidak'}
+                                      onChange={(e) => handlePenerimaanSentralisasiChange(originalIndex, e.target.value === 'ya')}
+                                      className={`text-[10px] px-1.5 py-0.5 rounded border font-bold cursor-pointer transition ${
+                                        isSentral
+                                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                          : 'bg-stone-100 text-stone-600 border-stone-300'
+                                      }`}
+                                    >
+                                      <option value="ya">Ya (55%)</option>
+                                      <option value="tidak">Tidak (0%)</option>
+                                    </select>
+                                  )}
                                 </td>
                                 <td className="py-1 px-1.5 text-right">
                                   <input

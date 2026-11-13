@@ -6,7 +6,8 @@ import {
   getPrintablePengeluaranRows,
   calculatePengeluaranTotals,
   calculateRekapitulasi,
-  calculateHamauliateonTotals
+  calculateHamauliateonTotals,
+  syncHamauliateonToPenerimaanRows
 } from '../keuangan';
 import {
   formatRupiah,
@@ -221,6 +222,16 @@ describe('HKBP Financial Calculations (keuangan.ts)', () => {
     const rekap = calculateRekapitulasi(defaultWarta.warta, updatedRows, defaultWarta.pengeluaran);
     expect(rekap.is_balanced).toBe(true);
     expect(rekap.selisih).toBe(0);
+
+    // Legacy saved row with is_sentralisasi: false must automatically enforce 45%/55% via syncHamauliateonToPenerimaanRows
+    const legacyRows = defaultWarta.penerimaan.map((r) =>
+      r.kode === 'HAM_LAIN' ? { ...r, is_sentralisasi: false, huria_45: 100000, sentral_55: 0 } : r
+    );
+    const syncedRows = syncHamauliateonToPenerimaanRows(legacyRows, items);
+    const syncedHam = syncedRows.find((r) => r.kode === 'HAM_LAIN');
+    expect(syncedHam?.is_sentralisasi).toBe(true);
+    expect(syncedHam?.huria_45).toBe(45000);
+    expect(syncedHam?.sentral_55).toBe(55000);
   });
 
   it('follows HKBP Hutaraja standard categories (1.1, 1.2, 1.3) and allows user Sentralisasi overrides', () => {

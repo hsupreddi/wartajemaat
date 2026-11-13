@@ -113,6 +113,34 @@ export function calculateHamauliateonTotals(
 }
 
 /**
+ * Sync Hamauliateon items into the HAM_LAIN (1.2.17) row of Penerimaan.
+ * Ke Kas Huria on Hamauliateon is always subject to the 55% Sentralisasi / 45% Kas Huria rule,
+ * while Sosial, Pembangunan, and Transitori remain 100% in their respective pos.
+ */
+export function syncHamauliateonToPenerimaanRows(
+  penerimaanRows: PenerimaanRow[],
+  hamauliateonItems: HamauliateonItem[]
+): PenerimaanRow[] {
+  const hamTotals = calculateHamauliateonTotals(hamauliateonItems || [], true);
+  return (penerimaanRows || []).map((r) => {
+    if (r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17') {
+      return {
+        ...r,
+        jumlah: hamTotals.totalJumlah,
+        aturan_alokasi: 'manual' as const,
+        is_sentralisasi: true,
+        huria_45: hamTotals.totalHuria,
+        sosial: hamTotals.totalSosial,
+        pembangunan: hamTotals.totalPembangunan,
+        sentral_55: hamTotals.totalSentral,
+        transitori: hamTotals.totalTransitori
+      };
+    }
+    return r;
+  });
+}
+
+/**
  * Calculate distribution for a single Penerimaan row
  * Supports user-selected Sentralisasi (Ya / Tidak)
  */

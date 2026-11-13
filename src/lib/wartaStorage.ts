@@ -33,7 +33,7 @@ import {
   createDefaultPenerimaanRows,
   getInitialFullWarta
 } from './mockData';
-import { calculateRekapitulasi } from './financialMath';
+import { calculateRekapitulasi, syncHamauliateonToPenerimaanRows } from './financialMath';
 import { getSeninMingguRange, getUlangTahunMingguIni } from './dateUtils';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { getUlangTahun } from './jemaatApi';
@@ -383,6 +383,8 @@ export async function getWartaById(id: string): Promise<FullWartaData | null> {
       const peleanSum = pelean_taon.reduce((acc, c) => acc + (c.jumlah || 0), 0);
       const hamSum = hamauliateon.reduce((acc, c) => acc + (c.jumlah || 0), 0);
       penerimaan = createDefaultPenerimaanRows(peleanSum, hamSum, hamauliateon, masterPen, false);
+    } else if (hamauliateon.length > 0) {
+      penerimaan = syncHamauliateonToPenerimaanRows(penerimaan, hamauliateon);
     }
 
     const pengeluaran: PengeluaranItem[] = (pengeluaranRaw || []).map((r: any) => ({
@@ -444,6 +446,9 @@ export async function getWartaById(id: string): Promise<FullWartaData | null> {
       if (!data.ulang_tahun || data.ulang_tahun.length === 0) {
         data.ulang_tahun = data.warta.ulang_tahun_snapshot || [];
       }
+      if (data.hamauliateon && data.hamauliateon.length > 0) {
+        data.penerimaan = syncHamauliateonToPenerimaanRows(data.penerimaan, data.hamauliateon);
+      }
       data.rekapitulasi = calculateRekapitulasi(
         data.warta,
         data.penerimaan,
@@ -471,6 +476,11 @@ export async function saveWarta(data: FullWartaData): Promise<void> {
 
   // Snapshot ulang tahun ke record warta sehingga pembaca publik tidak mengakses tabel anggota
   data.warta.ulang_tahun_snapshot = data.ulang_tahun || [];
+
+  // Sinkronkan Hamauliateon (Ke Kas Huria 45%/55%) sebelum menyimpan dan hitung ulang rekapitulasi
+  if (data.hamauliateon && data.penerimaan) {
+    data.penerimaan = syncHamauliateonToPenerimaanRows(data.penerimaan, data.hamauliateon);
+  }
 
   // Recalculate rekapitulasi
   data.rekapitulasi = calculateRekapitulasi(
@@ -1053,7 +1063,14 @@ export function getMasterKategoriPenerimaanSync(): KategoriPenerimaanMaster[] {
     const raw = localStorage.getItem(STORAGE_KEYS.MASTER_PENERIMAAN);
     if (!raw) return MASTER_KATEGORI_PENERIMAAN;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : MASTER_KATEGORI_PENERIMAAN;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.map((k: KategoriPenerimaanMaster) =>
+        k.kode === 'HAM_LAIN' || k.no_tampilan === '1.2.17'
+          ? { ...k, is_sentralisasi: true }
+          : k
+      );
+    }
+    return MASTER_KATEGORI_PENERIMAAN;
   } catch {
     return MASTER_KATEGORI_PENERIMAAN;
   }
@@ -1076,7 +1093,10 @@ export async function getMasterKategoriPenerimaan(): Promise<KategoriPenerimaanM
           urutan: Number(r.urutan || 1),
           uraian: r.uraian,
           aturan_alokasi: r.aturan_alokasi,
-          is_sentralisasi: Boolean(r.is_sentralisasi),
+          is_sentralisasi:
+            r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17'
+              ? true
+              : Boolean(r.is_sentralisasi),
           dialihkan_ke_pembangunan: Boolean(r.dialihkan_ke_pembangunan)
         })) as KategoriPenerimaanMaster[];
 

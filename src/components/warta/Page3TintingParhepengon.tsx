@@ -254,8 +254,7 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
               <tbody className="divide-y divide-stone-200">
                 {hamauliateon.length > 0 ? (
                   hamauliateon.map((h, idx) => {
-                    const hamRow = penerimaan.find((r) => r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17');
-                    const isHamSentral = hamRow ? hamRow.is_sentralisasi !== false : true;
+                    const isHamSentral = true;
                     const posList: { label: string; amount: number; color: string; note?: string }[] = [];
                     if (h.ke_huria && h.ke_huria > 0) {
                       const split = calculateHuriaSentralSplit(h.ke_huria, isHamSentral);

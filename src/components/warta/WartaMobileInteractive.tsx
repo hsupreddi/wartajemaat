@@ -780,8 +780,7 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
                   </div>
                   <div className="space-y-1 max-h-64 overflow-y-auto">
                     {hamauliateon.map((ham, idx) => {
-                      const hamRow = penerimaan.find((r) => r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.17');
-                      const isHamSentral = hamRow ? hamRow.is_sentralisasi !== false : true;
+                      const isHamSentral = true;
                       const posList: { label: string; amount: number; color: string }[] = [];
                       if (ham.ke_huria && ham.ke_huria > 0) {
                         const sentralPart = isHamSentral ? Math.round(ham.ke_huria * 0.55) : 0;

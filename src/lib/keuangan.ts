@@ -5,6 +5,7 @@ export {
   calculateRowAlokasi,
   calculateHuriaSentralSplit,
   calculateHamauliateonTotals,
+  syncHamauliateonToPenerimaanRows,
   recalculatePenerimaanRows,
   getPrintablePenerimaanRows,
   getPrintablePengeluaranRows,

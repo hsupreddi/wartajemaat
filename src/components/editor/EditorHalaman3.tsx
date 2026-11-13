@@ -108,10 +108,8 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
     updatePenerimaanAndRecalc(updated);
   };
 
-  const hamPenerimaanRow = penerimaan.find(
-    (p) => p.kode === 'HAM_LAIN' || p.no_tampilan === '1.2.17'
-  );
-  const isHamSentral = hamPenerimaanRow ? hamPenerimaanRow.is_sentralisasi !== false : true;
+  // Hamauliateon yang ditujukan ke Kas Huria selalu dikenakan 55% Sentralisasi / 45% Kas Huria
+  const isHamSentral = true;
 
   const transitoriOptions = React.useMemo(() => {
     const rows13 = (penerimaan || []).filter(
@@ -845,19 +843,28 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
                           )}
                         </td>
                         <td className="py-1.5 px-2 text-center">
-                          <select
-                            disabled={disabled}
-                            value={isSentral ? 'ya' : 'tidak'}
-                            onChange={(e) => handleToggleSentralisasi(originalIndex, e.target.value === 'ya')}
-                            className={`text-[10px] px-2 py-0.5 rounded border font-bold cursor-pointer transition ${
-                              isSentral
-                                ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                : 'bg-stone-100 text-stone-600 border-stone-300'
-                            }`}
-                          >
-                            <option value="ya">Ya (55%)</option>
-                            <option value="tidak">Tidak</option>
-                          </select>
+                          {row.kode === 'HAM_LAIN' || row.no_tampilan === '1.2.17' ? (
+                            <span
+                              className="inline-block text-[10px] px-2 py-0.5 rounded border font-bold bg-amber-100 text-amber-900 border-amber-300"
+                              title="Pos Ke Kas Huria di Rincian C otomatis dikenakan 55% Sentralisasi / 45% Kas Huria"
+                            >
+                              Ya (55% Kas Huria)
+                            </span>
+                          ) : (
+                            <select
+                              disabled={disabled}
+                              value={isSentral ? 'ya' : 'tidak'}
+                              onChange={(e) => handleToggleSentralisasi(originalIndex, e.target.value === 'ya')}
+                              className={`text-[10px] px-2 py-0.5 rounded border font-bold cursor-pointer transition ${
+                                isSentral
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : 'bg-stone-100 text-stone-600 border-stone-300'
+                              }`}
+                            >
+                              <option value="ya">Ya (55%)</option>
+                              <option value="tidak">Tidak</option>
+                            </select>
+                          )}
                         </td>
                         <td className="py-1.5 px-2 text-right">
                           <input
