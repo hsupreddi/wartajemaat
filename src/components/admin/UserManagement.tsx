@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export const UserManagement: React.FC = () => {
-  const { managedUsers, addUser, updateUserRole, deleteUser, currentRole } = useAuth();
+  const { managedUsers, addUser, updateUserRole, deleteUser, isSupabaseConnected } = useAuth();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -23,31 +23,53 @@ export const UserManagement: React.FC = () => {
   const [newRole, setNewRole] = useState<UserRole>('sekretaris');
   const [newJabatan, setNewJabatan] = useState('Sintua Lingkungan');
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName || !newEmail) return;
+    setErrorMsg(null);
 
-    addUser({
-      nama: newName,
-      email: newEmail,
-      role: newRole,
-      jabatan: newJabatan,
-      aktif: true
-    });
+    try {
+      await addUser({
+        nama: newName,
+        email: newEmail,
+        role: newRole,
+        jabatan: newJabatan,
+        aktif: true
+      });
 
-    setIsAddModalOpen(false);
-    setNewName('');
-    setNewEmail('');
-    setFeedback(`Pengguna ${newName} berhasil ditambahkan sebagai ${newRole.toUpperCase()}.`);
-    setTimeout(() => setFeedback(null), 3500);
+      setIsAddModalOpen(false);
+      setNewName('');
+      setNewEmail('');
+      setFeedback(`Pengguna ${newName} berhasil ditambahkan sebagai ${newRole.toUpperCase()}.`);
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Gagal menambah pengguna.');
+    }
   };
 
-  const handleDelete = (id: string, name: string) => {
+  const handleUpdateRole = async (id: string, role: UserRole) => {
+    setErrorMsg(null);
+    try {
+      await updateUserRole(id, role);
+      setFeedback(`Role pengguna berhasil diperbarui menjadi ${role.toUpperCase()}.`);
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Gagal mengubah role pengguna.');
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Hapus akses untuk ${name}?`)) return;
-    deleteUser(id);
-    setFeedback(`Pengguna ${name} telah dihapus.`);
-    setTimeout(() => setFeedback(null), 3000);
+    setErrorMsg(null);
+    try {
+      await deleteUser(id);
+      setFeedback(`Pengguna ${name} telah dihapus.`);
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Gagal menghapus pengguna.');
+    }
   };
 
   return (
@@ -57,6 +79,16 @@ export const UserManagement: React.FC = () => {
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-xs font-semibold flex items-center gap-2">
           <CheckCircle className="w-4 h-4 text-emerald-600" />
           <span>{feedback}</span>
+        </div>
+      )}
+      {errorMsg && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-xs font-semibold">
+          {errorMsg}
+        </div>
+      )}
+      {isSupabaseConnected && (
+        <div className="p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-md text-xs leading-relaxed">
+          <strong>Sinkronisasi Supabase Aktif:</strong> Pengurus yang didaftarkan di sini dapat langsung mendaftar (<em>Daftar Akun Baru</em>) pada halaman Masuk memakai alamat email yang sama dan otomatis memperoleh role sesuai daftar ini.
         </div>
       )}
 
@@ -146,7 +178,7 @@ export const UserManagement: React.FC = () => {
                   <td className="py-3 px-3 text-center">
                     <select
                       value={u.role}
-                      onChange={(e) => updateUserRole(u.id, e.target.value as UserRole)}
+                      onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
                       className={`text-xs font-bold px-2.5 py-1 rounded border capitalize cursor-pointer ${
                         u.role === 'admin'
                           ? 'bg-blue-50 text-blue-800 border-blue-200'

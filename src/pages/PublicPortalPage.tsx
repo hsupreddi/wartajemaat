@@ -53,8 +53,8 @@ export const PublicPortalPage: React.FC = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    Promise.all([getAllWartas(true), getPengaturan(), getJadwalTetap()]).then(
-      async ([published, setts, jadwals]) => {
+    Promise.all([getAllWartas(true), getPengaturan(), getJadwalTetap()])
+      .then(async ([published, setts, jadwals]) => {
         setWartasList(published);
         setPengaturan(setts);
         setJadwalTetap(jadwals);
@@ -66,17 +66,26 @@ export const PublicPortalPage: React.FC = () => {
           const full = await getWartaById(targetId);
           setSelectedWarta(full);
         }
+      })
+      .catch((err) => {
+        console.warn('Gagal memuat portal warta:', err);
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    );
+      });
   }, []);
 
   const handleSelectWarta = async (id: string) => {
     setIsLoading(true);
     setSearchParams({ id });
-    const full = await getWartaById(id);
-    setSelectedWarta(full);
-    setIsLoading(false);
+    try {
+      const full = await getWartaById(id);
+      setSelectedWarta(full);
+    } catch (err) {
+      console.warn('Gagal memuat warta:', err);
+    } finally {
+      setIsLoading(false);
+    }
     readerSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 

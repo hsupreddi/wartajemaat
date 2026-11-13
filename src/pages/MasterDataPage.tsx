@@ -178,13 +178,15 @@ export const MasterDataPage: React.FC = () => {
 
   // Load other master data on mount
   useEffect(() => {
-    Promise.all([getJadwalTetap(), getLingkungan(), getPengaturan()]).then(
-      ([jadwals, lings, pengs]) => {
+    Promise.all([getJadwalTetap(), getLingkungan(), getPengaturan()])
+      .then(([jadwals, lings, pengs]) => {
         setJadwalList(jadwals);
         setLingkunganList(lings);
         setPengaturan(pengs);
-      }
-    );
+      })
+      .catch((err) => {
+        console.warn('Gagal memuat master data:', err);
+      });
   }, []);
 
   // Debounced search for Anggota
@@ -464,7 +466,7 @@ export const MasterDataPage: React.FC = () => {
   };
 
   // Jadwal Tetap handlers
-  const handleAddJadwal = () => {
+  const handleAddJadwal = async () => {
     const newItem: JadwalTetapItem = {
       id: `jt-${Date.now()}`,
       kelompok: 'kategorial',
@@ -476,25 +478,37 @@ export const MasterDataPage: React.FC = () => {
     };
     const updated = [...jadwalList, newItem];
     setJadwalList(updated);
-    saveJadwalTetap(updated);
-    showToast('success', 'Jadwal tetap ditambahkan.');
+    try {
+      await saveJadwalTetap(updated);
+      showToast('success', 'Jadwal tetap ditambahkan.');
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal menyimpan jadwal tetap.');
+    }
   };
 
-  const handleUpdateJadwal = (id: string, field: keyof JadwalTetapItem, val: any) => {
+  const handleUpdateJadwal = async (id: string, field: keyof JadwalTetapItem, val: any) => {
     const updated = jadwalList.map((j) => (j.id === id ? { ...j, [field]: val } : j));
     setJadwalList(updated);
-    saveJadwalTetap(updated);
+    try {
+      await saveJadwalTetap(updated);
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal memperbarui jadwal tetap.');
+    }
   };
 
-  const handleDeleteJadwal = (id: string) => {
+  const handleDeleteJadwal = async (id: string) => {
     const updated = jadwalList.filter((j) => j.id !== id);
     setJadwalList(updated);
-    saveJadwalTetap(updated);
-    showToast('info', 'Jadwal tetap dihapus.');
+    try {
+      await saveJadwalTetap(updated);
+      showToast('info', 'Jadwal tetap dihapus.');
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal menghapus jadwal tetap.');
+    }
   };
 
   // Lingkungan handlers
-  const handleAddLingkungan = () => {
+  const handleAddLingkungan = async () => {
     const newItem: LingkunganItem = {
       id: `ling-${Date.now()}`,
       nama: `Lingkungan Baru ${lingkunganList.length + 1}`,
@@ -504,28 +518,44 @@ export const MasterDataPage: React.FC = () => {
     };
     const updated = [...lingkunganList, newItem];
     setLingkunganList(updated);
-    saveLingkungan(updated);
-    showToast('success', 'Lingkungan baru ditambahkan.');
+    try {
+      await saveLingkungan(updated);
+      showToast('success', 'Lingkungan baru ditambahkan.');
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal menyimpan lingkungan.');
+    }
   };
 
-  const handleUpdateLingkungan = (id: string, field: keyof LingkunganItem, val: any) => {
+  const handleUpdateLingkungan = async (id: string, field: keyof LingkunganItem, val: any) => {
     const updated = lingkunganList.map((l) => (l.id === id ? { ...l, [field]: val } : l));
     setLingkunganList(updated);
-    saveLingkungan(updated);
+    try {
+      await saveLingkungan(updated);
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal memperbarui lingkungan.');
+    }
   };
 
-  const handleDeleteLingkungan = (id: string) => {
+  const handleDeleteLingkungan = async (id: string) => {
     const updated = lingkunganList.filter((l) => l.id !== id);
     setLingkunganList(updated);
-    saveLingkungan(updated);
-    showToast('info', 'Lingkungan dihapus.');
+    try {
+      await saveLingkungan(updated);
+      showToast('info', 'Lingkungan dihapus.');
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal menghapus lingkungan.');
+    }
   };
 
   // Pengaturan Save
-  const handleSavePengaturan = () => {
+  const handleSavePengaturan = async () => {
     if (!pengaturan) return;
-    savePengaturan(pengaturan);
-    showToast('success', 'Pengaturan huria & kop surat berhasil disimpan.');
+    try {
+      await savePengaturan(pengaturan);
+      showToast('success', 'Pengaturan huria & kop surat berhasil disimpan.');
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal menyimpan pengaturan huria.');
+    }
   };
 
   return (
@@ -1539,10 +1569,14 @@ export const MasterDataPage: React.FC = () => {
           <div className="space-y-6">
             <KopLogoEditor
               pengaturan={pengaturan}
-              onSave={(updated) => {
+              onSave={async (updated) => {
                 setPengaturan(updated);
-                savePengaturan(updated);
-                showToast('success', 'Kop surat dan logo warta berhasil disimpan.');
+                try {
+                  await savePengaturan(updated);
+                  showToast('success', 'Kop surat dan logo warta berhasil disimpan.');
+                } catch (err: any) {
+                  showToast('error', err?.message || 'Gagal menyimpan kop surat ke Supabase.');
+                }
               }}
             />
 

@@ -50,12 +50,14 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
   const [newPengSentral, setNewPengSentral] = useState(false);
 
   useEffect(() => {
-    Promise.all([getMasterKategoriPenerimaan(), getMasterKategoriPengeluaran()]).then(
-      ([pen, peng]) => {
+    Promise.all([getMasterKategoriPenerimaan(), getMasterKategoriPengeluaran()])
+      .then(([pen, peng]) => {
         setPenerimaanList(pen);
         setPengeluaranList(peng);
-      }
-    );
+      })
+      .catch((err) => {
+        console.warn('Gagal memuat master kategori keuangan:', err);
+      });
   }, []);
 
   const suggestNextNo = (kelompok: string, list: KategoriPenerimaanMaster[]) => {
@@ -89,10 +91,14 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
 
     const updated = [...penerimaanList, newItem];
     setPenerimaanList(updated);
-    await saveMasterKategoriPenerimaan(updated);
-    setNewPenUraian('');
-    setNewPenNo('');
-    onNotify?.('success', `Jenis penerimaan "${uraian}" ditambahkan ke Master Pos.`);
+    try {
+      await saveMasterKategoriPenerimaan(updated);
+      setNewPenUraian('');
+      setNewPenNo('');
+      onNotify?.('success', `Jenis penerimaan "${uraian}" ditambahkan ke Master Pos.`);
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal menyimpan jenis penerimaan ke Supabase.');
+    }
   };
 
   const handleUpdatePenerimaan = async (
@@ -101,24 +107,36 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
   ) => {
     const updated = penerimaanList.map((it) => (it.id === id ? { ...it, ...patch } : it));
     setPenerimaanList(updated);
-    await saveMasterKategoriPenerimaan(updated);
+    try {
+      await saveMasterKategoriPenerimaan(updated);
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal memperbarui jenis penerimaan di Supabase.');
+    }
   };
 
   const handleDeletePenerimaan = async (id: string, uraian: string) => {
     if (!confirm(`Hapus jenis penerimaan "${uraian}" dari daftar master?`)) return;
     const updated = penerimaanList.filter((it) => it.id !== id);
     setPenerimaanList(updated);
-    await saveMasterKategoriPenerimaan(updated);
-    onNotify?.('info', `Jenis penerimaan "${uraian}" dihapus dari master.`);
+    try {
+      await saveMasterKategoriPenerimaan(updated);
+      onNotify?.('info', `Jenis penerimaan "${uraian}" dihapus dari master.`);
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal menghapus jenis penerimaan di Supabase.');
+    }
   };
 
   const handleResetPenerimaan = async () => {
     if (!confirm('Kembalikan daftar Master Jenis Penerimaan ke standar HKBP Hutaraja (47 pos)?')) {
       return;
     }
-    const defaults = await resetMasterKategoriPenerimaan();
-    setPenerimaanList(defaults);
-    onNotify?.('info', 'Master Jenis Penerimaan dikembalikan ke standar HKBP Hutaraja.');
+    try {
+      const defaults = await resetMasterKategoriPenerimaan();
+      setPenerimaanList(defaults);
+      onNotify?.('info', 'Master Jenis Penerimaan dikembalikan ke standar HKBP Hutaraja.');
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal mereset master penerimaan di Supabase.');
+    }
   };
 
   // Handlers Pengeluaran
@@ -141,9 +159,13 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
 
     const updated = [...pengeluaranList, newItem];
     setPengeluaranList(updated);
-    await saveMasterKategoriPengeluaran(updated);
-    setNewPengUraian('');
-    onNotify?.('success', `Jenis pengeluaran "${uraian}" ditambahkan ke Master Pos.`);
+    try {
+      await saveMasterKategoriPengeluaran(updated);
+      setNewPengUraian('');
+      onNotify?.('success', `Jenis pengeluaran "${uraian}" ditambahkan ke Master Pos.`);
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal menyimpan jenis pengeluaran ke Supabase.');
+    }
   };
 
   const handleUpdatePengeluaran = async (
@@ -152,24 +174,36 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
   ) => {
     const updated = pengeluaranList.map((it) => (it.id === id ? { ...it, ...patch } : it));
     setPengeluaranList(updated);
-    await saveMasterKategoriPengeluaran(updated);
+    try {
+      await saveMasterKategoriPengeluaran(updated);
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal memperbarui jenis pengeluaran di Supabase.');
+    }
   };
 
   const handleDeletePengeluaran = async (id: string, uraian: string) => {
     if (!confirm(`Hapus jenis pengeluaran "${uraian}" dari daftar master?`)) return;
     const updated = pengeluaranList.filter((it) => it.id !== id);
     setPengeluaranList(updated);
-    await saveMasterKategoriPengeluaran(updated);
-    onNotify?.('info', `Jenis pengeluaran "${uraian}" dihapus dari master.`);
+    try {
+      await saveMasterKategoriPengeluaran(updated);
+      onNotify?.('info', `Jenis pengeluaran "${uraian}" dihapus dari master.`);
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal menghapus jenis pengeluaran di Supabase.');
+    }
   };
 
   const handleResetPengeluaran = async () => {
     if (!confirm('Kembalikan daftar Master Jenis Pengeluaran ke standar default?')) {
       return;
     }
-    const defaults = await resetMasterKategoriPengeluaran();
-    setPengeluaranList(defaults);
-    onNotify?.('info', 'Master Jenis Pengeluaran dikembalikan ke daftar default.');
+    try {
+      const defaults = await resetMasterKategoriPengeluaran();
+      setPengeluaranList(defaults);
+      onNotify?.('info', 'Master Jenis Pengeluaran dikembalikan ke daftar default.');
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal mereset master pengeluaran di Supabase.');
+    }
   };
 
   const filteredPenerimaan = penerimaanList.filter((item) => {

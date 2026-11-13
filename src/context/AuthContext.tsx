@@ -10,9 +10,10 @@ interface AuthContextType {
   managedUsers: ManagedUser[];
   signInAsDemo: (role: UserRole) => void;
   signOut: () => Promise<void>;
-  addUser: (user: Omit<ManagedUser, 'id' | 'tanggal_dibuat'>) => void;
-  updateUserRole: (id: string, role: UserRole, jabatan?: string) => void;
-  deleteUser: (id: string) => void;
+  refreshProfiles: () => Promise<void>;
+  addUser: (user: Omit<ManagedUser, 'id' | 'tanggal_dibuat'>) => Promise<void>;
+  updateUserRole: (id: string, role: UserRole, jabatan?: string) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
   canEditLiturgi: boolean;
   canEditKeuangan: boolean;
   canManageSettings: boolean;
@@ -95,50 +96,150 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    if (isSupabaseConfigured) {
+      return null;
+    }
     const saved = localStorage.getItem('hkbp_active_user');
-    return saved ? JSON.parse(saved) : DEMO_USERS.admin; // Default to admin for convenient preview
+    return saved ? JSON.parse(saved) : DEMO_USERS.admin;
   });
 
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>(() => {
+    if (isSupabaseConfigured) {
+      return [];
+    }
     const saved = localStorage.getItem('hkbp_managed_users');
     return saved ? JSON.parse(saved) : DEFAULT_MANAGED_USERS;
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(isSupabaseConfigured);
 
   useEffect(() => {
-    localStorage.setItem('hkbp_managed_users', JSON.stringify(managedUsers));
+    if (!isSupabaseConfigured) {
+      localStorage.setItem('hkbp_managed_users', JSON.stringify(managedUsers));
+    }
   }, [managedUsers]);
+
+  const refreshProfiles = async () => {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setManagedUsers(
+          data.map((row: any) => ({
+            id: row.id,
+            nama: row.nama,
+            email: row.email,
+            role: (row.role as UserRole) || 'sekretaris',
+            jabatan: row.jabatan || 'Parhalado',
+            aktif: row.aktif !== false,
+            tanggal_dibuat:
+              row.tanggal_dibuat ||
+              (row.created_at ? String(row.created_at).split('T')[0] : '')
+          }))
+        );
+      }
+    } catch (err) {
+      console.warn('[Supabase] Gagal memuat daftar profil:', err);
+    }
+  };
+
+  const loadSupabaseProfile = async (userId: string, email?: string | null) => {
+    if (!supabase) return;
+    try {
+      let { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
+        .maybeSingle();
+
+      if (!data && email) {
+        const resByEmail = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('email', email)
+          .maybeSingle();
+        data = resByEmail.data;
+      }
+
+      if (data) {
+        const profile: UserProfile = {
+          id: data.id,
+          email: data.email || email || '',
+          nama: data.nama || 'Pengurus HKBP',
+          role: (data.role as UserRole) || 'sekretaris',
+          jabatan: data.jabatan || 'Parhalado'
+        };
+        setCurrentUser(profile);
+        await refreshProfiles();
+      } else {
+        setCurrentUser({
+          id: userId,
+          email: email || '',
+          nama: email ? email.split('@')[0] : 'Pengurus HKBP',
+          role: 'publik',
+          jabatan: 'Belum Terverifikasi di Tabel Profiles'
+        });
+      }
+    } catch (err) {
+      console.warn('[Supabase] Gagal memuat profil user:', err);
+    }
+  };
 
   useEffect(() => {
     const client = supabase;
-    if (isSupabaseConfigured && client) {
-      client.auth.getSession().then(({ data: { session } }) => {
+    if (!isSupabaseConfigured || !client) return;
+
+    let mounted = true;
+    setIsLoading(true);
+
+    client.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        if (!mounted) return;
         if (session?.user) {
-          client
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-            .then(({ data }) => {
-              if (data) {
-                const profile: UserProfile = {
-                  id: data.id,
-                  email: data.email || session.user.email || '',
-                  nama: data.nama || 'Pengguna HKBP',
-                  role: (data.role as UserRole) || 'sekretaris',
-                  jabatan: data.jabatan || 'Parhalado'
-                };
-                setCurrentUser(profile);
-                localStorage.setItem('hkbp_active_user', JSON.stringify(profile));
-              }
-            });
+          await loadSupabaseProfile(session.user.id, session.user.email);
+        } else {
+          setCurrentUser(null);
+          setManagedUsers([]);
         }
+      })
+      .catch((err) => {
+        console.warn('[Supabase] Gagal memeriksa sesi auth:', err);
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
       });
-    }
+
+    const {
+      data: { subscription }
+    } = client.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      try {
+        if (session?.user) {
+          await loadSupabaseProfile(session.user.id, session.user.email);
+        } else {
+          setCurrentUser(null);
+          setManagedUsers([]);
+        }
+      } catch (err) {
+        console.warn('[Supabase] Error auth state change:', err);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signInAsDemo = (role: UserRole) => {
+    if (isSupabaseConfigured) return;
     const user = DEMO_USERS[role];
     setCurrentUser(user);
     localStorage.setItem('hkbp_active_user', JSON.stringify(user));
@@ -146,40 +247,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch {
-        //
-      }
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      setManagedUsers([]);
+      return;
     }
     signInAsDemo('publik');
   };
 
-  const addUser = (newUser: Omit<ManagedUser, 'id' | 'tanggal_dibuat'>) => {
+  const addUser = async (newUser: Omit<ManagedUser, 'id' | 'tanggal_dibuat'>) => {
+    const today = new Date().toISOString().split('T')[0];
+    const id =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `user-${Date.now()}`;
+
     const user: ManagedUser = {
       ...newUser,
-      id: `user-${Date.now()}`,
-      tanggal_dibuat: new Date().toISOString().split('T')[0]
+      id,
+      tanggal_dibuat: today
     };
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('profiles').upsert(
+        {
+          id: user.id,
+          email: user.email.trim().toLowerCase(),
+          nama: user.nama.trim(),
+          role: user.role,
+          jabatan: user.jabatan.trim(),
+          aktif: user.aktif,
+          tanggal_dibuat: user.tanggal_dibuat,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'email' }
+      );
+      if (error) {
+        throw new Error(`Gagal menyimpan pengguna ke Supabase: ${error.message}`);
+      }
+      await refreshProfiles();
+      return;
+    }
+
     setManagedUsers((prev) => [user, ...prev]);
   };
 
-  const updateUserRole = (id: string, role: UserRole, jabatan?: string) => {
+  const updateUserRole = async (id: string, role: UserRole, jabatan?: string) => {
+    if (isSupabaseConfigured && supabase) {
+      const payload: Record<string, any> = {
+        role,
+        updated_at: new Date().toISOString()
+      };
+      if (jabatan !== undefined) payload.jabatan = jabatan;
+      const { error } = await supabase.from('profiles').update(payload).eq('id', id);
+      if (error) {
+        throw new Error(`Gagal mengubah role pengguna di Supabase: ${error.message}`);
+      }
+      await refreshProfiles();
+      return;
+    }
+
     setManagedUsers((prev) =>
       prev.map((u) => (u.id === id ? { ...u, role, ...(jabatan ? { jabatan } : {}) } : u))
     );
   };
 
-  const deleteUser = (id: string) => {
+  const deleteUser = async (id: string) => {
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('profiles').delete().eq('id', id);
+      if (error) {
+        throw new Error(`Gagal menghapus pengguna dari Supabase: ${error.message}`);
+      }
+      await refreshProfiles();
+      return;
+    }
+
     setManagedUsers((prev) => prev.filter((u) => u.id !== id));
   };
 
   const currentRole: UserRole = currentUser?.role || 'publik';
 
-  // Specific role privileges based on requirements:
-  // Admin: CRUD all
-  // Sekretaris: Can edit Liturgi AND can also input financial data
-  // Bendahara: Can edit financial data
   const canEditLiturgi = currentRole === 'admin' || currentRole === 'sekretaris';
   const canEditKeuangan =
     currentRole === 'admin' || currentRole === 'sekretaris' || currentRole === 'bendahara';
@@ -198,6 +345,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         managedUsers,
         signInAsDemo,
         signOut,
+        refreshProfiles,
         addUser,
         updateUserRole,
         deleteUser,

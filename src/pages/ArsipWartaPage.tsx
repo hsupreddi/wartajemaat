@@ -35,10 +35,16 @@ export const ArsipWartaPage: React.FC = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    getAllWartas(!isStaff).then((list) => {
-      setWartasList(list);
-      setIsLoading(false);
-    });
+    getAllWartas(!isStaff)
+      .then((list) => {
+        setWartasList(list);
+      })
+      .catch((err) => {
+        console.warn('Gagal memuat arsip warta:', err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [isStaff]);
 
   // Extract available years from records

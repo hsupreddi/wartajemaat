@@ -38,15 +38,17 @@ export const WartaEditorPage: React.FC = () => {
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([getWartaById(id), getPengaturan(), getJadwalTetap()]).then(
-      ([wartaData, setts, jadwals]) => {
+    Promise.all([getWartaById(id), getPengaturan(), getJadwalTetap()])
+      .then(([wartaData, setts, jadwals]) => {
         if (wartaData) {
           setData(wartaData);
         }
         setPengaturan(setts);
         setJadwalTetap(jadwals);
-      }
-    );
+      })
+      .catch((err) => {
+        console.warn('Gagal memuat data editor warta:', err);
+      });
   }, [id]);
 
   // Adjust default tab based on user role
@@ -65,8 +67,8 @@ export const WartaEditorPage: React.FC = () => {
         setSaveToast('Perubahan warta jemaat berhasil disimpan.');
         setTimeout(() => setSaveToast(null), 3000);
       }
-    } catch (err) {
-      alert('Gagal menyimpan data warta.');
+    } catch (err: any) {
+      alert(err?.message || 'Gagal menyimpan data warta.');
     } finally {
       setIsSaving(false);
     }
@@ -84,13 +86,17 @@ export const WartaEditorPage: React.FC = () => {
       }
     };
     setData(updated);
-    await saveWarta(updated);
-    setSaveToast(
-      nextStatus === 'published'
-        ? 'Warta telah DIPUBLIKASIKAN dan dapat dibaca oleh seluruh jemaat.'
-        : 'Status warta dikembalikan menjadi DRAFT.'
-    );
-    setTimeout(() => setSaveToast(null), 3500);
+    try {
+      await saveWarta(updated);
+      setSaveToast(
+        nextStatus === 'published'
+          ? 'Warta telah DIPUBLIKASIKAN dan dapat dibaca oleh seluruh jemaat.'
+          : 'Status warta dikembalikan menjadi DRAFT.'
+      );
+      setTimeout(() => setSaveToast(null), 3500);
+    } catch (err: any) {
+      alert(err?.message || 'Gagal mengubah status publikasi warta.');
+    }
   };
 
   if (!data) {

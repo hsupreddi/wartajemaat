@@ -55,6 +55,7 @@ export const AdminDashboardPage: React.FC = () => {
   const {
     currentRole,
     currentUser,
+    isLoading: isAuthLoading,
     signInAsDemo,
     canPublish,
     canManageSettings,
@@ -87,16 +88,20 @@ export const AdminDashboardPage: React.FC = () => {
   const [selectedMingguInfo, setSelectedMingguInfo] = useState<MingguLiturgi | null>(null);
 
   const loadData = async () => {
-    const [list, pengs, stWijkRes, sidiRes] = await Promise.all([
-      getAllWartas(false),
-      getPengaturan(),
-      getStatistikWijk(),
-      getCalonSidi()
-    ]);
-    setWartasList(list);
-    setPengaturan(pengs);
-    setStatistikWijkList(stWijkRes.data);
-    setCalonSidiList(sidiRes.data);
+    try {
+      const [list, pengs, stWijkRes, sidiRes] = await Promise.all([
+        getAllWartas(false),
+        getPengaturan(),
+        getStatistikWijk(),
+        getCalonSidi()
+      ]);
+      setWartasList(list);
+      setPengaturan(pengs);
+      setStatistikWijkList(stWijkRes.data);
+      setCalonSidiList(sidiRes.data);
+    } catch (err) {
+      console.warn('Gagal memuat data dashboard:', err);
+    }
   };
 
   useEffect(() => {
@@ -112,8 +117,8 @@ export const AdminDashboardPage: React.FC = () => {
       setIsModalOpen(false);
       await loadData();
       navigate(`/admin/warta/${created.warta.id}/edit`);
-    } catch (err) {
-      alert('Gagal membuat warta baru.');
+    } catch (err: any) {
+      alert(err?.message || 'Gagal membuat warta baru.');
     } finally {
       setIsCreating(false);
     }
@@ -125,8 +130,12 @@ export const AdminDashboardPage: React.FC = () => {
       return;
     }
     if (!confirm(`Hapus warta MINGGU ${name}? Tindakan ini permanen.`)) return;
-    await deleteWarta(id);
-    await loadData();
+    try {
+      await deleteWarta(id);
+      await loadData();
+    } catch (err: any) {
+      alert(err?.message || 'Gagal menghapus warta.');
+    }
   };
 
   const handleToggleStatus = async (warta: WartaRecord) => {
@@ -134,14 +143,22 @@ export const AdminDashboardPage: React.FC = () => {
       alert('Anda tidak memiliki wewenang untuk mempublikasikan warta.');
       return;
     }
-    const nextStatus = warta.status === 'published' ? 'draft' : 'published';
-    await updateWartaStatus(warta.id, nextStatus);
-    await loadData();
+    try {
+      const nextStatus = warta.status === 'published' ? 'draft' : 'published';
+      await updateWartaStatus(warta.id, nextStatus);
+      await loadData();
+    } catch (err: any) {
+      alert(err?.message || 'Gagal mengubah status publikasi.');
+    }
   };
 
   const handleSaveKop = async (updated: PengaturanHuria) => {
-    await savePengaturan(updated);
-    setPengaturan(updated);
+    try {
+      await savePengaturan(updated);
+      setPengaturan(updated);
+    } catch (err: any) {
+      alert(err?.message || 'Gagal menyimpan pengaturan kop & logo.');
+    }
   };
 
   const filteredWartas = wartasList.filter((w) => {
@@ -174,44 +191,71 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Role Switcher for Test / Demo */}
+          {/* Quick Role Switcher (Demo) / Supabase Auth Status */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-[#061527] p-1 rounded-lg border border-amber-500/20 text-xs">
-              <span className="text-[11px] text-amber-300/80 px-2 hidden sm:inline">Peran:</span>
-              <button
-                onClick={() => signInAsDemo('admin')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
-                  currentRole === 'admin'
-                    ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
-                    : 'text-stone-300 hover:text-white'
-                }`}
-                title="Akses Penuh CRUD, Kop & Pengguna"
-              >
-                Admin
-              </button>
-              <button
-                onClick={() => signInAsDemo('sekretaris')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
-                  currentRole === 'sekretaris'
-                    ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
-                    : 'text-stone-300 hover:text-white'
-                }`}
-                title="Input Liturgi, Tingting & Keuangan"
-              >
-                Sekretaris
-              </button>
-              <button
-                onClick={() => signInAsDemo('bendahara')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
-                  currentRole === 'bendahara'
-                    ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
-                    : 'text-stone-300 hover:text-white'
-                }`}
-                title="Input Keuangan"
-              >
-                Bendahara
-              </button>
-            </div>
+            {!isSupabaseConfigured ? (
+              <div className="flex items-center gap-1 bg-[#061527] p-1 rounded-lg border border-amber-500/20 text-xs">
+                <span className="text-[11px] text-amber-300/80 px-2 hidden sm:inline">Peran:</span>
+                <button
+                  onClick={() => signInAsDemo('admin')}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
+                    currentRole === 'admin'
+                      ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
+                      : 'text-stone-300 hover:text-white'
+                  }`}
+                  title="Akses Penuh CRUD, Kop & Pengguna"
+                >
+                  Admin
+                </button>
+                <button
+                  onClick={() => signInAsDemo('sekretaris')}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
+                    currentRole === 'sekretaris'
+                      ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
+                      : 'text-stone-300 hover:text-white'
+                  }`}
+                  title="Input Liturgi, Tingting & Keuangan"
+                >
+                  Sekretaris
+                </button>
+                <button
+                  onClick={() => signInAsDemo('bendahara')}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${
+                    currentRole === 'bendahara'
+                      ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
+                      : 'text-stone-300 hover:text-white'
+                  }`}
+                  title="Input Keuangan"
+                >
+                  Bendahara
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 rounded-lg text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  Supabase Aktif
+                </span>
+                {currentUser ? (
+                  <button
+                    onClick={async () => {
+                      await signOut();
+                      navigate('/login');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-100 rounded-lg text-xs font-semibold transition border border-red-400/30 cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" /> Keluar
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg text-xs font-bold transition cursor-pointer"
+                  >
+                    Masuk Pengurus
+                  </button>
+                )}
+              </div>
+            )}
 
             <button
               onClick={() => navigate('/')}
@@ -229,8 +273,28 @@ export const AdminDashboardPage: React.FC = () => {
           <div className="max-w-7xl mx-auto w-full flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-stone-950 shrink-0" />
             <span>
-              <strong>Mode Demo:</strong> Kredensial Supabase belum terkonfigurasi. Data statistik wijk dan calon sidi dihasilkan dari data contoh lokal.
+              <strong>Mode Demo:</strong> Kredensial Supabase belum terkonfigurasi. Data disimpan di penyimpanan lokal browser.
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Prompt Login ketika Supabase aktif tetapi user belum login */}
+      {isSupabaseConfigured && !isAuthLoading && currentRole === 'publik' && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-3 text-xs text-red-900">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-semibold">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>
+                Anda belum login dengan akun Pengurus Supabase. Perubahan dari dashboard hanya tersimpan ke database jika Anda sudah masuk sebagai Admin, Sekretaris, atau Bendahara.
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('/login')}
+              className="px-4 py-1.5 bg-[#0B2545] hover:bg-[#123561] text-white rounded-lg font-bold transition cursor-pointer shrink-0"
+            >
+              Masuk Sekarang
+            </button>
           </div>
         </div>
       )}

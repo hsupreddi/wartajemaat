@@ -15,14 +15,18 @@ export const WartaPrintPage: React.FC = () => {
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([getWartaById(id), getPengaturan(), getJadwalTetap()]).then(
-      ([wartaData, setts, jadwals]) => {
+    Promise.all([getWartaById(id), getPengaturan(), getJadwalTetap()])
+      .then(([wartaData, setts, jadwals]) => {
         setData(wartaData);
         setPengaturan(setts);
         setJadwalTetap(jadwals);
+      })
+      .catch((err) => {
+        console.warn('Gagal memuat lembar cetak warta:', err);
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    );
+      });
   }, [id]);
 
   if (loading || !data) {
