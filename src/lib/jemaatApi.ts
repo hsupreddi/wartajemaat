@@ -130,23 +130,32 @@ function saveLocalDemoAnggota(list: Anggota[]) {
   }
 }
 
+function parseUtcDate(dateStr: string): Date | null {
+  const clean = String(dateStr || '').trim().split('T')[0];
+  const parts = clean.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isInteger(n))) return null;
+  const [y, m, d] = parts;
+  if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
 export function computeUlangTahunFromAnggotaList(
   anggotaList: Pick<Anggota, 'nama' | 'jenis_kelamin' | 'tgl_lahir' | 'wijk' | 'aktif'>[],
   mulaiDateStr: string,
   akhirDateStr: string
 ): UlangTahunItem[] {
-  const dStart = new Date(mulaiDateStr + 'T00:00:00');
-  const dEnd = new Date(akhirDateStr + 'T00:00:00');
-  if (isNaN(dStart.getTime()) || isNaN(dEnd.getTime())) return [];
+  const dStart = parseUtcDate(mulaiDateStr);
+  const dEnd = parseUtcDate(akhirDateStr);
+  if (!dStart || !dEnd || isNaN(dStart.getTime()) || isNaN(dEnd.getTime())) return [];
 
-  const refYear = dEnd.getFullYear();
+  const refYear = dEnd.getUTCFullYear();
 
   const matchedDates: { month: number; day: number; order: number }[] = [];
-  const cur = new Date(dStart);
+  const cur = new Date(dStart.getTime());
   let seq = 0;
   while (cur <= dEnd && seq < 40) {
-    matchedDates.push({ month: cur.getMonth() + 1, day: cur.getDate(), order: seq++ });
-    cur.setDate(cur.getDate() + 1);
+    matchedDates.push({ month: cur.getUTCMonth() + 1, day: cur.getUTCDate(), order: seq++ });
+    cur.setUTCDate(cur.getUTCDate() + 1);
   }
 
   const results: {
@@ -161,7 +170,8 @@ export function computeUlangTahunFromAnggotaList(
 
   for (const m of anggotaList) {
     if (m.aktif === false || !m.tgl_lahir) continue;
-    const parts = String(m.tgl_lahir).split('-').map(Number);
+    const cleanBirth = String(m.tgl_lahir).trim().split('T')[0];
+    const parts = cleanBirth.split('-').map(Number);
     if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) continue;
     const [bYear, bMonth, bDay] = parts;
 
@@ -169,13 +179,14 @@ export function computeUlangTahunFromAnggotaList(
     if (match) {
       let usia = refYear - bYear;
       const hadBirthday =
-        dEnd.getMonth() + 1 > bMonth || (dEnd.getMonth() + 1 === bMonth && dEnd.getDate() >= bDay);
+        dEnd.getUTCMonth() + 1 > bMonth ||
+        (dEnd.getUTCMonth() + 1 === bMonth && dEnd.getUTCDate() >= bDay);
       if (!hadBirthday) usia -= 1;
 
       results.push({
         nama: m.nama,
         jenis_kelamin: m.jenis_kelamin === 'P' ? 'P' : 'L',
-        tanggal_lahir: m.tgl_lahir,
+        tanggal_lahir: cleanBirth,
         dayOrder: match.order,
         dayMonthStr: `${String(bDay).padStart(2, '0')}/${String(bMonth).padStart(2, '0')}`,
         usia: Math.max(1, usia),
@@ -211,10 +222,11 @@ export async function getUlangTahun(mulaiDateStr: string, akhirDateStr: string):
       });
 
       if (!error && data && Array.isArray(data)) {
-        return (data as UlangTahunRpcResult[]).map((r, idx) => {
+        const mapped = (data as UlangTahunRpcResult[]).map((r, idx) => {
           let dayMonthStr = '-';
-          if (r.tgl_lahir) {
-            const parts = r.tgl_lahir.split('-');
+          const cleanBirth = String(r.tgl_lahir || '').trim().split('T')[0];
+          if (cleanBirth) {
+            const parts = cleanBirth.split('-');
             if (parts.length >= 3) {
               dayMonthStr = `${parts[2]}/${parts[1]}`;
             }
@@ -223,27 +235,43 @@ export async function getUlangTahun(mulaiDateStr: string, akhirDateStr: string):
             no: idx + 1,
             nama: r.nama,
             jenis_kelamin: r.jenis_kelamin,
-            tanggal_lahir: r.tgl_lahir || '',
+            tanggal_lahir: cleanBirth,
             hari_bulan: dayMonthStr,
             usia: r.usia || 0,
             wijk: r.wijk
           };
         });
+        return mapped;
       }
 
-      // Fallback langsung ke query tabel anggota Supabase jika RPC error / belum dipasang
-      const { data: anggotaRows, error: tblErr } = await supabase
-        .from('anggota')
-        .select('nama, jenis_kelamin, tgl_lahir, wijk, aktif')
-        .eq('aktif', true)
-        .not('tgl_lahir', 'is', null);
+      // Fallback langsung ke query tabel anggota Supabase (dengan paginasi agar >1000 baris tetap terbaca)
+      const allActiveMembers: Pick<Anggota, 'nama' | 'jenis_kelamin' | 'tgl_lahir' | 'wijk' | 'aktif'>[] = [];
+      const pageSize = 1000;
+      let offset = 0;
+      let tblErr: any = null;
 
-      if (!tblErr && Array.isArray(anggotaRows)) {
-        return computeUlangTahunFromAnggotaList(
-          anggotaRows as Pick<Anggota, 'nama' | 'jenis_kelamin' | 'tgl_lahir' | 'wijk' | 'aktif'>[],
-          mulaiDateStr,
-          akhirDateStr
+      while (offset < 20000) {
+        const { data: anggotaRows, error: pageErr } = await supabase
+          .from('anggota')
+          .select('nama, jenis_kelamin, tgl_lahir, wijk, aktif')
+          .eq('aktif', true)
+          .not('tgl_lahir', 'is', null)
+          .range(offset, offset + pageSize - 1);
+
+        if (pageErr) {
+          tblErr = pageErr;
+          break;
+        }
+        if (!anggotaRows || anggotaRows.length === 0) break;
+        allActiveMembers.push(
+          ...(anggotaRows as Pick<Anggota, 'nama' | 'jenis_kelamin' | 'tgl_lahir' | 'wijk' | 'aktif'>[])
         );
+        if (anggotaRows.length < pageSize) break;
+        offset += pageSize;
+      }
+
+      if (!tblErr) {
+        return computeUlangTahunFromAnggotaList(allActiveMembers, mulaiDateStr, akhirDateStr);
       }
 
       if (error) {

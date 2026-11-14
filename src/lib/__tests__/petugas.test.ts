@@ -6,6 +6,7 @@ import {
   seedDefaultMasterPetugas
 } from '../petugasApi';
 import { computeUlangTahunFromAnggotaList } from '../jemaatApi';
+import { getSeninMingguRange, getUlangTahunMingguIni } from '../dateUtils';
 
 describe('petugasApi & birthday database helper', () => {
   beforeEach(() => {
@@ -64,5 +65,43 @@ describe('petugasApi & birthday database helper', () => {
     expect(list.map((u) => u.nama)).toEqual(['Ny. Akhir Tahun', 'St. Awal Tahun']);
     expect(list[0].hari_bulan).toBe('30/12');
     expect(list[1].hari_bulan).toBe('02/01');
+  });
+
+  it('strictly returns Monday to Sunday (e.g. 9 s/d 15 Nov 2026) without timezone day-shift', () => {
+    const range = getSeninMingguRange('2026-11-15');
+    expect(range.seninStr).toBe('2026-11-09');
+    expect(range.mingguStr).toBe('2026-11-15');
+    expect(range.labelPeriode).toBe('9 s/d 15 November 2026');
+
+    const members = [
+      { nama: 'Minggu Lalu', jenis_kelamin: 'P' as const, tgl_lahir: '2001-11-08', wijk: 'LETARE', aktif: true },
+      { nama: 'Senin Awal', jenis_kelamin: 'L' as const, tgl_lahir: '2016-11-09', wijk: 'EXAUDI', aktif: true },
+      { nama: 'Minggu Aktif', jenis_kelamin: 'P' as const, tgl_lahir: '1999-11-15', wijk: 'JUDIKA', aktif: true },
+      { nama: 'Senin Depan', jenis_kelamin: 'L' as const, tgl_lahir: '1995-11-16', wijk: 'EFESUS', aktif: true }
+    ];
+
+    const list = computeUlangTahunFromAnggotaList(members, range.seninStr, range.mingguStr);
+    expect(list.map((u) => `${u.nama}:${u.hari_bulan}`)).toEqual([
+      'Senin Awal:09/11',
+      'Minggu Aktif:15/11'
+    ]);
+
+    const legacyList = getUlangTahunMingguIni(
+      members.map((m, idx) => ({
+        id: String(idx + 1),
+        no_registrasi: `010${idx + 1}`,
+        nama: m.nama,
+        jenis_kelamin: m.jenis_kelamin,
+        tanggal_lahir: m.tgl_lahir,
+        wijk: m.wijk,
+        hubungan_keluarga: 'Anggota',
+        aktif: m.aktif
+      })),
+      '2026-11-15'
+    );
+    expect(legacyList.map((u) => `${u.nama}:${u.hari_bulan}`)).toEqual([
+      'Senin Awal:09/11',
+      'Minggu Aktif:15/11'
+    ]);
   });
 });
