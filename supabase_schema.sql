@@ -110,6 +110,39 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_auth_user();
 
+-- Backfill akun auth.users yang sudah terdaftar sebelum skrip dijalankan
+UPDATE public.profiles p
+SET auth_user_id = u.id,
+    updated_at = NOW()
+FROM auth.users u
+WHERE p.auth_user_id IS NULL
+  AND u.email IS NOT NULL
+  AND LOWER(p.email) = LOWER(u.email);
+
+INSERT INTO public.profiles (
+  id, auth_user_id, email, nama, role, jabatan, aktif, tanggal_dibuat
+)
+SELECT
+  u.id::text,
+  u.id,
+  LOWER(COALESCE(u.email, u.id::text || '@hkbp.local')),
+  COALESCE(NULLIF(u.raw_user_meta_data->>'nama', ''), SPLIT_PART(COALESCE(u.email, 'admin'), '@', 1)),
+  CASE
+    WHEN NOT EXISTS (SELECT 1 FROM public.profiles WHERE role = 'admin') THEN 'admin'
+    ELSE COALESCE(NULLIF(u.raw_user_meta_data->>'role', ''), 'admin')
+  END,
+  COALESCE(NULLIF(u.raw_user_meta_data->>'jabatan', ''), 'Pengurus Huria'),
+  true,
+  TO_CHAR(NOW(), 'YYYY-MM-DD')
+FROM auth.users u
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.profiles p
+  WHERE p.auth_user_id = u.id
+     OR p.id = u.id::text
+     OR (u.email IS NOT NULL AND LOWER(p.email) = LOWER(u.email))
+)
+ON CONFLICT (id) DO NOTHING;
+
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Pengurus dapat membaca daftar profil" ON public.profiles;
@@ -357,6 +390,48 @@ CREATE POLICY "Hanya pengurus dapat mengakses data anggota"
   USING (public.has_pengurus_role(ARRAY['admin', 'sekretaris', 'bendahara']))
   WITH CHECK (public.has_pengurus_role(ARRAY['admin', 'sekretaris']));
 
+-- Sinkronisasi otomatis jumlah anggota aktif pada tabel keluarga
+CREATE OR REPLACE FUNCTION public.sync_keluarga_jumlah_anggota()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'DELETE' OR TG_OP = 'UPDATE' THEN
+    UPDATE public.keluarga k
+    SET jumlah_anggota = (
+      SELECT COUNT(*)::int
+      FROM public.anggota a
+      WHERE a.registrasi = OLD.registrasi
+        AND a.aktif = true
+    ),
+    updated_at = NOW()
+    WHERE k.registrasi = OLD.registrasi;
+  END IF;
+
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    UPDATE public.keluarga k
+    SET jumlah_anggota = (
+      SELECT COUNT(*)::int
+      FROM public.anggota a
+      WHERE a.registrasi = NEW.registrasi
+        AND a.aktif = true
+    ),
+    updated_at = NOW()
+    WHERE k.registrasi = NEW.registrasi;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_sync_keluarga_jumlah_anggota ON public.anggota;
+CREATE TRIGGER trg_sync_keluarga_jumlah_anggota
+  AFTER INSERT OR UPDATE OR DELETE ON public.anggota
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_keluarga_jumlah_anggota();
+
 -- View Calon Sidi (Anggota aktif belum sidi usia 14 s/d 20 tahun)
 CREATE OR REPLACE VIEW public.v_calon_sidi
 WITH (security_invoker = true) AS
@@ -444,6 +519,10 @@ AS $$
     AND a.tgl_lahir IS NOT NULL
   ORDER BY m.ulang_date ASC, a.nama ASC;
 $$;
+
+GRANT SELECT ON public.v_calon_sidi TO authenticated;
+GRANT SELECT ON public.v_statistik_wijk TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ulang_tahun_periode(DATE, DATE) TO authenticated;
 
 
 -- 6. TABEL UTAMA WARTA JEMAAT & TABEL ANAK (CASCADE DELETE)

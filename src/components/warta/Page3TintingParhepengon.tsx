@@ -74,12 +74,11 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                 <th className="w-8 py-0.5 px-0.5 border-r border-stone-300">NO</th>
                 <th className="py-0.5 px-1 text-left border-r border-stone-300">URAIAN</th>
                 <th className="w-16 py-0.5 px-1 text-right border-r border-stone-300">JUMLAH (Rp)</th>
-                <th className="w-14 py-0.5 px-0.5 text-center border-r border-stone-300">SENTRALISASI</th>
-                <th className="w-13 py-0.5 px-1 text-right border-r border-stone-300">HURIA</th>
-                <th className="w-13 py-0.5 px-1 text-right border-r border-stone-300">SOSIAL HURIA</th>
-                <th className="w-13 py-0.5 px-1 text-right border-r border-stone-300">PEMBANGUNAN</th>
-                <th className="w-14 py-0.5 px-1 text-right border-r border-stone-300">SENTRALISASI (55%)</th>
-                <th className="w-13 py-0.5 px-1 text-right">TRANSITORIS</th>
+                <th className="w-14 py-0.5 px-1 text-right border-r border-stone-300">HURIA</th>
+                <th className="w-14 py-0.5 px-1 text-right border-r border-stone-300">SOSIAL HURIA</th>
+                <th className="w-14 py-0.5 px-1 text-right border-r border-stone-300">PEMBANGUNAN</th>
+                <th className="w-15 py-0.5 px-1 text-right border-r border-stone-300">SENTRALISASI (55%)</th>
+                <th className="w-14 py-0.5 px-1 text-right">TRANSITORIS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-200">
@@ -87,7 +86,7 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                 if (nonEmptyPenerimaan.length === 0) {
                   return (
                     <tr>
-                      <td colSpan={9} className="text-center italic text-stone-400 py-2 font-sans">
+                      <td colSpan={8} className="text-center italic text-stone-400 py-2 font-sans">
                         Ndang adong transaksi penerimaan di periode on
                       </td>
                     </tr>
@@ -112,16 +111,12 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
 
                     rendered.push(
                       <tr key={`sec-${kel}`} className="bg-stone-200 text-stone-900 font-bold border-y border-stone-400">
-                        <td colSpan={9} className="py-0.5 px-1.5 font-sans uppercase tracking-wide text-[6.5pt] bg-stone-200">
+                        <td colSpan={8} className="py-0.5 px-1.5 font-sans uppercase tracking-wide text-[6.5pt] bg-stone-200">
                           {title}
                         </td>
                       </tr>
                     );
                   }
-
-                  const isSentral =
-                    row.is_sentralisasi !== false &&
-                    (row.is_sentralisasi === true || row.aturan_alokasi === 'split_45_55');
 
                   rendered.push(
                     <tr key={row.id || idx} className="hover:bg-stone-50 break-inside-avoid">
@@ -136,15 +131,6 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                       </td>
                       <td className="py-0.5 px-1 text-right font-semibold text-stone-900 border-r border-stone-200 whitespace-nowrap">
                         {formatRupiah(row.jumlah)}
-                      </td>
-                      <td className="py-0.5 px-0.5 text-center border-r border-stone-200 whitespace-nowrap font-sans">
-                        {isSentral ? (
-                          <span className="text-[5.8pt] font-bold text-amber-900 bg-amber-100 px-1 py-0.2 rounded border border-amber-300">
-                            YA
-                          </span>
-                        ) : (
-                          <span className="text-stone-300">-</span>
-                        )}
                       </td>
                       <td className="py-0.5 px-1 text-right text-stone-700 border-r border-stone-200 whitespace-nowrap">
                         {row.huria_45 > 0 ? formatRupiah(row.huria_45) : '-'}
@@ -174,9 +160,6 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                 </td>
                 <td className="py-1 px-1 text-right border-r border-stone-400">
                   {formatRupiah(penerimaanTotals.totalJumlah)}
-                </td>
-                <td className="py-1 px-0.5 text-center border-r border-stone-400 font-sans text-[6pt] text-stone-500">
-                  -
                 </td>
                 <td className="py-1 px-1 text-right border-r border-stone-400">
                   {formatRupiah(penerimaanTotals.totalHuria)}

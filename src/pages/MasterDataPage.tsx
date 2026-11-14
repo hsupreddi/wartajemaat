@@ -19,15 +19,24 @@ import {
 import {
   listAnggota,
   listKeluarga,
+  listAllKeluargaLookup,
+  KeluargaLookupItem,
   upsertAnggota,
   deleteAnggota,
   upsertKeluarga,
   deleteKeluarga,
   batchUpsertKeluarga,
   batchUpsertAnggota,
-  notify,
   setJemaatNotificationHandler
 } from '../lib/jemaatApi';
+import {
+  buildKeluargaTemplateCsv,
+  buildAnggotaTemplateCsv,
+  downloadCsvFile,
+  normalizeCsvHeader,
+  cleanRegistrasiValue,
+  normalizeDateValue
+} from '../lib/jemaatTemplates';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -40,7 +49,6 @@ import {
   Save,
   ArrowLeft,
   CheckCircle,
-  Database,
   UploadCloud,
   FileSpreadsheet,
   AlertTriangle,
@@ -51,11 +59,11 @@ import {
   Edit2,
   X,
   Info,
-  ShieldCheck,
   Home,
   AlertCircle,
   Calendar,
-  DollarSign
+  DollarSign,
+  Download
 } from 'lucide-react';
 import { KopLogoEditor } from '../components/admin/KopLogoEditor';
 import { MingguLiturgiManager } from '../components/admin/MingguLiturgiManager';
@@ -89,6 +97,9 @@ export const MasterDataPage: React.FC = () => {
   const [keluargaWijkFilter, setKeluargaWijkFilter] = useState('all');
   const [isKeluargaLoading, setIsKeluargaLoading] = useState(false);
 
+  // Lookup all Keluarga for Anggota modal & cross-checking
+  const [keluargaLookup, setKeluargaLookup] = useState<KeluargaLookupItem[]>([]);
+
   // Other Master Data
   const [jadwalList, setJadwalList] = useState<JadwalTetapItem[]>([]);
   const [lingkunganList, setLingkunganList] = useState<LingkunganItem[]>([]);
@@ -96,7 +107,10 @@ export const MasterDataPage: React.FC = () => {
 
   // Modals
   const [editingAnggota, setEditingAnggota] = useState<Partial<Anggota> | null>(null);
+  const [isNewAnggotaModal, setIsNewAnggotaModal] = useState<boolean>(false);
+  const [autoNamaKK, setAutoNamaKK] = useState<string>('');
   const [editingKeluarga, setEditingKeluarga] = useState<Partial<Keluarga> | null>(null);
+  const [originalKeluargaRegistrasi, setOriginalKeluargaRegistrasi] = useState<string | null>(null);
   const [isSavingEntity, setIsSavingEntity] = useState(false);
 
   // CSV Import State
@@ -168,6 +182,16 @@ export const MasterDataPage: React.FC = () => {
     }
   };
 
+  // Fetch Keluarga Lookup
+  const fetchKeluargaLookup = async () => {
+    try {
+      const items = await listAllKeluargaLookup();
+      setKeluargaLookup(items);
+    } catch {
+      // Non-fatal
+    }
+  };
+
   useEffect(() => {
     fetchAnggota();
   }, [anggotaPage, anggotaWijkFilter]);
@@ -176,8 +200,9 @@ export const MasterDataPage: React.FC = () => {
     fetchKeluarga();
   }, [keluargaPage, keluargaWijkFilter]);
 
-  // Load other master data on mount
+  // Load other master data & keluarga lookup on mount
   useEffect(() => {
+    fetchKeluargaLookup();
     Promise.all([getJadwalTetap(), getLingkungan(), getPengaturan()])
       .then(([jadwals, lings, pengs]) => {
         setJadwalList(jadwals);
@@ -210,14 +235,14 @@ export const MasterDataPage: React.FC = () => {
   // Anggota Save / Upsert
   const handleSaveAnggota = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingAnggota?.nama || !editingAnggota?.registrasi) {
-      showToast('error', 'Nama dan No. Registrasi KK wajib diisi.');
+    if (!editingAnggota?.nama?.trim() || !editingAnggota?.registrasi?.trim()) {
+      showToast('error', 'Nama Lengkap dan No. Registrasi KK wajib diisi.');
       return;
     }
     setIsSavingEntity(true);
     try {
-      const entityToSave: Anggota = {
-        id: editingAnggota.id || `ang-${Date.now()}`,
+      const entityToSave: Partial<Anggota> & { nama: string; registrasi: string } = {
+        id: editingAnggota.id,
         registrasi: String(editingAnggota.registrasi).trim(),
         nama: editingAnggota.nama.trim(),
         jenis_kelamin: editingAnggota.jenis_kelamin || 'L',
@@ -229,12 +254,15 @@ export const MasterDataPage: React.FC = () => {
         aktif: editingAnggota.aktif !== false
       };
 
-      await upsertAnggota(entityToSave);
+      await upsertAnggota(entityToSave, {
+        autoCreateKeluargaNamaKK: autoNamaKK.trim() || undefined
+      });
       setEditingAnggota(null);
-      fetchAnggota();
+      setAutoNamaKK('');
+      await Promise.all([fetchAnggota(), fetchKeluarga(), fetchKeluargaLookup()]);
       showToast('success', 'Data anggota jemaat berhasil disimpan.');
     } catch (err: any) {
-      showToast('error', `Gagal menyimpan data anggota: ${err.message}`);
+      showToast('error', err?.message || 'Gagal menyimpan data anggota.');
     } finally {
       setIsSavingEntity(false);
     }
@@ -245,17 +273,17 @@ export const MasterDataPage: React.FC = () => {
     if (!confirm(`Hapus anggota jemaat "${nama}"?`)) return;
     try {
       await deleteAnggota(id);
-      fetchAnggota();
+      await Promise.all([fetchAnggota(), fetchKeluarga(), fetchKeluargaLookup()]);
       showToast('success', `Data anggota "${nama}" berhasil dihapus.`);
     } catch (err: any) {
-      showToast('error', `Gagal menghapus anggota: ${err.message}`);
+      showToast('error', err?.message || 'Gagal menghapus anggota.');
     }
   };
 
   // Keluarga Save / Upsert
   const handleSaveKeluarga = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingKeluarga?.registrasi || !editingKeluarga?.nama_kk) {
+    if (!editingKeluarga?.registrasi?.trim() || !editingKeluarga?.nama_kk?.trim()) {
       showToast('error', 'No. Registrasi KK dan Nama Kepala Keluarga wajib diisi.');
       return;
     }
@@ -268,15 +296,18 @@ export const MasterDataPage: React.FC = () => {
         wijk: editingKeluarga.wijk || lingkunganList[0]?.nama || 'Lingkungan Letare',
         jalan: editingKeluarga.jalan || '',
         hp: editingKeluarga.hp || '',
-        jumlah_anggota: Number(editingKeluarga.jumlah_anggota) || 0
+        jumlah_anggota: Math.max(0, Number(editingKeluarga.jumlah_anggota) || 0)
       };
 
-      await upsertKeluarga(entityToSave);
+      await upsertKeluarga(entityToSave, {
+        originalRegistrasi: originalKeluargaRegistrasi || undefined
+      });
       setEditingKeluarga(null);
-      fetchKeluarga();
+      setOriginalKeluargaRegistrasi(null);
+      await Promise.all([fetchKeluarga(), fetchAnggota(), fetchKeluargaLookup()]);
       showToast('success', 'Data keluarga berhasil disimpan.');
     } catch (err: any) {
-      showToast('error', `Gagal menyimpan data keluarga: ${err.message}`);
+      showToast('error', err?.message || 'Gagal menyimpan data keluarga.');
     } finally {
       setIsSavingEntity(false);
     }
@@ -284,14 +315,31 @@ export const MasterDataPage: React.FC = () => {
 
   // Keluarga Delete
   const handleDeleteKeluarga = async (registrasi: string, nama_kk: string) => {
-    if (!confirm(`Hapus keluarga "${nama_kk}" (${registrasi})? Pastikan anggota keluarga sudah dipindahkan.`)) return;
+    if (!confirm(`Hapus keluarga "${nama_kk}" (${registrasi})? Seluruh anggota dengan nomor registrasi ini juga akan terhapus.`)) return;
     try {
       await deleteKeluarga(registrasi);
-      fetchKeluarga();
+      await Promise.all([fetchKeluarga(), fetchAnggota(), fetchKeluargaLookup()]);
       showToast('success', `Keluarga "${nama_kk}" berhasil dihapus.`);
     } catch (err: any) {
-      showToast('error', `Gagal menghapus keluarga: ${err.message}`);
+      showToast('error', err?.message || 'Gagal menghapus keluarga.');
     }
+  };
+
+  // Download CSV Template Handlers
+  const handleDownloadKeluargaTemplate = (delimiter: ',' | ';' = ',') => {
+    downloadCsvFile(
+      delimiter === ';' ? 'template_keluarga_excel_id.csv' : 'template_keluarga.csv',
+      buildKeluargaTemplateCsv(delimiter)
+    );
+    showToast('success', 'Template CSV Data Keluarga berhasil diunduh.');
+  };
+
+  const handleDownloadAnggotaTemplate = (delimiter: ',' | ';' = ',') => {
+    downloadCsvFile(
+      delimiter === ';' ? 'template_anggota_excel_id.csv' : 'template_anggota.csv',
+      buildAnggotaTemplateCsv(delimiter)
+    );
+    showToast('success', 'Template CSV Data Anggota Jemaat berhasil diunduh.');
   };
 
   // CSV Parsing
@@ -299,10 +347,11 @@ export const MasterDataPage: React.FC = () => {
     setKeluargaCsvFile(file);
     Papa.parse<any>(file, {
       header: true,
+      delimiter: '',
       skipEmptyLines: true,
+      transformHeader: (header) => normalizeCsvHeader(header),
       transform: (value, field) => {
-        // Registrasi WAJIB string dan mempertahankan leading zero
-        if (field === 'registrasi') return String(value || '').trim();
+        if (field === 'registrasi') return cleanRegistrasiValue(value);
         return value;
       },
       complete: (results) => {
@@ -311,25 +360,31 @@ export const MasterDataPage: React.FC = () => {
         const warnings: string[] = [];
 
         rows.forEach((r, idx) => {
-          const reg = String(r.registrasi || '').trim();
+          const reg = cleanRegistrasiValue(r.registrasi);
           const nama = String(r.nama_kk || '').trim();
           if (!reg || !nama) {
-            warnings.push(`Baris keluarga #${idx + 2} dilewati: 'registrasi' atau 'nama_kk' kosong.`);
+            warnings.push(`[keluarga.csv] Baris #${idx + 2} dilewati: 'registrasi' atau 'nama_kk' kosong.`);
             return;
           }
+          const wafatRaw = String(r.kk_wafat || '').trim().toLowerCase();
+          const isWafat = ['true', '1', 'ya', 'yes', 'wafat', 'almarhum'].includes(wafatRaw);
+
           validKeluarga.push({
             registrasi: reg,
-            wijk: String(r.wijk || '').trim(),
+            wijk: String(r.wijk || '').trim() || lingkunganList[0]?.nama || 'Lingkungan Letare',
             nama_kk: nama,
-            kk_wafat: String(r.kk_wafat).toLowerCase() === 'true' || String(r.kk_wafat) === '1',
+            kk_wafat: isWafat,
             jalan: String(r.jalan || '').trim(),
             hp: String(r.hp || '').trim(),
-            jumlah_anggota: parseInt(r.jumlah_anggota, 10) || 0
+            jumlah_anggota: Math.max(0, parseInt(r.jumlah_anggota, 10) || 0)
           });
         });
 
         setKeluargaParsed(validKeluarga);
-        setCsvWarnings((prev) => [...prev, ...warnings]);
+        setCsvWarnings((prev) => [
+          ...prev.filter((w) => !w.startsWith('[keluarga.csv]')),
+          ...warnings
+        ]);
         showToast('info', `File keluarga terbaca: ${validKeluarga.length} baris valid.`);
       },
       error: (error) => {
@@ -342,9 +397,11 @@ export const MasterDataPage: React.FC = () => {
     setAnggotaCsvFile(file);
     Papa.parse<any>(file, {
       header: true,
+      delimiter: '',
       skipEmptyLines: true,
+      transformHeader: (header) => normalizeCsvHeader(header),
       transform: (value, field) => {
-        if (field === 'registrasi') return String(value || '').trim();
+        if (field === 'registrasi') return cleanRegistrasiValue(value);
         return value;
       },
       complete: (results) => {
@@ -353,50 +410,59 @@ export const MasterDataPage: React.FC = () => {
         const warnings: string[] = [];
         let emptyBirthdays = 0;
 
-        // Gather registrasi from parsed keluarga to cross-check
-        const keluargaRegSet = new Set(keluargaParsed.map((k) => k.registrasi));
-        let unregisteredCount = 0;
+        const existingLookupRegs = new Set(keluargaLookup.map((k) => k.registrasi));
+        const parsedKeluargaRegSet = new Set(keluargaParsed.map((k) => k.registrasi));
+        let autoCreateCount = 0;
 
         rows.forEach((r, idx) => {
-          const reg = String(r.registrasi || '').trim();
+          const reg = cleanRegistrasiValue(r.registrasi);
           const nama = String(r.nama || '').trim();
           if (!reg || !nama) {
-            warnings.push(`Baris anggota #${idx + 2} dilewati: 'registrasi' atau 'nama' kosong.`);
+            warnings.push(`[anggota.csv] Baris #${idx + 2} dilewati: 'registrasi' atau 'nama' kosong.`);
             return;
           }
 
-          const tglLahir = r.tgl_lahir && String(r.tgl_lahir).trim() !== '' ? String(r.tgl_lahir).trim() : null;
+          const tglLahir = normalizeDateValue(r.tgl_lahir);
           if (!tglLahir) {
             emptyBirthdays += 1;
           }
 
-          if (keluargaParsed.length > 0 && !keluargaRegSet.has(reg)) {
-            unregisteredCount += 1;
+          if (!parsedKeluargaRegSet.has(reg) && !existingLookupRegs.has(reg)) {
+            autoCreateCount += 1;
           }
 
+          const jkRaw = String(r.jenis_kelamin || 'L').trim().toUpperCase();
+          const jk: 'L' | 'P' = jkRaw.startsWith('P') || jkRaw === 'W' || jkRaw === 'PR' ? 'P' : 'L';
+
+          const aktifRaw = String(r.aktif ?? 'true').trim().toLowerCase();
+          const isAktif = !['false', '0', 'tidak', 'non-aktif', 'nonaktif'].includes(aktifRaw);
+
           validAnggota.push({
-            id: r.id || `ang-imp-${Date.now()}-${idx}`,
+            id: r.id ? String(r.id).trim() : `ang-imp-${Date.now()}-${idx}`,
             registrasi: reg,
-            nama: nama,
-            jenis_kelamin: String(r.jenis_kelamin || 'L').trim().toUpperCase() === 'P' ? 'P' : 'L',
+            nama,
+            jenis_kelamin: jk,
             tgl_lahir: tglLahir,
-            tgl_baptis: r.tgl_baptis && String(r.tgl_baptis).trim() !== '' ? String(r.tgl_baptis).trim() : null,
-            tgl_sidi: r.tgl_sidi && String(r.tgl_sidi).trim() !== '' ? String(r.tgl_sidi).trim() : null,
-            hub_keluarga: String(r.hub_keluarga || 'Anggota').trim(),
-            wijk: String(r.wijk || '').trim(),
-            aktif: String(r.aktif).toLowerCase() !== 'false' && String(r.aktif) !== '0'
+            tgl_baptis: normalizeDateValue(r.tgl_baptis),
+            tgl_sidi: normalizeDateValue(r.tgl_sidi),
+            hub_keluarga: String(r.hub_keluarga || 'Anggota').trim() || 'Anggota',
+            wijk: String(r.wijk || '').trim() || lingkunganList[0]?.nama || 'Lingkungan Letare',
+            aktif: isAktif
           });
         });
 
         if (emptyBirthdays > 0) {
-          warnings.push(`Peringatan: Terdapat ${emptyBirthdays} anggota dengan tanggal lahir kosong (tgl_lahir NULL). Anggota ini tidak akan masuk daftar ulang tahun otomatis.`);
+          warnings.push(`[anggota.csv] Info: Terdapat ${emptyBirthdays} anggota dengan tanggal lahir kosong (NULL). Anggota ini tidak masuk daftar ulang tahun otomatis.`);
         }
-        if (unregisteredCount > 0) {
-          warnings.push(`Peringatan: Terdapat ${unregisteredCount} anggota yang no. registrasinya tidak ada dalam daftar keluarga.csv yang diunggah.`);
+        if (autoCreateCount > 0) {
+          warnings.push(`[anggota.csv] Info: ${autoCreateCount} anggota memiliki No. Registrasi yang belum ada di data keluarga; sistem akan membuatkan data KK otomatis saat impor.`);
         }
 
         setAnggotaParsed(validAnggota);
-        setCsvWarnings((prev) => [...prev, ...warnings]);
+        setCsvWarnings((prev) => [
+          ...prev.filter((w) => !w.startsWith('[anggota.csv]')),
+          ...warnings
+        ]);
         showToast('info', `File anggota terbaca: ${validAnggota.length} baris valid.`);
       },
       error: (error) => {
@@ -454,11 +520,10 @@ export const MasterDataPage: React.FC = () => {
       setAnggotaCsvFile(null);
       setAnggotaParsed([]);
       setCsvWarnings([]);
-      fetchAnggota();
-      fetchKeluarga();
+      await Promise.all([fetchAnggota(), fetchKeluarga(), fetchKeluargaLookup()]);
       setActiveTab('anggota');
     } catch (err: any) {
-      showToast('error', `Gagal menjalankan batch impor: ${err.message}`);
+      showToast('error', `Gagal menjalankan batch impor: ${err?.message || 'Terjadi kesalahan.'}`);
     } finally {
       setIsImporting(false);
       setImportProgress(null);
@@ -670,7 +735,7 @@ export const MasterDataPage: React.FC = () => {
             <span>Pos Penerimaan & Pengeluaran</span>
           </button>
 
-          {currentRole === 'admin' && (
+          {(currentRole === 'admin' || currentRole === 'sekretaris') && (
             <button
               onClick={() => setActiveTab('impor')}
               className={`px-3.5 py-2.5 rounded-lg text-xs md:text-sm font-bold transition whitespace-nowrap shrink-0 flex items-center gap-2 cursor-pointer min-h-[44px] ${
@@ -680,7 +745,7 @@ export const MasterDataPage: React.FC = () => {
               }`}
             >
               <UploadCloud className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Impor CSV (Admin)</span>
+              <span>Impor & Template CSV</span>
             </button>
           )}
 
@@ -740,22 +805,43 @@ export const MasterDataPage: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                onClick={() =>
-                  setEditingAnggota({
-                    registrasi: '',
-                    nama: '',
-                    jenis_kelamin: 'L',
-                    tgl_lahir: '',
-                    hub_keluarga: 'Anggota',
-                    wijk: lingkunganList[0]?.nama || 'Lingkungan Letare',
-                    aktif: true
-                  })
-                }
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" /> Tambah Anggota
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadAnggotaTemplate(',')}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg text-xs font-bold transition cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" /> Template CSV
+                </button>
+                {(currentRole === 'admin' || currentRole === 'sekretaris') && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('impor')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-lg text-xs font-bold transition cursor-pointer"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" /> Impor CSV
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNewAnggotaModal(true);
+                    setAutoNamaKK('');
+                    setEditingAnggota({
+                      registrasi: '',
+                      nama: '',
+                      jenis_kelamin: 'L',
+                      tgl_lahir: '',
+                      hub_keluarga: 'Kepala Keluarga',
+                      wijk: lingkunganList[0]?.nama || 'Lingkungan Letare',
+                      aktif: true
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Tambah Anggota
+                </button>
+              </div>
             </div>
 
             {/* Filters Bar */}
@@ -883,7 +969,12 @@ export const MasterDataPage: React.FC = () => {
                         <td className="py-2 px-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => setEditingAnggota(ang)}
+                              type="button"
+                              onClick={() => {
+                                setIsNewAnggotaModal(false);
+                                setAutoNamaKK('');
+                                setEditingAnggota(ang);
+                              }}
                               className="p-1 text-stone-500 hover:text-blue-700 hover:bg-stone-100 rounded transition cursor-pointer"
                               title="Edit"
                             >
@@ -951,22 +1042,42 @@ export const MasterDataPage: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                onClick={() =>
-                  setEditingKeluarga({
-                    registrasi: '',
-                    nama_kk: '',
-                    kk_wafat: false,
-                    wijk: lingkunganList[0]?.nama || 'Lingkungan Letare',
-                    jalan: '',
-                    hp: '',
-                    jumlah_anggota: 1
-                  })
-                }
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" /> Tambah Keluarga
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadKeluargaTemplate(',')}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg text-xs font-bold transition cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" /> Template CSV
+                </button>
+                {(currentRole === 'admin' || currentRole === 'sekretaris') && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('impor')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-lg text-xs font-bold transition cursor-pointer"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" /> Impor CSV
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOriginalKeluargaRegistrasi(null);
+                    setEditingKeluarga({
+                      registrasi: '',
+                      nama_kk: '',
+                      kk_wafat: false,
+                      wijk: lingkunganList[0]?.nama || 'Lingkungan Letare',
+                      jalan: '',
+                      hp: '',
+                      jumlah_anggota: 1
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Tambah Keluarga
+                </button>
+              </div>
             </div>
 
             {/* Filters Bar */}
@@ -1066,7 +1177,11 @@ export const MasterDataPage: React.FC = () => {
                         <td className="py-2 px-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => setEditingKeluarga(kel)}
+                              type="button"
+                              onClick={() => {
+                                setOriginalKeluargaRegistrasi(kel.registrasi);
+                                setEditingKeluarga(kel);
+                              }}
                               className="p-1 text-stone-500 hover:text-blue-700 hover:bg-stone-100 rounded transition cursor-pointer"
                               title="Edit"
                             >
@@ -1130,20 +1245,88 @@ export const MasterDataPage: React.FC = () => {
         )}
 
         {/* ========================================================= */}
-        {/* TAB 3: IMPOR CSV (ADMIN ONLY) */}
+        {/* TAB 3: IMPOR CSV (ADMIN & SEKRETARIS) */}
         {/* ========================================================= */}
-        {activeTab === 'impor' && currentRole === 'admin' && (
+        {activeTab === 'impor' && (currentRole === 'admin' || currentRole === 'sekretaris') && (
           <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-xs space-y-6">
-            <div className="border-b border-stone-200 pb-4">
-              <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-700" />
-                Impor Data Massal Jemaat via CSV
-              </h3>
-              <p className="text-xs text-stone-600 mt-1">
-                Unggah file <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 font-mono">keluarga.csv</code> terlebih dahulu,
-                kemudian <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 font-mono">anggota.csv</code>.
-                Sistem akan memvalidasi data dan meng-upsert ke database Supabase per <strong>500 baris</strong>.
-              </p>
+            <div className="border-b border-stone-200 pb-4 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-700" />
+                  Template &amp; Impor Data Massal Jemaat via CSV
+                </h3>
+                <p className="text-xs text-stone-600 mt-1">
+                  Unduh template resmi terlebih dahulu, isi data pada Excel / Google Sheets (jaga agar angka nol di depan No. Registrasi tidak hilang dengan format kolom Teks),
+                  lalu unggah <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 font-mono">keluarga.csv</code> dan/atau <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 font-mono">anggota.csv</code>.
+                  Sistem akan meng-upsert per <strong>500 baris</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Template Download Banner */}
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
+                  <Download className="w-4 h-4 text-emerald-700" />
+                  <span>Unduh Template CSV Resmi (Data Keluarga &amp; Data Anggota Jemaat)</span>
+                </div>
+                <span className="text-[11px] text-emerald-800 font-medium">
+                  Mendukung pemisah koma (,) maupun titik koma (;) dari Excel Indonesia
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="bg-white border border-emerald-200 rounded-lg p-3 space-y-2">
+                  <div className="font-bold text-stone-900">1. Template Data Keluarga (KK)</div>
+                  <p className="text-[11px] text-stone-600">
+                    Kolom: <code className="font-mono text-stone-800">registrasi, wijk, nama_kk, kk_wafat, jalan, hp, jumlah_anggota</code>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadKeluargaTemplate(',')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold transition cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> template_keluarga.csv (,)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadKeluargaTemplate(';')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Versi Excel Indonesia (;)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-emerald-200 rounded-lg p-3 space-y-2">
+                  <div className="font-bold text-stone-900">2. Template Data Anggota Jemaat (Ruas)</div>
+                  <p className="text-[11px] text-stone-600">
+                    Kolom: <code className="font-mono text-stone-800">registrasi, nama, jenis_kelamin, tgl_lahir, tgl_baptis, tgl_sidi, hub_keluarga, wijk, aktif</code>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadAnggotaTemplate(',')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-[11px] font-bold transition cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> template_anggota.csv (,)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadAnggotaTemplate(';')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-900 border border-blue-300 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Versi Excel Indonesia (;)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-stone-700 bg-white/80 rounded-lg px-3 py-2 border border-emerald-100">
+                <strong>Format yang didukung:</strong> Tanggal mendukung <code className="font-mono">YYYY-MM-DD</code> (cth: <code className="font-mono">1990-08-17</code>) atau <code className="font-mono">DD/MM/YYYY</code> (<code className="font-mono">17/08/1990</code>), boleh kosong.
+                Jenis kelamin: <code className="font-mono">L</code> atau <code className="font-mono">P</code>. Jika ada nomor registrasi di <code className="font-mono">anggota.csv</code> yang belum terdaftar di tabel keluarga, sistem otomatis membuatkan data keluarga dasarnya.
+              </div>
             </div>
 
             {/* Two Upload Cards */}
@@ -1155,7 +1338,7 @@ export const MasterDataPage: React.FC = () => {
                     <span className="w-5 h-5 rounded-full bg-blue-700 text-white text-[11px] flex items-center justify-center font-bold">
                       1
                     </span>
-                    <span>File keluarga.csv</span>
+                    <span>Unggah File keluarga.csv</span>
                   </div>
                   {keluargaParsed.length > 0 && (
                     <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
@@ -1166,12 +1349,12 @@ export const MasterDataPage: React.FC = () => {
 
                 <p className="text-[11px] text-stone-500">
                   Kolom wajib: <code className="font-mono text-stone-700">registrasi, wijk, nama_kk, kk_wafat, jalan, hp, jumlah_anggota</code>.
-                  Registrasi dibaca sebagai teks (misal: "0101").
+                  Registrasi dibaca sebagai teks (misal: &quot;0101&quot;).
                 </p>
 
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,text/csv"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) handleParseKeluargaCsv(f);
@@ -1193,7 +1376,7 @@ export const MasterDataPage: React.FC = () => {
                     <span className="w-5 h-5 rounded-full bg-blue-700 text-white text-[11px] flex items-center justify-center font-bold">
                       2
                     </span>
-                    <span>File anggota.csv</span>
+                    <span>Unggah File anggota.csv</span>
                   </div>
                   {anggotaParsed.length > 0 && (
                     <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
@@ -1658,14 +1841,18 @@ export const MasterDataPage: React.FC = () => {
       {/* ========================================================= */}
       {editingAnggota && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-300 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="bg-[#0B2545] text-white p-4 flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl border border-stone-300 max-w-lg w-full max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="bg-[#0B2545] text-white p-4 flex items-center justify-between sticky top-0 z-10">
               <h3 className="font-bold text-sm flex items-center gap-2">
                 <Users className="w-4 h-4 text-amber-400" />
-                {editingAnggota.id ? 'Edit Anggota Jemaat' : 'Tambah Anggota Jemaat Baru'}
+                {isNewAnggotaModal ? 'Tambah Anggota Jemaat Baru' : 'Edit Anggota Jemaat'}
               </h3>
               <button
-                onClick={() => setEditingAnggota(null)}
+                type="button"
+                onClick={() => {
+                  setEditingAnggota(null);
+                  setAutoNamaKK('');
+                }}
                 className="text-stone-300 hover:text-white p-1 rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -1673,6 +1860,39 @@ export const MasterDataPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveAnggota} className="p-5 space-y-4 text-xs">
+              {keluargaLookup.length > 0 && (
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    Pilih Kepala Keluarga Terdaftar (Opsional / Isi Cepat)
+                  </label>
+                  <select
+                    value={
+                      keluargaLookup.some((k) => k.registrasi === (editingAnggota.registrasi || '').trim())
+                        ? (editingAnggota.registrasi || '').trim()
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const reg = e.target.value;
+                      if (!reg) return;
+                      const found = keluargaLookup.find((k) => k.registrasi === reg);
+                      setEditingAnggota({
+                        ...editingAnggota,
+                        registrasi: reg,
+                        wijk: found?.wijk || editingAnggota.wijk
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white text-stone-800"
+                  >
+                    <option value="">-- Pilih dari {keluargaLookup.length} KK terdaftar atau ketik manual di bawah --</option>
+                    {keluargaLookup.map((k) => (
+                      <option key={k.registrasi} value={k.registrasi}>
+                        {k.registrasi} — {k.nama_kk} ({k.wijk})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-1">
                   <label className="block font-bold text-stone-700 mb-1">
@@ -1683,12 +1903,36 @@ export const MasterDataPage: React.FC = () => {
                     required
                     placeholder="misal: 0101"
                     value={editingAnggota.registrasi || ''}
-                    onChange={(e) =>
-                      setEditingAnggota({ ...editingAnggota, registrasi: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const matched = keluargaLookup.find((k) => k.registrasi === val.trim());
+                      setEditingAnggota({
+                        ...editingAnggota,
+                        registrasi: val,
+                        ...(matched ? { wijk: matched.wijk } : {})
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg font-mono font-bold text-blue-900 bg-stone-50"
                   />
-                  <span className="text-[10px] text-stone-500">Kunci relasi ke kepala keluarga.</span>
+                  {(() => {
+                    const regTrim = (editingAnggota.registrasi || '').trim();
+                    if (!regTrim) {
+                      return <span className="text-[10px] text-stone-500">Kunci relasi ke kepala keluarga.</span>;
+                    }
+                    const matched = keluargaLookup.find((k) => k.registrasi === regTrim);
+                    if (matched) {
+                      return (
+                        <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">
+                          Terhubung ke KK: {matched.nama_kk}
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="text-[10px] text-amber-700 font-semibold block mt-0.5">
+                        Belum terdaftar di Data Keluarga (akan dibuat otomatis).
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div className="col-span-1">
@@ -1707,6 +1951,34 @@ export const MasterDataPage: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              {(editingAnggota.registrasi || '').trim() !== '' &&
+                !keluargaLookup.some((k) => k.registrasi === (editingAnggota.registrasi || '').trim()) && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
+                    <div className="text-[11px] font-bold text-amber-900">
+                      No. Registrasi &quot;{editingAnggota.registrasi?.trim()}&quot; belum ada di Data Keluarga
+                    </div>
+                    <p className="text-[10px] text-amber-800">
+                      Agar penyimpanan berhasil tanpa error relasi, sistem akan otomatis mendaftarkan Data Keluarga baru untuk nomor registrasi ini.
+                    </p>
+                    <div>
+                      <label className="block text-[11px] font-bold text-amber-950 mb-1">
+                        Nama Kepala Keluarga (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={
+                          editingAnggota.hub_keluarga === 'Kepala Keluarga'
+                            ? editingAnggota.nama || 'Otomatis menggunakan nama anggota'
+                            : `Otomatis: Kel. ${editingAnggota.nama || '...'}`
+                        }
+                        value={autoNamaKK}
+                        onChange={(e) => setAutoNamaKK(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-amber-300 rounded bg-white text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
 
               <div>
                 <label className="block font-bold text-stone-700 mb-1">
@@ -1742,7 +2014,7 @@ export const MasterDataPage: React.FC = () => {
                     Hubungan Keluarga
                   </label>
                   <select
-                    value={editingAnggota.hub_keluarga || 'Anggota'}
+                    value={editingAnggota.hub_keluarga || 'Kepala Keluarga'}
                     onChange={(e) =>
                       setEditingAnggota({ ...editingAnggota, hub_keluarga: e.target.value })
                     }
@@ -1753,6 +2025,7 @@ export const MasterDataPage: React.FC = () => {
                     <option value="Anak">Anak</option>
                     <option value="Orang Tua">Orang Tua</option>
                     <option value="Famili Lain">Famili Lain</option>
+                    <option value="Anggota">Anggota</option>
                   </select>
                 </div>
               </div>
@@ -1786,7 +2059,7 @@ export const MasterDataPage: React.FC = () => {
               <div>
                 <label className="block font-bold text-stone-700 mb-1">Wijk / Lingkungan</label>
                 <select
-                  value={editingAnggota.wijk || lingkunganList[0]?.nama}
+                  value={editingAnggota.wijk || lingkunganList[0]?.nama || 'Lingkungan Letare'}
                   onChange={(e) =>
                     setEditingAnggota({ ...editingAnggota, wijk: e.target.value })
                   }
@@ -1818,7 +2091,10 @@ export const MasterDataPage: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
                 <button
                   type="button"
-                  onClick={() => setEditingAnggota(null)}
+                  onClick={() => {
+                    setEditingAnggota(null);
+                    setAutoNamaKK('');
+                  }}
                   className="px-4 py-2 border border-stone-300 rounded-lg font-semibold text-stone-600 hover:bg-stone-50 cursor-pointer"
                 >
                   Batal
@@ -1826,7 +2102,7 @@ export const MasterDataPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSavingEntity}
-                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-bold shadow transition cursor-pointer"
+                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded-lg font-bold shadow transition cursor-pointer"
                 >
                   {isSavingEntity ? 'Menyimpan...' : 'Simpan Anggota'}
                 </button>
@@ -1841,14 +2117,18 @@ export const MasterDataPage: React.FC = () => {
       {/* ========================================================= */}
       {editingKeluarga && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-300 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="bg-[#0B2545] text-white p-4 flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl border border-stone-300 max-w-lg w-full max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="bg-[#0B2545] text-white p-4 flex items-center justify-between sticky top-0 z-10">
               <h3 className="font-bold text-sm flex items-center gap-2">
                 <Home className="w-4 h-4 text-amber-400" />
-                {editingKeluarga.registrasi ? 'Edit Data Keluarga' : 'Tambah Kepala Keluarga Baru'}
+                {originalKeluargaRegistrasi ? 'Edit Data Keluarga' : 'Tambah Kepala Keluarga Baru'}
               </h3>
               <button
-                onClick={() => setEditingKeluarga(null)}
+                type="button"
+                onClick={() => {
+                  setEditingKeluarga(null);
+                  setOriginalKeluargaRegistrasi(null);
+                }}
                 className="text-stone-300 hover:text-white p-1 rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -1876,7 +2156,7 @@ export const MasterDataPage: React.FC = () => {
                 <div>
                   <label className="block font-bold text-stone-700 mb-1">Wijk / Lingkungan</label>
                   <select
-                    value={editingKeluarga.wijk || lingkunganList[0]?.nama}
+                    value={editingKeluarga.wijk || lingkunganList[0]?.nama || 'Lingkungan Letare'}
                     onChange={(e) =>
                       setEditingKeluarga({ ...editingKeluarga, wijk: e.target.value })
                     }
@@ -1925,12 +2205,12 @@ export const MasterDataPage: React.FC = () => {
                   <label className="block font-bold text-stone-700 mb-1">Jumlah Jiwa Anggota</label>
                   <input
                     type="number"
-                    min="1"
-                    value={editingKeluarga.jumlah_anggota || 1}
+                    min="0"
+                    value={editingKeluarga.jumlah_anggota ?? 1}
                     onChange={(e) =>
                       setEditingKeluarga({
                         ...editingKeluarga,
-                        jumlah_anggota: parseInt(e.target.value, 10) || 1
+                        jumlah_anggota: Math.max(0, parseInt(e.target.value, 10) || 0)
                       })
                     }
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg"
@@ -1969,7 +2249,10 @@ export const MasterDataPage: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
                 <button
                   type="button"
-                  onClick={() => setEditingKeluarga(null)}
+                  onClick={() => {
+                    setEditingKeluarga(null);
+                    setOriginalKeluargaRegistrasi(null);
+                  }}
                   className="px-4 py-2 border border-stone-300 rounded-lg font-semibold text-stone-600 hover:bg-stone-50 cursor-pointer"
                 >
                   Batal
@@ -1977,7 +2260,7 @@ export const MasterDataPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSavingEntity}
-                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-bold shadow transition cursor-pointer"
+                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded-lg font-bold shadow transition cursor-pointer"
                 >
                   {isSavingEntity ? 'Menyimpan...' : 'Simpan Data Keluarga'}
                 </button>
