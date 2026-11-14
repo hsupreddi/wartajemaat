@@ -185,18 +185,31 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                     : DEFAULT_ACARA_MINGGU_COLUMNS;
                   return (
                     <table className="w-full table-fixed border-collapse text-[7.1pt] leading-tight">
+                      <colgroup>
+                        <col className="w-[20px]" />
+                        {cols.map((c, ci) => (
+                          <col
+                            key={c.key}
+                            className={
+                              c.key === 'keterangan'
+                                ? 'w-[48px]'
+                                : c.key === 'uraian' || c.key === 'tata_ibadah' || ci === 0
+                                  ? ''
+                                  : 'w-[56px]'
+                            }
+                          />
+                        ))}
+                      </colgroup>
                       <thead>
                         <tr className="bg-stone-100 text-stone-800 border-b border-stone-300">
-                          <th className="w-[18px] py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
+                          <th className="py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
                           {cols.map((c, ci) => (
                             <th
                               key={c.key}
                               className={`py-1 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${
                                 c.key === 'keterangan'
-                                  ? 'w-[48px] px-0.5 text-center text-[6.4pt]'
-                                  : c.key === 'tata_ibadah'
-                                    ? 'px-1.5 text-left'
-                                    : 'w-14 px-1 text-left'
+                                  ? 'px-0.5 text-center text-[6.2pt] tracking-tight'
+                                  : 'px-1.5 text-left'
                               }`}
                             >
                               {c.label}
@@ -215,7 +228,7 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                                 key={c.key}
                                 className={`py-0.5 align-top ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${
                                   c.key === 'keterangan'
-                                    ? 'px-1 text-right font-semibold text-stone-700 text-[6.6pt] leading-tight break-words'
+                                    ? 'px-1 text-right font-semibold text-stone-700 text-[6.5pt] leading-tight break-words'
                                     : 'px-1.5 text-stone-900 font-medium leading-[1.25]'
                                 }`}
                               >
@@ -241,18 +254,31 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                     : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
                   return (
                     <table className="w-full table-fixed border-collapse text-[7.1pt] leading-tight">
+                      <colgroup>
+                        <col className="w-[20px]" />
+                        {cols.map((c, ci) => (
+                          <col
+                            key={c.key}
+                            className={
+                              c.key === 'keterangan'
+                                ? 'w-[48px]'
+                                : c.key === 'uraian' || c.key === 'tata_ibadah' || ci === 0
+                                  ? ''
+                                  : 'w-[56px]'
+                            }
+                          />
+                        ))}
+                      </colgroup>
                       <thead>
                         <tr className="bg-stone-100 text-stone-800 border-b border-stone-300">
-                          <th className="w-[18px] py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
+                          <th className="py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
                           {cols.map((c, ci) => (
                             <th
                               key={c.key}
                               className={`py-1 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${
                                 c.key === 'keterangan'
-                                  ? 'w-[48px] px-0.5 text-center text-[6.4pt]'
-                                  : c.key === 'tata_ibadah'
-                                    ? 'px-1.5 text-left'
-                                    : 'w-14 px-1 text-left'
+                                  ? 'px-0.5 text-center text-[6.2pt] tracking-tight'
+                                  : 'px-1.5 text-left'
                               }`}
                             >
                               {c.label}
@@ -271,7 +297,7 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                                 key={c.key}
                                 className={`py-0.5 align-top ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${
                                   c.key === 'keterangan'
-                                    ? 'px-1 text-right font-semibold text-stone-700 text-[6.6pt] leading-tight break-words'
+                                    ? 'px-1 text-right font-semibold text-stone-700 text-[6.5pt] leading-tight break-words'
                                     : 'px-1.5 text-stone-900 font-medium leading-[1.25]'
                                 }`}
                               >
