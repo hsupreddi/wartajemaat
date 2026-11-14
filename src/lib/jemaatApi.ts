@@ -129,10 +129,77 @@ function saveLocalDemoAnggota(list: Anggota[]) {
   }
 }
 
+export function computeUlangTahunFromAnggotaList(
+  anggotaList: Pick<Anggota, 'nama' | 'jenis_kelamin' | 'tgl_lahir' | 'wijk' | 'aktif'>[],
+  mulaiDateStr: string,
+  akhirDateStr: string
+): UlangTahunItem[] {
+  const dStart = new Date(mulaiDateStr + 'T00:00:00');
+  const dEnd = new Date(akhirDateStr + 'T00:00:00');
+  if (isNaN(dStart.getTime()) || isNaN(dEnd.getTime())) return [];
+
+  const refYear = dEnd.getFullYear();
+
+  const matchedDates: { month: number; day: number; order: number }[] = [];
+  const cur = new Date(dStart);
+  let seq = 0;
+  while (cur <= dEnd && seq < 40) {
+    matchedDates.push({ month: cur.getMonth() + 1, day: cur.getDate(), order: seq++ });
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  const results: {
+    nama: string;
+    jenis_kelamin: 'L' | 'P';
+    tanggal_lahir: string;
+    dayOrder: number;
+    dayMonthStr: string;
+    usia: number;
+    wijk: string;
+  }[] = [];
+
+  for (const m of anggotaList) {
+    if (m.aktif === false || !m.tgl_lahir) continue;
+    const parts = String(m.tgl_lahir).split('-').map(Number);
+    if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) continue;
+    const [bYear, bMonth, bDay] = parts;
+
+    const match = matchedDates.find((md) => md.month === bMonth && md.day === bDay);
+    if (match) {
+      let usia = refYear - bYear;
+      const hadBirthday =
+        dEnd.getMonth() + 1 > bMonth || (dEnd.getMonth() + 1 === bMonth && dEnd.getDate() >= bDay);
+      if (!hadBirthday) usia -= 1;
+
+      results.push({
+        nama: m.nama,
+        jenis_kelamin: m.jenis_kelamin === 'P' ? 'P' : 'L',
+        tanggal_lahir: m.tgl_lahir,
+        dayOrder: match.order,
+        dayMonthStr: `${String(bDay).padStart(2, '0')}/${String(bMonth).padStart(2, '0')}`,
+        usia: Math.max(1, usia),
+        wijk: m.wijk || '-'
+      });
+    }
+  }
+
+  results.sort((a, b) => a.dayOrder - b.dayOrder || a.nama.localeCompare(b.nama));
+
+  return results.map((r, idx) => ({
+    no: idx + 1,
+    nama: r.nama,
+    jenis_kelamin: r.jenis_kelamin,
+    tanggal_lahir: r.tanggal_lahir,
+    hari_bulan: r.dayMonthStr,
+    usia: r.usia,
+    wijk: r.wijk
+  }));
+}
+
 /**
  * 1. GET ULANG TAHUN PERIODE
- * Memanggil Supabase RPC 'ulang_tahun_periode(p_mulai, p_akhir)'
- * Jika belum dikonfigurasi, menggunakan fallback demo.
+ * Memanggil Supabase RPC 'ulang_tahun_periode(p_mulai, p_akhir)', atau membaca tabel 'anggota'
+ * secara langsung jika RPC belum terpasang di Supabase. Fallback demo jika belum terkonfigurasi.
  */
 export async function getUlangTahun(mulaiDateStr: string, akhirDateStr: string): Promise<UlangTahunItem[]> {
   if (isSupabaseConfigured && supabase) {
@@ -142,12 +209,7 @@ export async function getUlangTahun(mulaiDateStr: string, akhirDateStr: string):
         p_akhir: akhirDateStr
       });
 
-      if (error) {
-        notify('error', `Gagal memuat ulang tahun dari database: ${error.message}`);
-        throw error;
-      }
-
-      if (data && Array.isArray(data)) {
+      if (!error && data && Array.isArray(data)) {
         return (data as UlangTahunRpcResult[]).map((r, idx) => {
           let dayMonthStr = '-';
           if (r.tgl_lahir) {
@@ -167,71 +229,33 @@ export async function getUlangTahun(mulaiDateStr: string, akhirDateStr: string):
           };
         });
       }
+
+      // Fallback langsung ke query tabel anggota Supabase jika RPC error / belum dipasang
+      const { data: anggotaRows, error: tblErr } = await supabase
+        .from('anggota')
+        .select('nama, jenis_kelamin, tgl_lahir, wijk, aktif')
+        .eq('aktif', true)
+        .not('tgl_lahir', 'is', null);
+
+      if (!tblErr && Array.isArray(anggotaRows)) {
+        return computeUlangTahunFromAnggotaList(
+          anggotaRows as Pick<Anggota, 'nama' | 'jenis_kelamin' | 'tgl_lahir' | 'wijk' | 'aktif'>[],
+          mulaiDateStr,
+          akhirDateStr
+        );
+      }
+
+      if (error) {
+        notify('error', `Gagal memuat ulang tahun dari database: ${error.message}`);
+        throw error;
+      }
     } catch (err: any) {
       notify('warning', `Beralih ke mode demo untuk tabel ulang tahun: ${err?.message || 'Koneksi gagal'}`);
     }
   }
 
   // Fallback demo calculation
-  const anggotaList = getLocalDemoAnggota();
-  const dStart = new Date(mulaiDateStr + 'T00:00:00');
-  const dEnd = new Date(akhirDateStr + 'T00:00:00');
-  const refYear = isNaN(dEnd.getFullYear()) ? 2026 : dEnd.getFullYear();
-
-  // Create set of all month-day in the range
-  const matchedDates: { month: number; day: number }[] = [];
-  const cur = new Date(dStart);
-  while (cur <= dEnd) {
-    matchedDates.push({ month: cur.getMonth() + 1, day: cur.getDate() });
-    cur.setDate(cur.getDate() + 1);
-  }
-
-  const results: {
-    nama: string;
-    jenis_kelamin: 'L' | 'P';
-    tanggal_lahir: string;
-    dayMonthVal: number;
-    dayMonthStr: string;
-    usia: number;
-    wijk: string;
-  }[] = [];
-
-  for (const m of anggotaList) {
-    if (!m.aktif || !m.tgl_lahir) continue;
-    const parts = m.tgl_lahir.split('-').map(Number);
-    if (parts.length < 3 || isNaN(parts[0])) continue;
-    const [bYear, bMonth, bDay] = parts;
-
-    const match = matchedDates.find((md) => md.month === bMonth && md.day === bDay);
-    if (match) {
-      let usia = refYear - bYear;
-      const hadBirthday =
-        dEnd.getMonth() + 1 > bMonth || (dEnd.getMonth() + 1 === bMonth && dEnd.getDate() >= bDay);
-      if (!hadBirthday) usia -= 1;
-
-      results.push({
-        nama: m.nama,
-        jenis_kelamin: m.jenis_kelamin,
-        tanggal_lahir: m.tgl_lahir,
-        dayMonthVal: bMonth * 100 + bDay,
-        dayMonthStr: `${String(bDay).padStart(2, '0')}/${String(bMonth).padStart(2, '0')}`,
-        usia: Math.max(1, usia),
-        wijk: m.wijk
-      });
-    }
-  }
-
-  results.sort((a, b) => a.dayMonthVal - b.dayMonthVal);
-
-  return results.map((r, idx) => ({
-    no: idx + 1,
-    nama: r.nama,
-    jenis_kelamin: r.jenis_kelamin,
-    tanggal_lahir: r.tanggal_lahir,
-    hari_bulan: r.dayMonthStr,
-    usia: r.usia,
-    wijk: r.wijk
-  }));
+  return computeUlangTahunFromAnggotaList(getLocalDemoAnggota(), mulaiDateStr, akhirDateStr);
 }
 
 /**

@@ -82,6 +82,7 @@ export interface PetugasMaster {
   peran_default?: string;
   lingkungan?: string;
   aktif: boolean;
+  urutan?: number;
 }
 
 export interface PeranParhobasMaster {

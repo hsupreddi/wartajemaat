@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FullWartaData } from '../../types';
-import { Plus, Trash2, ArrowUp, ArrowDown, Cake, Music, Home, FileText, Sparkles, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Cake, Music, Home, FileText, Sparkles, RefreshCw, Database } from 'lucide-react';
 import { TemplateSelectorModal } from './TemplateSelectorModal';
 import { getSeninMingguRange } from '../../lib/dateUtils';
 import { getUlangTahun, notify } from '../../lib/jemaatApi';
@@ -16,6 +16,40 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isSyncingUltah, setIsSyncingUltah] = useState(false);
   const { seninStr, mingguStr, labelPeriode } = getSeninMingguRange(warta.tanggal_minggu);
+  const lastAutoSyncedKey = useRef<string>('');
+  const latestDataRef = useRef(data);
+  latestDataRef.current = data;
+
+  const pullBirthdaysQuietly = async (targetDate: string) => {
+    const range = getSeninMingguRange(targetDate);
+    setIsSyncingUltah(true);
+    try {
+      const res = await getUlangTahun(range.seninStr, range.mingguStr);
+      if (latestDataRef.current.warta.tanggal_minggu === targetDate) {
+        onChange({
+          ...latestDataRef.current,
+          ulang_tahun: res,
+          warta: {
+            ...latestDataRef.current.warta,
+            ulang_tahun_snapshot: res
+          }
+        });
+      }
+    } catch {
+      // Abaikan jika gagal silent pull
+    } finally {
+      setIsSyncingUltah(false);
+    }
+  };
+
+  useEffect(() => {
+    const key = `${warta.id}:${warta.tanggal_minggu}`;
+    if (lastAutoSyncedKey.current === key) return;
+    if (warta.status === 'draft' || !ulang_tahun || ulang_tahun.length === 0) {
+      lastAutoSyncedKey.current = key;
+      pullBirthdaysQuietly(warta.tanggal_minggu);
+    }
+  }, [warta.id, warta.tanggal_minggu, warta.status]);
 
   const handleSyncUlangTahun = async () => {
     setIsSyncingUltah(true);
@@ -29,7 +63,7 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
           ulang_tahun_snapshot: res
         }
       });
-      notify('success', `Berhasil menyinkronkan ${res.length} jemaat berulang tahun dari database.`);
+      notify('success', `Berhasil menarik ${res.length} jemaat berulang tahun dari database.`);
     } catch (err: any) {
       notify('error', `Gagal menarik data ulang tahun: ${err.message || 'Error tidak diketahui'}`);
     } finally {
@@ -128,11 +162,14 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
           <div className="flex items-center gap-2">
             <Cake className="w-5 h-5 text-pink-600" />
             <div>
-              <h3 className="font-bold text-stone-900 text-sm md:text-base">
-                2. Daftar Ulang Tahun Ruas (Penarikan Otomatis)
+              <h3 className="font-bold text-stone-900 text-sm md:text-base flex items-center gap-2">
+                <span>2. Daftar Ulang Tahun Ruas (Ditarik dari Database)</span>
+                <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">
+                  <Database className="w-3 h-3" /> Otomatis dari Sistem
+                </span>
               </h3>
               <p className="text-xs text-stone-500">
-                Otomatis disaring dari master data jemaat untuk periode: <span className="font-semibold text-stone-800">{labelPeriode}</span>.
+                Ditarik otomatis dari database anggota jemaat untuk periode: <span className="font-semibold text-stone-800">{labelPeriode}</span>.
               </p>
             </div>
           </div>
@@ -143,7 +180,7 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
               className="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-50 hover:bg-pink-100 disabled:opacity-50 text-pink-700 border border-pink-200 rounded text-xs font-semibold transition cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncingUltah ? 'animate-spin' : ''}`} />
-              <span>{isSyncingUltah ? 'Menyinkronkan...' : 'Sinkronkan dari Supabase (RPC)'}</span>
+              <span>{isSyncingUltah ? 'Menarik Data...' : 'Tarik Ulang dari Database'}</span>
             </button>
             <span className="text-xs px-2.5 py-1 bg-stone-100 text-stone-700 rounded-md font-medium">
               {ulang_tahun?.length || 0} Jemaat Berulang Tahun

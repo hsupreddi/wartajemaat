@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FullWartaData,
   PengaturanHuria,
@@ -28,6 +28,8 @@ import {
 } from '../../lib/keuangan';
 import { getUlangTahunMingguIni, getSeninMingguRange } from '../../lib/dateUtils';
 import { getUlangTahun, notify } from '../../lib/jemaatApi';
+import { listMasterPetugas } from '../../lib/petugasApi';
+import { PetugasSelectCell } from './PetugasSelectCell';
 import { MingguLiturgiDropdown, getLiturgiColorBadge } from '../common/MingguLiturgiDropdown';
 import {
   Calendar,
@@ -51,7 +53,10 @@ import {
   Columns,
   Search,
   ChevronDown,
-  Layers
+  Layers,
+  UserCheck,
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import { AddColumnModal } from '../common/AddColumnModal';
 import { TambahPenerimaanModal, TambahPengeluaranModal } from './TambahPosKeuanganModal';
@@ -106,8 +111,65 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   const [showPenerimaanAddMenu, setShowPenerimaanAddMenu] = useState<boolean>(false);
   const [isAddPenModalOpen, setIsAddPenModalOpen] = useState<boolean>(false);
   const [isAddPengModalOpen, setIsAddPengModalOpen] = useState<boolean>(false);
+  const [masterPetugas, setMasterPetugas] = useState<PetugasMaster[]>(MASTER_PETUGAS);
+  const [isSyncingUltah, setIsSyncingUltah] = useState<boolean>(false);
+  const lastAutoUltahKeyRef = useRef<string>('');
+  const latestDataRef = useRef<FullWartaData>(data);
+  latestDataRef.current = data;
 
   const { warta, acara_minggu, acara_partangiangan, parhobas, sopo_godang, jadwal_partangiangan, pengumuman, penerimaan, pelean_taon, hamauliateon, pengeluaran, ulang_tahun, rekapitulasi } = data;
+
+  // Muat daftar Sintua & Pengurus dari database Supabase / lokal
+  useEffect(() => {
+    listMasterPetugas({ activeOnly: true })
+      .then((res) => {
+        if (res.data.length > 0) {
+          setMasterPetugas(res.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const pullUlangTahunFromDb = async (targetDate: string, showToastMsg = false) => {
+    if (!targetDate) return;
+    setIsSyncingUltah(true);
+    try {
+      const { seninStr, mingguStr } = getSeninMingguRange(targetDate);
+      const updated = await getUlangTahun(seninStr, mingguStr);
+      if (latestDataRef.current.warta.tanggal_minggu === targetDate) {
+        onChange({
+          ...latestDataRef.current,
+          ulang_tahun: updated,
+          warta: {
+            ...latestDataRef.current.warta,
+            ulang_tahun_snapshot: updated
+          }
+        });
+      }
+      if (showToastMsg) {
+        notify('success', `Berhasil menarik ${updated.length} jemaat berulang tahun dari database.`);
+      }
+    } catch (err: any) {
+      if (showToastMsg) {
+        notify('error', `Gagal menarik ulang tahun: ${err?.message || 'Error tidak diketahui'}`);
+      }
+    } finally {
+      setIsSyncingUltah(false);
+    }
+  };
+
+  // Otomatis tarik ulang tahun dari database saat membuka editor (untuk draft) atau masuk ke Langkah 4
+  useEffect(() => {
+    if (!warta.tanggal_minggu) return;
+    const syncKey = `${warta.id}:${warta.tanggal_minggu}`;
+    const shouldAutoSync =
+      (warta.status === 'draft' || !ulang_tahun || ulang_tahun.length === 0) &&
+      lastAutoUltahKeyRef.current !== syncKey;
+    if (shouldAutoSync || (currentStep === 4 && lastAutoUltahKeyRef.current !== syncKey)) {
+      lastAutoUltahKeyRef.current = syncKey;
+      pullUlangTahunFromDb(warta.tanggal_minggu, false);
+    }
+  }, [warta.id, warta.tanggal_minggu, warta.status, currentStep]);
 
   // Step names
   const steps = [
@@ -129,6 +191,14 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
       warta: updatedWarta,
       rekapitulasi: updatedRekap
     });
+  };
+
+  const handleTanggalMingguChange = (newDate: string) => {
+    updateWarta({ tanggal_minggu: newDate });
+    if (newDate) {
+      lastAutoUltahKeyRef.current = `${warta.id}:${newDate}`;
+      pullUlangTahunFromDb(newDate, false);
+    }
   };
 
   // Auto-fill Liturgical Sunday
@@ -157,23 +227,10 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
     }
   };
 
-  // Sync birthdays from Supabase RPC / Demo dataset
+  // Sync birthdays from Supabase RPC / Database
   const handleSyncUlangTahun = async () => {
-    try {
-      const { seninStr, mingguStr } = getSeninMingguRange(warta.tanggal_minggu);
-      const updated = await getUlangTahun(seninStr, mingguStr);
-      onChange({
-        ...data,
-        ulang_tahun: updated,
-        warta: {
-          ...data.warta,
-          ulang_tahun_snapshot: updated
-        }
-      });
-      notify('success', `Berhasil menyinkronkan ${updated.length} jemaat berulang tahun.`);
-    } catch (err: any) {
-      notify('error', `Gagal menyinkronkan ulang tahun: ${err.message || 'Error tidak diketahui'}`);
-    }
+    lastAutoUltahKeyRef.current = `${warta.id}:${warta.tanggal_minggu}`;
+    await pullUlangTahunFromDb(warta.tanggal_minggu, true);
   };
 
   // Dynamic Column Modal State
@@ -992,7 +1049,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                   <input
                     type="date"
                     value={warta.tanggal_minggu}
-                    onChange={(e) => updateWarta({ tanggal_minggu: e.target.value })}
+                    onChange={(e) => handleTanggalMingguChange(e.target.value)}
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm bg-stone-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
                   />
                   <div className="text-[11px] text-stone-500 mt-1 flex items-center gap-1">
@@ -1381,11 +1438,14 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h4 className="text-xs font-bold text-stone-900 uppercase">
-                      Parhobas Minggu (Petugas Ibadah)
+                    <h4 className="text-xs font-bold text-stone-900 uppercase flex items-center gap-2">
+                      <span>Parhobas Minggu (Petugas Ibadah)</span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold normal-case bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-full">
+                        <UserCheck className="w-3 h-3" /> {masterPetugas.length} Sintua &amp; Pengurus siap pilih
+                      </span>
                     </h4>
                     <span className="text-[11px] text-stone-500">
-                      {parhobas.length} Petugas · Fleksibel tambah/hapus baris dan sesi kolom
+                      {parhobas.length} Baris · Klik ikon panah di tiap kolom untuk memilih dari database (mendukung multi-petugas)
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -1405,6 +1465,17 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     </button>
                   </div>
                 </div>
+
+                <datalist id="parhobas-peran-suggestions">
+                  <option value="Jamita" />
+                  <option value="Agenda" />
+                  <option value="Tingting" />
+                  <option value="Pelean" />
+                  <option value="Organis" />
+                  <option value="Harentaon" />
+                  <option value="Pemusik" />
+                  <option value="Song Leader" />
+                </datalist>
 
                 {(() => {
                   const cols = data.parhobas_columns && data.parhobas_columns.length > 0
@@ -1440,13 +1511,24 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                             <tr key={p.id || idx} className="hover:bg-stone-50">
                               {cols.map((col) => (
                                 <td key={col.key} className="py-1 px-2">
-                                  <input
-                                    type="text"
-                                    value={p[col.key] || ''}
-                                    onChange={(e) => handleParhobasCellChange(idx, col.key, e.target.value)}
-                                    placeholder={col.key === 'peran' ? 'Nama Ulaon (e.g. Jamita)' : 'Nama Pelayan...'}
-                                    className={`w-full px-2 py-1 border border-stone-200 rounded text-xs focus:bg-white ${col.key === 'peran' ? 'font-bold text-stone-900 bg-stone-100' : 'bg-stone-50'}`}
-                                  />
+                                  {col.key === 'peran' ? (
+                                    <input
+                                      type="text"
+                                      list="parhobas-peran-suggestions"
+                                      value={p[col.key] || ''}
+                                      onChange={(e) => handleParhobasCellChange(idx, col.key, e.target.value)}
+                                      placeholder="Nama Ulaon (e.g. Jamita)"
+                                      className="w-full px-2 py-1 border border-stone-200 rounded text-xs focus:bg-white font-bold text-stone-900 bg-stone-100"
+                                    />
+                                  ) : (
+                                    <PetugasSelectCell
+                                      value={p[col.key] || ''}
+                                      onChange={(val) => handleParhobasCellChange(idx, col.key, val)}
+                                      petugasList={masterPetugas}
+                                      peranRow={p.peran}
+                                      placeholder="Pilih Sintua / Pengurus..."
+                                    />
+                                  )}
                                 </td>
                               ))}
                               <td className="py-1 px-2 text-center">
@@ -1488,7 +1570,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                 <div>
                   <h3 className="text-base font-bold text-stone-900">Langkah 4: Tingting Namarragam</h3>
                   <p className="text-xs text-stone-500">
-                    Ulang tahun ruas, jadwal koor minggu depan, partangiangan lingkungan, dan warta dinamis.
+                    Ulang tahun ruas (otomatis dari database), jadwal koor minggu depan, partangiangan lingkungan, dan warta dinamis.
                   </p>
                 </div>
                 <span className="bg-blue-100 text-blue-900 text-xs font-bold px-2.5 py-0.5 rounded-full">
@@ -1496,27 +1578,71 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                 </span>
               </div>
 
-              {/* Ulang Tahun Ruas */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+              {/* Ulang Tahun Ruas (Otomatis ditarik dari Database) */}
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h4 className="text-xs font-bold text-stone-900 uppercase">
                       Ruas na Marulang Tahun di Minggu on
                     </h4>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">
                       {ulang_tahun.length} Halak
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-800 border border-blue-200 font-semibold px-2 py-0.5 rounded-full">
+                      <Database className="w-3 h-3" /> Ditarik Otomatis dari Database
                     </span>
                   </div>
                   <button
+                    type="button"
+                    disabled={isSyncingUltah}
                     onClick={handleSyncUlangTahun}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 cursor-pointer font-medium"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 cursor-pointer font-medium disabled:opacity-50"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Sinkronkan dari Master Anggota
+                    <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${isSyncingUltah ? 'animate-spin' : ''}`} />
+                    <span>{isSyncingUltah ? 'Menarik Data...' : 'Tarik Ulang dari Database'}</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-stone-500">
-                  Otomatis dihitung berdasarkan rentang Senin s/d Minggu tanggal warta ({warta.tanggal_minggu}) dan dicetak dalam 2 kolom berdampingan.
-                </p>
+                {(() => {
+                  const range = getSeninMingguRange(warta.tanggal_minggu);
+                  return (
+                    <p className="text-[11px] text-stone-500">
+                      Periode ulang tahun otomatis: <strong className="text-stone-700">{range.labelPeriode}</strong> (disaring langsung dari database anggota aktif &amp; dicetak 2 kolom berdampingan).
+                    </p>
+                  );
+                })()}
+
+                {ulang_tahun && ulang_tahun.length > 0 ? (
+                  <div className="overflow-x-auto border border-stone-200 rounded-lg max-h-56 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-stone-100 text-stone-700 border-b border-stone-200 sticky top-0">
+                        <tr>
+                          <th className="py-1.5 px-2 text-center w-9">No</th>
+                          <th className="py-1.5 px-2 text-left">Nama Jemaat</th>
+                          <th className="py-1.5 px-2 text-center w-10">L/P</th>
+                          <th className="py-1.5 px-2 text-center w-16">Tgl/Bln</th>
+                          <th className="py-1.5 px-2 text-center w-16">Usia</th>
+                          <th className="py-1.5 px-2 text-left">Lingkungan / Wijk</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {ulang_tahun.map((u, idx) => (
+                          <tr key={idx} className="hover:bg-stone-50">
+                            <td className="py-1 px-2 text-center text-stone-500">{idx + 1}.</td>
+                            <td className="py-1 px-2 font-semibold text-stone-900">{u.nama}</td>
+                            <td className="py-1 px-2 text-center text-stone-600">{u.jenis_kelamin}</td>
+                            <td className="py-1 px-2 text-center font-mono-num">{u.hari_bulan}</td>
+                            <td className="py-1 px-2 text-center font-bold text-stone-800">{u.usia} Thn</td>
+                            <td className="py-1 px-2 text-stone-600">{u.wijk}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-3 text-center text-[11px] text-stone-500 bg-stone-50 rounded-lg border border-dashed border-stone-200">
+                    Tidak ada anggota jemaat yang berulang tahun pada periode minggu ini. Data akan otomatis muncul bila tanggal lahir anggota tersedia di Master Data Anggota.
+                  </div>
+                )}
               </div>
 
               {/* Jadwal Koor Minggu Depan */}

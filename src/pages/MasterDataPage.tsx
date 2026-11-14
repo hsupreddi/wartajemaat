@@ -63,11 +63,13 @@ import {
   AlertCircle,
   Calendar,
   DollarSign,
-  Download
+  Download,
+  UserCheck
 } from 'lucide-react';
 import { KopLogoEditor } from '../components/admin/KopLogoEditor';
 import { MingguLiturgiManager } from '../components/admin/MingguLiturgiManager';
 import { MasterKeuanganManager } from '../components/admin/MasterKeuanganManager';
+import { MasterPetugasManager } from '../components/admin/MasterPetugasManager';
 
 export const MasterDataPage: React.FC = () => {
   const navigate = useNavigate();
@@ -75,9 +77,9 @@ export const MasterDataPage: React.FC = () => {
   const { currentRole, canManageSettings } = useAuth();
 
   const initialTab = searchParams.get('tab');
-  const validTabs = ['anggota', 'keluarga', 'minggu', 'keuangan', 'impor', 'jadwal', 'lingkungan', 'pengaturan'] as const;
+  const validTabs = ['anggota', 'keluarga', 'petugas', 'minggu', 'keuangan', 'impor', 'jadwal', 'lingkungan', 'pengaturan'] as const;
   const [activeTab, setActiveTab] = useState<
-    'anggota' | 'keluarga' | 'minggu' | 'keuangan' | 'impor' | 'jadwal' | 'lingkungan' | 'pengaturan'
+    'anggota' | 'keluarga' | 'petugas' | 'minggu' | 'keuangan' | 'impor' | 'jadwal' | 'lingkungan' | 'pengaturan'
   >(validTabs.includes(initialTab as any) ? (initialTab as any) : 'anggota');
 
   // Supabase / Demo Jemaat State
@@ -709,6 +711,18 @@ export const MasterDataPage: React.FC = () => {
           >
             <Home className="w-4 h-4 text-amber-400 shrink-0" />
             <span>Data Keluarga ({keluargaTotal})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('petugas')}
+            className={`px-3.5 py-2.5 rounded-lg text-xs md:text-sm font-bold transition whitespace-nowrap shrink-0 flex items-center gap-2 cursor-pointer min-h-[44px] ${
+              activeTab === 'petugas'
+                ? 'bg-[#0B2545] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+            }`}
+          >
+            <UserCheck className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Sintua &amp; Pengurus</span>
           </button>
 
           <button
@@ -1559,6 +1573,13 @@ export const MasterDataPage: React.FC = () => {
               </button>
             </div>
           </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 2b: SINTUA & PENGURUS (PARHOBAS) */}
+        {/* ========================================================= */}
+        {activeTab === 'petugas' && (
+          <MasterPetugasManager lingkunganList={lingkunganList} onNotify={showToast} />
         )}
 
         {/* ========================================================= */}

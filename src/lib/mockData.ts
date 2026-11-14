@@ -138,23 +138,26 @@ import { OFFICIAL_HKBP_MINGGU_LITURGI } from './masterMingguData';
 export const MASTER_MINGGU_LITURGI: MingguLiturgi[] = OFFICIAL_HKBP_MINGGU_LITURGI;
 
 export const MASTER_PETUGAS: PetugasMaster[] = [
-  { id: 'pet-1', nama: 'Pdt. H. Simanjuntak, S.Th', jabatan: 'Pendeta Ressort', peran_default: 'Jamita', aktif: true },
-  { id: 'pet-2', nama: 'Pdt. R. Siregar, M.Th', jabatan: 'Pendeta Fungsional', peran_default: 'Jamita', aktif: true },
-  { id: 'pet-3', nama: 'Bvr. S. br. Tinambunan', jabatan: 'Bibelvrouw', peran_default: 'Agenda', aktif: true },
-  { id: 'pet-4', nama: 'Gr. T. Situmorang', jabatan: 'Guru Huria', peran_default: 'Agenda', aktif: true },
-  { id: 'pet-5', nama: 'St. Ramses Sitohang', jabatan: 'Sintua', peran_default: 'Agenda', lingkungan: 'Lingkungan Letare', aktif: true },
-  { id: 'pet-6', nama: 'St. Marudut Simarmata', jabatan: 'Sintua', peran_default: 'Tingting', lingkungan: 'Lingkungan Efesus', aktif: true },
-  { id: 'pet-7', nama: 'St. Jansen Nababan', jabatan: 'Sintua', peran_default: 'Pelean', lingkungan: 'Lingkungan Judika', aktif: true },
-  { id: 'pet-8', nama: 'St. Parlindungan Sihombing', jabatan: 'Sintua', peran_default: 'Tingting', lingkungan: 'Lingkungan Exaudi', aktif: true },
-  { id: 'pet-9', nama: 'St. Daniel Nainggolan', jabatan: 'Sintua', peran_default: 'Pelean', lingkungan: 'Lingkungan Galatia', aktif: true },
-  { id: 'pet-10', nama: 'St. Toga Pane', jabatan: 'Sintua', peran_default: 'Harentaon', lingkungan: 'Lingkungan Jeremia', aktif: true },
-  { id: 'pet-11', nama: 'St. K. Purba', jabatan: 'Sintua', peran_default: 'Pelean', lingkungan: 'Lingkungan Letare', aktif: true },
-  { id: 'pet-12', nama: 'CSt. L. Gultom', jabatan: 'Calon Sintua', peran_default: 'Pelean', lingkungan: 'Lingkungan Exaudi', aktif: true },
-  { id: 'pet-13', nama: 'GSM Dina br. Bakkara', jabatan: 'Guru Sekolah Minggu', peran_default: 'Agenda', aktif: true },
-  { id: 'pet-14', nama: 'GSM Rina br. Manalu', jabatan: 'Guru Sekolah Minggu', peran_default: 'Pelean', aktif: true },
-  { id: 'pet-15', nama: 'Yosua Sitohang', jabatan: 'Organis Huria', peran_default: 'Organis', aktif: true },
-  { id: 'pet-16', nama: 'Ester br. Silalahi', jabatan: 'Organis Huria', peran_default: 'Organis', aktif: true },
-  { id: 'pet-17', nama: 'David Simarmata', jabatan: 'Organis Huria', peran_default: 'Organis', aktif: true }
+  { id: 'pet-1', nama: 'Pdt. H. Simanjuntak, S.Th', jabatan: 'Pendeta Ressort', peran_default: 'Jamita', aktif: true, urutan: 1 },
+  { id: 'pet-2', nama: 'Pdt. R. Siregar, M.Th', jabatan: 'Pendeta Fungsional', peran_default: 'Jamita', aktif: true, urutan: 2 },
+  { id: 'pet-3', nama: 'Bvr. S. br. Tinambunan', jabatan: 'Bibelvrouw', peran_default: 'Agenda', aktif: true, urutan: 3 },
+  { id: 'pet-4', nama: 'Gr. T. Situmorang', jabatan: 'Guru Huria', peran_default: 'Agenda', aktif: true, urutan: 4 },
+  { id: 'pet-5', nama: 'St. R. Sitohang', jabatan: 'Sintua', peran_default: 'Jamita', lingkungan: 'Lingkungan Letare', aktif: true, urutan: 5 },
+  { id: 'pet-6', nama: 'St. M. Simarmata', jabatan: 'Sintua', peran_default: 'Agenda', lingkungan: 'Lingkungan Efesus', aktif: true, urutan: 6 },
+  { id: 'pet-7', nama: 'St. J. Nababan', jabatan: 'Sintua', peran_default: 'Agenda', lingkungan: 'Lingkungan Judika', aktif: true, urutan: 7 },
+  { id: 'pet-8', nama: 'St. P. Sihombing', jabatan: 'Sintua', peran_default: 'Tingting', lingkungan: 'Lingkungan Exaudi', aktif: true, urutan: 8 },
+  { id: 'pet-9', nama: 'St. E. Hutasoit', jabatan: 'Sintua', peran_default: 'Tingting', lingkungan: 'Lingkungan Galatia', aktif: true, urutan: 9 },
+  { id: 'pet-10', nama: 'St. K. Purba', jabatan: 'Sintua', peran_default: 'Pelean', lingkungan: 'Lingkungan Letare', aktif: true, urutan: 10 },
+  { id: 'pet-11', nama: 'CSt. L. Gultom', jabatan: 'Calon Sintua', peran_default: 'Pelean', lingkungan: 'Lingkungan Exaudi', aktif: true, urutan: 11 },
+  { id: 'pet-12', nama: 'St. D. Nainggolan', jabatan: 'Sintua', peran_default: 'Pelean', lingkungan: 'Lingkungan Galatia', aktif: true, urutan: 12 },
+  { id: 'pet-13', nama: 'St. T. Pane', jabatan: 'Sintua', peran_default: 'Pelean', lingkungan: 'Lingkungan Jeremia', aktif: true, urutan: 13 },
+  { id: 'pet-14', nama: 'CSt. B. Silalahi', jabatan: 'Calon Sintua', peran_default: 'Harentaon', lingkungan: 'Lingkungan Galatia', aktif: true, urutan: 14 },
+  { id: 'pet-15', nama: 'St. A. Pakpahan', jabatan: 'Sintua', peran_default: 'Harentaon', lingkungan: 'Lingkungan Judika', aktif: true, urutan: 15 },
+  { id: 'pet-16', nama: 'GSM Dina br. Bakkara', jabatan: 'Guru Sekolah Minggu', peran_default: 'Agenda', aktif: true, urutan: 16 },
+  { id: 'pet-17', nama: 'GSM Rina br. Manalu', jabatan: 'Guru Sekolah Minggu', peran_default: 'Pelean', aktif: true, urutan: 17 },
+  { id: 'pet-18', nama: 'Yosua Sitohang', jabatan: 'Organis Huria', peran_default: 'Organis', aktif: true, urutan: 18 },
+  { id: 'pet-19', nama: 'Ester br. Silalahi', jabatan: 'Organis Huria', peran_default: 'Organis', aktif: true, urutan: 19 },
+  { id: 'pet-20', nama: 'David Simarmata', jabatan: 'Organis Huria', peran_default: 'Organis', aktif: true, urutan: 20 }
 ];
 
 export const MASTER_PERAN_PARHOBAS: PeranParhobasMaster[] = [

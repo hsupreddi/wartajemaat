@@ -245,6 +245,34 @@ CREATE POLICY "Admin dan sekretaris dapat mengelola lingkungan"
   USING (public.has_pengurus_role(ARRAY['admin', 'sekretaris']))
   WITH CHECK (public.has_pengurus_role(ARRAY['admin', 'sekretaris']));
 
+-- 2b. Master Sintua, Pelayan & Pengurus (Parhobas)
+CREATE TABLE IF NOT EXISTS public.master_petugas (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL,
+  jabatan TEXT NOT NULL DEFAULT 'Sintua',
+  peran_default TEXT DEFAULT '',
+  lingkungan TEXT DEFAULT '',
+  aktif BOOLEAN NOT NULL DEFAULT true,
+  urutan INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_master_petugas_aktif ON public.master_petugas (aktif, urutan, nama);
+ALTER TABLE public.master_petugas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Master petugas dapat dibaca publik" ON public.master_petugas;
+CREATE POLICY "Master petugas dapat dibaca publik"
+  ON public.master_petugas FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Admin dan sekretaris dapat mengelola master petugas" ON public.master_petugas;
+CREATE POLICY "Admin dan sekretaris dapat mengelola master petugas"
+  ON public.master_petugas FOR ALL
+  TO authenticated
+  USING (public.has_pengurus_role(ARRAY['admin', 'sekretaris']))
+  WITH CHECK (public.has_pengurus_role(ARRAY['admin', 'sekretaris']));
+
 
 -- 3. MASTER 63 MINGGU LITURGI HKBP
 -- ============================================================================
@@ -871,4 +899,27 @@ INSERT INTO public.jadwal_tetap (id, kelompok, label, hari, jam, keterangan, uru
   ('jt12', 'kemajelisan', 'Sermon GSM', 'Jumat', '17.00 WIB', 'Ruang Guru SKM', 12),
   ('jt13', 'kemajelisan', 'Sermon Parhalado', 'Jumat', '19.00 WIB', 'Ruang Konsistori', 13),
   ('jt14', 'kemajelisan', 'Marguru / Naek Sidi', 'Minggu', '12.30 WIB', 'Gereja Utama', 14)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.master_petugas (id, nama, jabatan, peran_default, lingkungan, aktif, urutan) VALUES
+  ('pet-1', 'Pdt. H. Simanjuntak, S.Th', 'Pendeta Ressort', 'Jamita', '', true, 1),
+  ('pet-2', 'Pdt. R. Siregar, M.Th', 'Pendeta Fungsional', 'Jamita', '', true, 2),
+  ('pet-3', 'Bvr. S. br. Tinambunan', 'Bibelvrouw', 'Agenda', '', true, 3),
+  ('pet-4', 'Gr. T. Situmorang', 'Guru Huria', 'Agenda', '', true, 4),
+  ('pet-5', 'St. R. Sitohang', 'Sintua', 'Jamita', 'Lingkungan Letare', true, 5),
+  ('pet-6', 'St. M. Simarmata', 'Sintua', 'Agenda', 'Lingkungan Efesus', true, 6),
+  ('pet-7', 'St. J. Nababan', 'Sintua', 'Agenda', 'Lingkungan Judika', true, 7),
+  ('pet-8', 'St. P. Sihombing', 'Sintua', 'Tingting', 'Lingkungan Exaudi', true, 8),
+  ('pet-9', 'St. E. Hutasoit', 'Sintua', 'Tingting', 'Lingkungan Galatia', true, 9),
+  ('pet-10', 'St. K. Purba', 'Sintua', 'Pelean', 'Lingkungan Letare', true, 10),
+  ('pet-11', 'CSt. L. Gultom', 'Calon Sintua', 'Pelean', 'Lingkungan Exaudi', true, 11),
+  ('pet-12', 'St. D. Nainggolan', 'Sintua', 'Pelean', 'Lingkungan Galatia', true, 12),
+  ('pet-13', 'St. T. Pane', 'Sintua', 'Pelean', 'Lingkungan Jeremia', true, 13),
+  ('pet-14', 'CSt. B. Silalahi', 'Calon Sintua', 'Harentaon', 'Lingkungan Galatia', true, 14),
+  ('pet-15', 'St. A. Pakpahan', 'Sintua', 'Harentaon', 'Lingkungan Judika', true, 15),
+  ('pet-16', 'GSM Dina br. Bakkara', 'Guru Sekolah Minggu', 'Agenda', '', true, 16),
+  ('pet-17', 'GSM Rina br. Manalu', 'Guru Sekolah Minggu', 'Pelean', '', true, 17),
+  ('pet-18', 'Yosua Sitohang', 'Organis Huria', 'Organis', '', true, 18),
+  ('pet-19', 'Ester br. Silalahi', 'Organis Huria', 'Organis', '', true, 19),
+  ('pet-20', 'David Simarmata', 'Organis Huria', 'Organis', '', true, 20)
 ON CONFLICT (id) DO NOTHING;

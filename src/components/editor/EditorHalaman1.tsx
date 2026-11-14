@@ -1,7 +1,11 @@
-import React from 'react';
-import { FullWartaData, MingguLiturgi } from '../../types';
-import { Plus, Trash2, ArrowUp, ArrowDown, Calendar, Users, Music } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { FullWartaData, PetugasMaster } from '../../types';
+import { Plus, Trash2, ArrowUp, ArrowDown, Calendar, Users, Music, UserCheck } from 'lucide-react';
 import { MingguLiturgiDropdown } from '../common/MingguLiturgiDropdown';
+import { PetugasSelectCell } from './PetugasSelectCell';
+import { listMasterPetugas } from '../../lib/petugasApi';
+import { getSeninMingguRange } from '../../lib/dateUtils';
+import { getUlangTahun } from '../../lib/jemaatApi';
 
 interface EditorHalaman1Props {
   data: FullWartaData;
@@ -11,6 +15,15 @@ interface EditorHalaman1Props {
 
 export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, disabled }) => {
   const { warta, acara_minggu, acara_partangiangan, parhobas, sopo_godang } = data;
+  const [masterPetugas, setMasterPetugas] = useState<PetugasMaster[]>([]);
+  const latestDataRef = useRef(data);
+  latestDataRef.current = data;
+
+  useEffect(() => {
+    listMasterPetugas({ activeOnly: true })
+      .then((res) => setMasterPetugas(res.data))
+      .catch(() => {});
+  }, []);
 
   const updateWartaField = (field: string, val: any) => {
     onChange({
@@ -20,6 +33,36 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
         [field]: val
       }
     });
+  };
+
+  const handleTanggalMingguChange = async (newDate: string) => {
+    const updatedBase: FullWartaData = {
+      ...data,
+      warta: {
+        ...data.warta,
+        tanggal_minggu: newDate
+      }
+    };
+    onChange(updatedBase);
+
+    if (!newDate) return;
+    try {
+      const { seninStr, mingguStr } = getSeninMingguRange(newDate);
+      const ultah = await getUlangTahun(seninStr, mingguStr);
+      if (latestDataRef.current.warta.tanggal_minggu === newDate) {
+        onChange({
+          ...latestDataRef.current,
+          ulang_tahun: ultah,
+          warta: {
+            ...latestDataRef.current.warta,
+            tanggal_minggu: newDate,
+            ulang_tahun_snapshot: ultah
+          }
+        });
+      }
+    } catch {
+      // Abaikan jika gagal tarik otomatis
+    }
   };
 
   // Acara Minggu list handlers
@@ -131,7 +174,7 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
               type="date"
               disabled={disabled}
               value={warta.tanggal_minggu}
-              onChange={(e) => updateWartaField('tanggal_minggu', e.target.value)}
+              onChange={(e) => handleTanggalMingguChange(e.target.value)}
               className="w-full px-3 py-2 text-xs border border-stone-300 rounded focus:ring-1 focus:ring-blue-600 focus:outline-none"
             />
           </div>
@@ -425,13 +468,18 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
 
       {/* 5. PARHOBAS MINGGU (6 Baris x 3 Sesi) */}
       <div className="bg-white p-5 rounded-lg border border-stone-200 shadow-sm space-y-3">
-        <div className="border-b border-stone-100 pb-2">
-          <h3 className="font-bold text-stone-900 text-sm md:text-base">
-            Parhobas Minggu (Pelayan Ibadah)
-          </h3>
-          <p className="text-xs text-stone-500">
-            Daftar pelayan firman, agenda, warta, persembahan, organis, dan harentaon.
-          </p>
+        <div className="border-b border-stone-100 pb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="font-bold text-stone-900 text-sm md:text-base">
+              Parhobas Minggu (Pelayan Ibadah)
+            </h3>
+            <p className="text-xs text-stone-500">
+              Pilih nama Sintua, Pendeta, Organis, &amp; Pengurus langsung dari database sistem (klik panah dropdown di kolom).
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[11px] bg-blue-50 text-blue-800 px-2.5 py-0.5 rounded-full font-semibold border border-blue-200">
+            <UserCheck className="w-3.5 h-3.5" /> {masterPetugas.length} Pelayan di Sistem
+          </span>
         </div>
 
         <div className="overflow-x-auto">
@@ -449,30 +497,33 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
                 <tr key={p.id || idx}>
                   <td className="py-1.5 px-2 font-bold text-stone-900 bg-stone-50">{p.peran}</td>
                   <td className="py-1.5 px-2">
-                    <input
-                      type="text"
+                    <PetugasSelectCell
                       disabled={disabled}
                       value={p.skm || ''}
-                      onChange={(e) => handleUpdateParhobas(idx, 'skm', e.target.value)}
-                      className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      onChange={(val) => handleUpdateParhobas(idx, 'skm', val)}
+                      petugasList={masterPetugas}
+                      peranRow={p.peran}
+                      compact
                     />
                   </td>
                   <td className="py-1.5 px-2">
-                    <input
-                      type="text"
+                    <PetugasSelectCell
                       disabled={disabled}
                       value={p.sesi1 || ''}
-                      onChange={(e) => handleUpdateParhobas(idx, 'sesi1', e.target.value)}
-                      className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      onChange={(val) => handleUpdateParhobas(idx, 'sesi1', val)}
+                      petugasList={masterPetugas}
+                      peranRow={p.peran}
+                      compact
                     />
                   </td>
                   <td className="py-1.5 px-2">
-                    <input
-                      type="text"
+                    <PetugasSelectCell
                       disabled={disabled}
                       value={p.sesi2 || ''}
-                      onChange={(e) => handleUpdateParhobas(idx, 'sesi2', e.target.value)}
-                      className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      onChange={(val) => handleUpdateParhobas(idx, 'sesi2', val)}
+                      petugasList={masterPetugas}
+                      peranRow={p.peran}
+                      compact
                     />
                   </td>
                 </tr>
