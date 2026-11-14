@@ -4,9 +4,17 @@ import {
   buildAnggotaTemplateCsv,
   normalizeCsvHeader,
   cleanRegistrasiValue,
+  isValidCalendarDate,
+  parseDateValueWithInfo,
   normalizeDateValue
 } from '../jemaatTemplates';
-import { upsertAnggota, upsertKeluarga, listAnggota, listKeluarga } from '../jemaatApi';
+import {
+  upsertAnggota,
+  upsertKeluarga,
+  batchUpsertAnggota,
+  listAnggota,
+  listKeluarga
+} from '../jemaatApi';
 
 describe('jemaatTemplates & CSV normalization', () => {
   it('builds UTF-8 BOM CSV templates preserving leading zeros', () => {
@@ -35,12 +43,37 @@ describe('jemaatTemplates & CSV normalization', () => {
     expect(cleanRegistrasiValue("'0205")).toBe('0205');
   });
 
-  it('normalizes YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, and empty dates', () => {
+  it('normalizes YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, ISO timestamps, and rejects calendar-invalid dates', () => {
+    expect(isValidCalendarDate(2006, 11, 31)).toBe(false);
+    expect(isValidCalendarDate(2001, 2, 29)).toBe(false);
+    expect(isValidCalendarDate(2000, 2, 29)).toBe(true);
+
     expect(normalizeDateValue('1990-08-17')).toBe('1990-08-17');
     expect(normalizeDateValue('17/08/1990')).toBe('1990-08-17');
     expect(normalizeDateValue('5-3-2001')).toBe('2001-03-05');
-    expect(normalizeDateValue('')).toBeNull();
-    expect(normalizeDateValue('-')).toBeNull();
+    expect(normalizeDateValue('2006-09-22T00:00:00Z')).toBe('2006-09-22');
+    expect(normalizeDateValue('11/25/2006')).toBe('2006-11-25');
+    expect(normalizeDateValue('20061125')).toBe('2006-11-25');
+    expect(normalizeDateValue('2000-02-29')).toBe('2000-02-29');
+
+    expect(parseDateValueWithInfo('2006-11-31')).toEqual({
+      value: null,
+      invalidRaw: '2006-11-31'
+    });
+    expect(parseDateValueWithInfo('2001-02-29')).toEqual({
+      value: null,
+      invalidRaw: '2001-02-29'
+    });
+    expect(parseDateValueWithInfo('1999-13-01')).toEqual({
+      value: null,
+      invalidRaw: '1999-13-01'
+    });
+    expect(parseDateValueWithInfo('0000-00-00')).toEqual({
+      value: null,
+      invalidRaw: '0000-00-00'
+    });
+    expect(parseDateValueWithInfo('')).toEqual({ value: null });
+    expect(parseDateValueWithInfo('-')).toEqual({ value: null });
   });
 });
 
@@ -113,5 +146,47 @@ describe('jemaatApi Demo CRUD & FK safety', () => {
 
     const angRes = await listAnggota({ registrasi: '0889' });
     expect(angRes.data.some((a) => a.nama === 'Anggota Uji')).toBe(true);
+  });
+
+  it('batchUpsertAnggota sanitizes out-of-range dates to null and replaces non-UUID ids', async () => {
+    const res = await batchUpsertAnggota([
+      {
+        id: 'ang-imp-1',
+        registrasi: '0777',
+        nama: 'Ruas Tanggal Bermasalah',
+        jenis_kelamin: 'P',
+        tgl_lahir: '2006-11-31',
+        tgl_baptis: '2001-02-29',
+        tgl_sidi: '2006-09-22T00:00:00Z',
+        hub_keluarga: 'Anak',
+        wijk: 'EXAUDI',
+        aktif: true
+      },
+      {
+        id: '42',
+        registrasi: '0777',
+        nama: 'Ruas Valid',
+        jenis_kelamin: 'L',
+        tgl_lahir: '1973-09-06',
+        tgl_baptis: null,
+        tgl_sidi: null,
+        hub_keluarga: 'Kepala Keluarga',
+        wijk: 'EXAUDI',
+        aktif: true
+      }
+    ]);
+
+    expect(res.successCount).toBe(2);
+    expect(res.errors).toHaveLength(0);
+
+    const angRes = await listAnggota({ registrasi: '0777' });
+    const problematic = angRes.data.find((a) => a.nama === 'Ruas Tanggal Bermasalah');
+    expect(problematic).toBeDefined();
+    expect(problematic?.tgl_lahir).toBeNull();
+    expect(problematic?.tgl_baptis).toBeNull();
+    expect(problematic?.tgl_sidi).toBe('2006-09-22');
+    expect(problematic?.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
   });
 });

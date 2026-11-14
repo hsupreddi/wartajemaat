@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase';
+import { normalizeDateValue } from './jemaatTemplates';
 import {
   Keluarga,
   Anggota,
@@ -510,19 +511,15 @@ function generateEntityUuid(): string {
   });
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function resolveEntityUuid(rawId?: string): string {
+  const s = String(rawId || '').trim();
+  return UUID_REGEX.test(s) ? s : generateEntityUuid();
+}
+
 function normalizeDateField(val?: string | null): string | null {
-  if (!val) return null;
-  const s = String(val).trim();
-  if (!s || s === '-' || s.toLowerCase() === 'null') return null;
-  const iso = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-  if (iso) {
-    return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
-  }
-  const dmy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (dmy) {
-    return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
-  }
-  return s;
+  return normalizeDateValue(val);
 }
 
 function formatSupabaseJemaatError(err: any, fallbackPrefix: string): Error {
@@ -544,9 +541,12 @@ function formatSupabaseJemaatError(err: any, fallbackPrefix: string): Error {
       `${fallbackPrefix}: Tabel database jemaat belum tersedia di Supabase. Jalankan file supabase_jemaat.sql di Supabase SQL Editor terlebih dahulu.`
     );
   }
-  if (lower.includes('invalid input syntax for type date')) {
+  if (
+    lower.includes('invalid input syntax for type date') ||
+    lower.includes('date/time field value out of range')
+  ) {
     return new Error(
-      `${fallbackPrefix}: Format tanggal tidak valid. Gunakan format YYYY-MM-DD (contoh: 1995-08-17).`
+      `${fallbackPrefix}: Terdapat tanggal tidak valid di luar kalender (${msg}). Periksa format tanggal YYYY-MM-DD (misal bulan November maksimal tanggal 30).`
     );
   }
   return new Error(`${fallbackPrefix}: ${msg || 'Terjadi kesalahan pada database.'}`);
@@ -692,9 +692,7 @@ export async function upsertAnggota(
   }
 
   const item: Anggota = {
-    id: anggota.id && !String(anggota.id).startsWith('ang-tmp-')
-      ? String(anggota.id)
-      : generateEntityUuid(),
+    id: resolveEntityUuid(anggota.id),
     registrasi: cleanReg,
     nama: cleanNama,
     jenis_kelamin: anggota.jenis_kelamin === 'P' ? 'P' : 'L',
@@ -869,7 +867,7 @@ export async function batchUpsertAnggota(
 
   const sanitizedRows: Anggota[] = rows.map((r) => ({
     ...r,
-    id: r.id && !String(r.id).startsWith('ang-imp-') ? String(r.id) : generateEntityUuid(),
+    id: resolveEntityUuid(r.id),
     registrasi: String(r.registrasi).trim(),
     nama: String(r.nama).trim(),
     jenis_kelamin: r.jenis_kelamin === 'P' ? 'P' : 'L',

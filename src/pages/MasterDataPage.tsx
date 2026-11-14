@@ -35,7 +35,8 @@ import {
   downloadCsvFile,
   normalizeCsvHeader,
   cleanRegistrasiValue,
-  normalizeDateValue
+  normalizeDateValue,
+  parseDateValueWithInfo
 } from '../lib/jemaatTemplates';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -424,8 +425,27 @@ export const MasterDataPage: React.FC = () => {
             return;
           }
 
-          const tglLahir = normalizeDateValue(r.tgl_lahir);
-          if (!tglLahir) {
+          const lahirParsed = parseDateValueWithInfo(r.tgl_lahir);
+          const baptisParsed = parseDateValueWithInfo(r.tgl_baptis);
+          const sidiParsed = parseDateValueWithInfo(r.tgl_sidi);
+
+          if (lahirParsed.invalidRaw) {
+            warnings.push(
+              `[anggota.csv] Baris #${idx + 2} (${nama}): tgl_lahir "${lahirParsed.invalidRaw}" tidak valid di kalender -> dikosongkan (NULL) agar impor tetap berhasil.`
+            );
+          }
+          if (baptisParsed.invalidRaw) {
+            warnings.push(
+              `[anggota.csv] Baris #${idx + 2} (${nama}): tgl_baptis "${baptisParsed.invalidRaw}" tidak valid di kalender -> dikosongkan (NULL).`
+            );
+          }
+          if (sidiParsed.invalidRaw) {
+            warnings.push(
+              `[anggota.csv] Baris #${idx + 2} (${nama}): tgl_sidi "${sidiParsed.invalidRaw}" tidak valid di kalender -> dikosongkan (NULL).`
+            );
+          }
+
+          if (!lahirParsed.value) {
             emptyBirthdays += 1;
           }
 
@@ -444,9 +464,9 @@ export const MasterDataPage: React.FC = () => {
             registrasi: reg,
             nama,
             jenis_kelamin: jk,
-            tgl_lahir: tglLahir,
-            tgl_baptis: normalizeDateValue(r.tgl_baptis),
-            tgl_sidi: normalizeDateValue(r.tgl_sidi),
+            tgl_lahir: lahirParsed.value,
+            tgl_baptis: baptisParsed.value,
+            tgl_sidi: sidiParsed.value,
             hub_keluarga: String(r.hub_keluarga || 'Anggota').trim() || 'Anggota',
             wijk: String(r.wijk || '').trim() || lingkunganList[0]?.nama || 'Lingkungan Letare',
             aktif: isAktif

@@ -149,29 +149,88 @@ export function cleanRegistrasiValue(raw: unknown): string {
   return s;
 }
 
-export function normalizeDateValue(raw: unknown): string | null {
-  const s = String(raw ?? '').trim();
-  if (!s || s === '-' || s.toLowerCase() === 'null' || s.toLowerCase() === 'kosong') {
-    return null;
+export function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return false;
   }
-
-  // YYYY-MM-DD or YYYY/MM/DD
-  const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-  if (isoMatch) {
-    const [, y, m, d] = isoMatch;
-    const mm = m.padStart(2, '0');
-    const dd = d.padStart(2, '0');
-    return `${y}-${mm}-${dd}`;
+  if (year < 1850 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return false;
   }
-
-  // DD-MM-YYYY or DD/MM/YYYY
-  const dmyMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (dmyMatch) {
-    const [, d, m, y] = dmyMatch;
-    const mm = m.padStart(2, '0');
-    const dd = d.padStart(2, '0');
-    return `${y}-${mm}-${dd}`;
-  }
-
-  return null;
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  return (
+    dt.getUTCFullYear() === year &&
+    dt.getUTCMonth() === month - 1 &&
+    dt.getUTCDate() === day
+  );
 }
+
+export function parseDateValueWithInfo(raw: unknown): {
+  value: string | null;
+  invalidRaw?: string;
+} {
+  let s = String(raw ?? '').trim();
+  if (!s || s === '-' || s === '0' || s.toLowerCase() === 'null' || s.toLowerCase() === 'kosong') {
+    return { value: null };
+  }
+
+  // Strip ISO timestamp time component if present (e.g. 2006-09-22T00:00:00.000Z)
+  const isoTimeMatch = s.match(/^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})[T\s].*$/);
+  if (isoTimeMatch) {
+    s = isoTimeMatch[1];
+  }
+
+  // 1. YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
+  const isoMatch = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (isoMatch) {
+    const y = Number(isoMatch[1]);
+    const m = Number(isoMatch[2]);
+    const d = Number(isoMatch[3]);
+    if (isValidCalendarDate(y, m, d)) {
+      return {
+        value: `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      };
+    }
+    return { value: null, invalidRaw: s };
+  }
+
+  // 2. DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY (with smart MM/DD/YYYY fallback if middle > 12)
+  const dmyMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmyMatch) {
+    const first = Number(dmyMatch[1]);
+    const second = Number(dmyMatch[2]);
+    const y = Number(dmyMatch[3]);
+
+    if (isValidCalendarDate(y, second, first)) {
+      return {
+        value: `${String(y).padStart(4, '0')}-${String(second).padStart(2, '0')}-${String(first).padStart(2, '0')}`
+      };
+    }
+    if (second > 12 && first <= 12 && isValidCalendarDate(y, first, second)) {
+      return {
+        value: `${String(y).padStart(4, '0')}-${String(first).padStart(2, '0')}-${String(second).padStart(2, '0')}`
+      };
+    }
+    return { value: null, invalidRaw: s };
+  }
+
+  // 3. Compact YYYYMMDD
+  const compactMatch = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compactMatch) {
+    const y = Number(compactMatch[1]);
+    const m = Number(compactMatch[2]);
+    const d = Number(compactMatch[3]);
+    if (isValidCalendarDate(y, m, d)) {
+      return {
+        value: `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      };
+    }
+    return { value: null, invalidRaw: s };
+  }
+
+  return { value: null, invalidRaw: s };
+}
+
+export function normalizeDateValue(raw: unknown): string | null {
+  return parseDateValueWithInfo(raw).value;
+}
+
