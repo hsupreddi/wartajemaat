@@ -47,10 +47,10 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
           )}
         </div>
 
-        {/* 2 Kolom Layout Utama: Sidebar 24% & Kolom Kanan 76% (Sejajar Penuh) */}
-        <div className="flex-1 flex flex-row gap-3 items-stretch">
+        {/* 2 Kolom Layout Utama: Sidebar 23% & Kolom Kanan 77% (Sejajar Penuh) */}
+        <div className="flex-1 flex flex-row gap-2.5 items-stretch">
           {/* SIDEBAR KIRI: PANGHOBASION NI HURIA */}
-          <aside className="w-[24%] shrink-0 border-2 border-black p-2 text-[7.5pt] leading-snug bg-stone-50/60 flex flex-col justify-between gap-2.5">
+          <aside className="w-[23%] shrink-0 border-2 border-black p-2 text-[7.4pt] leading-snug bg-stone-50/60 flex flex-col justify-between gap-2.5">
             <div className="space-y-2.5">
               <div className="bg-stone-900 text-white p-1.5 text-center font-bold uppercase tracking-wider text-[7.8pt]">
                 Panghobasion ni Huria
@@ -170,10 +170,10 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
             </div>
           </aside>
 
-          {/* KOLOM KANAN: 76% Width */}
-          <main className="w-[76%] flex flex-col justify-between gap-2.5">
+          {/* KOLOM KANAN: 77% Width */}
+          <main className="w-[77%] flex flex-col justify-between gap-2.5">
             {/* Top Section: Acara Minggu & Acara Partangiangan SIDE-BY-SIDE */}
-            <div className="grid grid-cols-2 gap-2.5 avoid-break">
+            <div className="grid grid-cols-2 gap-2 avoid-break">
               {/* ACARA MINGGU (Col 1) */}
               <div className="border border-stone-400">
                 <div className="bg-stone-200 text-stone-900 font-bold px-2 py-1 text-center uppercase tracking-wider text-[8pt] border-b border-stone-400">
@@ -184,14 +184,20 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                     ? data.acara_minggu_columns
                     : DEFAULT_ACARA_MINGGU_COLUMNS;
                   return (
-                    <table className="w-full border-collapse text-[7.6pt]">
+                    <table className="w-full table-fixed border-collapse text-[7.1pt] leading-tight">
                       <thead>
                         <tr className="bg-stone-100 text-stone-800 border-b border-stone-300">
-                          <th className="w-6 py-1 px-1 text-center font-bold border-r border-stone-300">No</th>
+                          <th className="w-[18px] py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
                           {cols.map((c, ci) => (
                             <th
                               key={c.key}
-                              className={`py-1 px-1.5 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${c.key === 'keterangan' ? 'text-right w-20' : 'text-left'}`}
+                              className={`py-1 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${
+                                c.key === 'keterangan'
+                                  ? 'w-[48px] px-0.5 text-center text-[6.4pt]'
+                                  : c.key === 'tata_ibadah'
+                                    ? 'px-1.5 text-left'
+                                    : 'w-14 px-1 text-left'
+                              }`}
                             >
                               {c.label}
                             </th>
@@ -201,13 +207,17 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                       <tbody className="divide-y divide-stone-200">
                         {acara_minggu.map((item, idx) => (
                           <tr key={item.id || idx} className="hover:bg-stone-50">
-                            <td className="py-0.5 px-1 text-center font-medium text-stone-600 border-r border-stone-200">
+                            <td className="py-0.5 px-0.5 text-center font-medium text-stone-600 border-r border-stone-200 align-top">
                               {item.urutan || idx + 1}.
                             </td>
                             {cols.map((c, ci) => (
                               <td
                                 key={c.key}
-                                className={`py-0.5 px-1.5 ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${c.key === 'keterangan' ? 'text-right font-semibold text-stone-700 text-[7.2pt]' : 'text-stone-900 font-medium'}`}
+                                className={`py-0.5 align-top ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${
+                                  c.key === 'keterangan'
+                                    ? 'px-1 text-right font-semibold text-stone-700 text-[6.6pt] leading-tight break-words'
+                                    : 'px-1.5 text-stone-900 font-medium leading-[1.25]'
+                                }`}
                               >
                                 {item[c.key] || ''}
                               </td>
@@ -230,14 +240,20 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                     ? data.acara_partangiangan_columns
                     : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
                   return (
-                    <table className="w-full border-collapse text-[7.6pt]">
+                    <table className="w-full table-fixed border-collapse text-[7.1pt] leading-tight">
                       <thead>
                         <tr className="bg-stone-100 text-stone-800 border-b border-stone-300">
-                          <th className="w-6 py-1 px-1 text-center font-bold border-r border-stone-300">No</th>
+                          <th className="w-[18px] py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
                           {cols.map((c, ci) => (
                             <th
                               key={c.key}
-                              className={`py-1 px-1.5 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${c.key === 'keterangan' ? 'text-right w-20' : 'text-left'}`}
+                              className={`py-1 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${
+                                c.key === 'keterangan'
+                                  ? 'w-[48px] px-0.5 text-center text-[6.4pt]'
+                                  : c.key === 'tata_ibadah'
+                                    ? 'px-1.5 text-left'
+                                    : 'w-14 px-1 text-left'
+                              }`}
                             >
                               {c.label}
                             </th>
@@ -247,13 +263,17 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                       <tbody className="divide-y divide-stone-200">
                         {acara_partangiangan.map((item, idx) => (
                           <tr key={item.id || idx} className="hover:bg-stone-50">
-                            <td className="py-0.5 px-1 text-center font-medium text-stone-600 border-r border-stone-200">
+                            <td className="py-0.5 px-0.5 text-center font-medium text-stone-600 border-r border-stone-200 align-top">
                               {item.urutan || idx + 1}.
                             </td>
                             {cols.map((c, ci) => (
                               <td
                                 key={c.key}
-                                className={`py-0.5 px-1.5 ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${c.key === 'keterangan' ? 'text-right font-semibold text-stone-700 text-[7.2pt]' : 'text-stone-900 font-medium'}`}
+                                className={`py-0.5 align-top ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${
+                                  c.key === 'keterangan'
+                                    ? 'px-1 text-right font-semibold text-stone-700 text-[6.6pt] leading-tight break-words'
+                                    : 'px-1.5 text-stone-900 font-medium leading-[1.25]'
+                                }`}
                               >
                                 {item[c.key] || ''}
                               </td>
