@@ -47,10 +47,10 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
   }
 
   return (
-    <div className="a4-page bg-white text-stone-900 p-4 md:p-[8mm_10mm] print:p-0 flex flex-col justify-between min-h-[297mm] print:min-h-[274mm] print:h-auto box-border">
-      <div className="flex-1 flex flex-col justify-between gap-2.5">
+    <div className="a4-page bg-white text-stone-900 p-4 md:p-[6.5mm_9.5mm] print:p-0 flex flex-col justify-between min-h-[297mm] print:min-h-[274mm] print:h-auto box-border">
+      <div className="flex-1 flex flex-col justify-between gap-2">
         {/* Header Tingting Parhepengon */}
-        <div className="border-b-2 border-stone-900 pb-1.5 text-center">
+        <div data-pdf-block="true" className="border-b-2 border-stone-900 pb-1 text-center">
           <h2 className="font-display font-extrabold text-stone-900 text-sm md:text-base tracking-wider uppercase">
             Tingting Parhepengon (Laporan Keuangan)
           </h2>
@@ -65,8 +65,8 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </div>
 
         {/* A. TABEL PENERIMAAN (28 Baris Master) */}
-        <section className="avoid-break space-y-1">
-          <div className="flex items-center justify-between border-b border-stone-700 pb-0.5">
+        <section className="space-y-1">
+          <div data-pdf-section-header="true" className="flex items-center justify-between border-b border-stone-700 pb-0.5">
             <h3 className="font-bold text-stone-900 text-[8.2pt] uppercase">
               A. Penerimaan (Uang Masuk)
             </h3>
@@ -189,10 +189,10 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </section>
 
         {/* 2 KOLOM SUB-TABEL: B. PELEAN TAON & C. HAMAULIATEON */}
-        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-2.5 text-[7.3pt]">
+        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-2 text-[7.3pt]">
           {/* B. DAFTAR PELEAN TAON */}
-          <section className="avoid-break border border-stone-400 p-1.5 bg-stone-50">
-            <div className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex justify-between">
+          <section className="border border-stone-400 p-1.5 bg-stone-50">
+            <div data-pdf-section-header="true" className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex justify-between">
               <span>B. Rincian Pelean Taon</span>
               <span className="font-mono-num font-semibold">Total: Rp {formatRupiah(peleanTaonTotal)}</span>
             </div>
@@ -227,8 +227,8 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
           </section>
 
           {/* C. DAFTAR HAMAULIATEON */}
-          <section className="avoid-break border border-stone-400 p-1.5 bg-stone-50">
-            <div className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex justify-between">
+          <section className="border border-stone-400 p-1.5 bg-stone-50">
+            <div data-pdf-section-header="true" className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex justify-between">
               <span>C. Rincian Hamauliateon (Ucapan Syukur)</span>
               <span className="font-mono-num font-semibold">Total: Rp {formatRupiah(hamauliateonTotal)}</span>
             </div>
@@ -309,8 +309,8 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
 
         {/* SUB-TABEL SEMENTARA: SUMBANGAN NATAL DIAKONI SOSIAL (MASUK KE KAS SOSIAL HURIA) */}
         {showSumbanganNatal && (
-          <section className="avoid-break border border-stone-400 p-1.5 bg-stone-50">
-            <div className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex items-center justify-between text-[7.5pt]">
+          <section className="border border-stone-400 p-1.5 bg-stone-50">
+            <div data-pdf-section-header="true" className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex items-center justify-between text-[7.5pt]">
               <span>Sumbangan Natal Diakoni Sosial</span>
               <span className="text-[6.8pt] font-semibold text-stone-600 italic">
                 Masuk ke Kas Sosial Huria
@@ -361,8 +361,8 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         )}
 
         {/* D. LAPORAN PENGELUARAN */}
-        <section className="avoid-break space-y-1">
-          <div className="border-b border-stone-700 pb-0.5">
+        <section className="space-y-1">
+          <div data-pdf-section-header="true" className="border-b border-stone-700 pb-0.5">
             <h3 className="font-bold text-stone-900 text-[8.2pt] uppercase">
               D. Pengeluaran (Uang Keluar)
             </h3>
@@ -436,7 +436,7 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </section>
 
         {/* E. REKAPITULASI 5 POS DANA */}
-        <section className="avoid-break space-y-1">
+        <section data-pdf-atomic="true" className="avoid-break space-y-1">
           <div className="flex items-center justify-between border-b border-stone-800 pb-0.5">
             <h3 className="font-bold text-stone-900 text-[8.2pt] uppercase">
               E. Rekapitulasi Kas &amp; Saldo Akhir
@@ -586,7 +586,7 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </section>
 
         {/* F. DAFTAR PEMAKAI SOPO GODANG (Setelah Rekapitulasi Keuangan) */}
-        <section className="avoid-break space-y-1">
+        <section data-pdf-atomic="true" className="avoid-break space-y-1">
           <div className="flex items-center justify-between border-b border-stone-800 pb-0.5">
             <h3 className="font-bold text-stone-900 text-[8.2pt] uppercase">
               F. Daftar Pemakai Sopo Godang (Jadwal Gedung Serbaguna Huria)
@@ -637,17 +637,18 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
           })()}
         </section>
 
-        {/* Teks Penutup Resmi Batak Toba */}
-        <div className="avoid-break text-[7.8pt] italic text-stone-800 border-y border-stone-400 py-1.5 px-3 text-center bg-stone-50 font-serif-body">
+      </div>
+
+      {/* Penutup & Footer Halaman 3 */}
+      <div data-pdf-footer="true" data-pdf-atomic="true" className="avoid-break mt-1.5 space-y-1.5">
+        <div className="text-[7.6pt] italic text-stone-800 border-y border-stone-400 py-1.5 px-3 text-center bg-stone-50 font-serif-body">
           &quot;{pengaturan?.teks_penutup_keuangan ||
             'Molo adong na hurang di tingting on, tapaboa ma tu Uluan ni Huria, manang tu Sintua Lingkunganta, asa boi tapasingkop tu tingting Minggu na naeng ro.'}&quot;
         </div>
-      </div>
-
-      {/* Footer Halaman 3 */}
-      <div className="mt-2 pt-1.5 border-t border-stone-300 flex justify-between items-center text-[7.5pt] text-stone-500">
-        <span>Warta Jemaat HKBP Ressort Hutaraja · Distrik VI Dairi</span>
-        <span>Halaman 3 dari 3</span>
+        <div className="pt-1 border-t border-stone-300 flex justify-between items-center text-[7.3pt] text-stone-500">
+          <span>Warta Jemaat HKBP Ressort Hutaraja · Distrik VI Dairi</span>
+          <span>Halaman 3 dari 3</span>
+        </div>
       </div>
     </div>
   );

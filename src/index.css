@@ -115,6 +115,14 @@
     break-inside: auto;
   }
 
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
   tr {
     page-break-inside: avoid;
     break-inside: avoid;
@@ -145,7 +153,7 @@
 }
 
 .pdf-export-host .a4-page {
-  padding: 8mm 10mm !important;
+  padding: 6.5mm 9.5mm !important;
   width: 210mm !important;
   min-height: 297mm !important;
 }
@@ -161,4 +169,3 @@
 .pdf-export-host .md\:items-center {
   align-items: center !important;
 }
-
