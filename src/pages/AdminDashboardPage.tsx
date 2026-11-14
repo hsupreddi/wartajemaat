@@ -582,7 +582,7 @@ export const AdminDashboardPage: React.FC = () => {
                         )}
 
                         <div className="flex items-center justify-between text-xs text-stone-500 pt-1 border-t border-stone-200/60">
-                          <span>Kehadiran: <strong className="text-stone-800">{totalRuas > 0 ? `${totalRuas} Ruas` : '-'}</strong></span>
+                          <span>Minggu Lalu: <strong className="text-stone-800">{totalRuas > 0 ? `${totalRuas} Ruas` : '-'}</strong></span>
                           
                           <div className="flex items-center gap-1.5">
                             <button
@@ -627,7 +627,7 @@ export const AdminDashboardPage: React.FC = () => {
                       <th className="py-2.5 px-3 text-left w-36">Tanggal Minggu</th>
                       <th className="py-2.5 px-3 text-left">Goar & Topik ni Minggu</th>
                       <th className="py-2.5 px-3 text-center w-28">Status</th>
-                      <th className="py-2.5 px-3 text-center w-28">Kehadiran Ruas</th>
+                      <th className="py-2.5 px-3 text-center w-32">Parminggu Lalu</th>
                       <th className="py-2.5 px-3 text-right w-52">Aksi Pengurus</th>
                     </tr>
                   </thead>

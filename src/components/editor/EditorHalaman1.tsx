@@ -256,12 +256,12 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
 
       {/* 2. STATISTIK RUAS & KOOR */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Ruas na ro */}
+        {/* Torop ni Parminggu di Minggu Nasalpu */}
         <div className="bg-white p-4 rounded-lg border border-stone-200 shadow-sm space-y-3">
           <div className="flex items-center gap-2 border-b border-stone-100 pb-1.5">
             <Users className="w-4 h-4 text-blue-700" />
             <h4 className="font-bold text-stone-900 text-xs uppercase">
-              Ruas na Ro Marminggu (Kehadiran)
+              Torop ni Parminggu di Minggu Nasalpu (Kehadiran Minggu Lalu)
             </h4>
           </div>
           <div className="grid grid-cols-3 gap-2">

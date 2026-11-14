@@ -265,7 +265,7 @@ export const ArsipWartaPage: React.FC = () => {
                     )}
 
                     <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
-                      <span>Kehadiran Ruas:</span>
+                      <span>Kehadiran Minggu Lalu:</span>
                       <span className="font-bold text-stone-800 font-mono-num">
                         {totalRuas > 0 ? `${totalRuas} Halak` : '-'}
                       </span>

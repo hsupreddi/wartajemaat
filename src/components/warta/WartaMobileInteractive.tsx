@@ -160,7 +160,7 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-3 gap-2 pt-1 text-center">
             <div className="bg-white/10 backdrop-blur-xs p-2 rounded-xl border border-white/10">
-              <div className="text-[10px] text-stone-300">Ruas Hadir</div>
+              <div className="text-[10px] text-stone-300">Hadir Minggu Lalu</div>
               <div className="text-sm font-bold text-white font-mono-num">
                 {(warta.ruas_sm || 0) + (warta.ruas_pagi || 0) + (warta.ruas_siang || 0)} Jiwa
               </div>

@@ -369,7 +369,7 @@ export const PublicPortalPage: React.FC = () => {
 
                     <div className="grid grid-cols-3 gap-2 pt-1 text-center">
                       <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/80">
-                        <div className="text-[10px] text-stone-500 font-medium">Ruas Hadir</div>
+                        <div className="text-[10px] text-stone-500 font-medium">Hadir Minggu Lalu</div>
                         <div className="text-sm font-extrabold text-[#0B2545] font-mono-num">
                           {totalRuasAktif}
                         </div>

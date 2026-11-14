@@ -322,12 +322,12 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
               })()}
             </div>
 
-            {/* BOTTOM SECTION: 2 Balanced Columns (Ruas Na Ro & Na Markoor Sadari On) */}
+            {/* BOTTOM SECTION: 2 Balanced Columns (Torop ni Parminggu di Minggu Nasalpu & Na Markoor Sadari On) */}
             <div className="grid grid-cols-2 gap-2.5 avoid-break items-stretch">
-              {/* Ruas na ro */}
+              {/* Torop ni Parminggu di Minggu Nasalpu */}
               <div className="border border-stone-400 p-2 bg-stone-50/70 text-[7.5pt] flex flex-col justify-between">
-                <div className="font-bold text-stone-900 uppercase text-center border-b border-stone-300 pb-0.5 mb-1.5 text-[7.6pt] tracking-wider">
-                  Ruas na Ro (Parminggu Sadari On)
+                <div className="font-bold text-stone-900 uppercase text-center border-b border-stone-300 pb-0.5 mb-1.5 text-[7pt] tracking-wide">
+                  Torop ni Parminggu di Minggu Nasalpu
                 </div>
                 <div className="grid grid-cols-3 gap-1.5 text-center text-[7.4pt]">
                   <div className="bg-white p-1.5 border border-stone-200 rounded-xs">

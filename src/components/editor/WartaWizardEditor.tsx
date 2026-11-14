@@ -175,7 +175,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   const steps = [
     { num: 1, title: 'Info Minggu', icon: Calendar, desc: 'Tanggal, Goar ni Minggu, Ayat & Ruas' },
     { num: 2, title: 'Acara Ibadah', icon: BookOpen, desc: 'Acara Minggu & Partangiangan' },
-    { num: 3, title: 'Parhobas & Ruas', icon: Users, desc: 'Petugas Parhobas & Ruas na Ro' },
+    { num: 3, title: 'Parhobas & Parminggu', icon: Users, desc: 'Petugas Parhobas & Parminggu Minggu Nasalpu' },
     { num: 4, title: 'Tingting Namarragam', icon: Bell, desc: 'Ulang Tahun, Jadwal Koor & Warta' },
     { num: 5, title: 'Keuangan', icon: DollarSign, desc: 'Penerimaan, Rekapitulasi & Sopo Godang' },
     { num: 6, title: 'Pratinjau & Cetak', icon: Printer, desc: 'Verifikasi Akhir & Cetak PDF A4' }
@@ -1121,10 +1121,10 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                 </div>
               </div>
 
-              {/* Ruas na Ro Marminggu */}
+              {/* Torop ni Parminggu di Minggu Nasalpu */}
               <div className="pt-2 border-t border-stone-100">
                 <label className="block text-xs font-bold text-stone-800 mb-2">
-                  Ruas na Ro Marminggu (Jumlah Kehadiran):
+                  Torop ni Parminggu di Minggu Nasalpu (Kehadiran Jemaat Minggu Lalu):
                 </label>
                 <div className="grid grid-cols-3 gap-3 bg-stone-50 p-3 rounded-lg border border-stone-200">
                   <div>
