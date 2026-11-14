@@ -5,8 +5,7 @@ import {
   recalculatePenerimaanRows,
   getPrintablePenerimaanRows,
   getPrintablePengeluaranRows,
-  calculatePengeluaranTotals,
-  calculateHuriaSentralSplit
+  calculatePengeluaranTotals
 } from '../../lib/financialMath';
 import { formatTanggalIndo } from '../../lib/dateUtils';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -40,14 +39,14 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
   }
 
   return (
-    <div className="a4-page bg-white text-stone-900 p-4 md:p-6 print:p-0 flex flex-col justify-between min-h-[280mm] print:min-h-0 print:h-auto box-border">
-      <div className="space-y-2">
+    <div className="a4-page bg-white text-stone-900 p-4 md:p-[8mm_10mm] print:p-0 flex flex-col justify-between min-h-[297mm] print:min-h-[274mm] print:h-auto box-border">
+      <div className="flex-1 flex flex-col justify-between gap-2.5">
         {/* Header Tingting Parhepengon */}
-        <div className="border-b-2 border-stone-900 pb-1 text-center">
+        <div className="border-b-2 border-stone-900 pb-1.5 text-center">
           <h2 className="font-display font-extrabold text-stone-900 text-sm md:text-base tracking-wider uppercase">
             Tingting Parhepengon (Laporan Keuangan)
           </h2>
-          <div className="flex items-center justify-center gap-1.5 text-[7.5pt] font-semibold text-stone-700 uppercase">
+          <div className="flex items-center justify-center gap-1.5 text-[7.8pt] font-semibold text-stone-700 uppercase mt-0.5">
             <span>HKBP Ressort Hutaraja</span>
             <span>·</span>
             <span>
@@ -58,27 +57,27 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </div>
 
         {/* A. TABEL PENERIMAAN (28 Baris Master) */}
-        <section className="avoid-break space-y-0.5">
+        <section className="avoid-break space-y-1">
           <div className="flex items-center justify-between border-b border-stone-700 pb-0.5">
-            <h3 className="font-bold text-stone-900 text-[8pt] uppercase">
+            <h3 className="font-bold text-stone-900 text-[8.2pt] uppercase">
               A. Penerimaan (Uang Masuk)
             </h3>
-            <span className="text-[7pt] text-stone-500">
+            <span className="text-[7.2pt] text-stone-500">
               *Sentralisasi 55% disetor langsung tu Hatopan / Kantor Pusat HKBP
             </span>
           </div>
 
-          <table className="w-full border-collapse border border-stone-400 text-[6.5pt] font-mono-num">
+          <table className="w-full border-collapse border border-stone-400 text-[6.8pt] font-mono-num">
             <thead>
               <tr className="bg-stone-100 text-stone-900 border-b border-stone-400 text-center font-sans font-bold">
-                <th className="w-8 py-0.5 px-0.5 border-r border-stone-300">NO</th>
-                <th className="py-0.5 px-1 text-left border-r border-stone-300">URAIAN</th>
-                <th className="w-16 py-0.5 px-1 text-right border-r border-stone-300">JUMLAH (Rp)</th>
-                <th className="w-14 py-0.5 px-1 text-right border-r border-stone-300">HURIA</th>
-                <th className="w-14 py-0.5 px-1 text-right border-r border-stone-300">SOSIAL HURIA</th>
-                <th className="w-14 py-0.5 px-1 text-right border-r border-stone-300">PEMBANGUNAN</th>
-                <th className="w-15 py-0.5 px-1 text-right border-r border-stone-300">SENTRALISASI (55%)</th>
-                <th className="w-14 py-0.5 px-1 text-right">TRANSITORIS</th>
+                <th className="w-8 py-1 px-0.5 border-r border-stone-300">NO</th>
+                <th className="py-1 px-1.5 text-left border-r border-stone-300">URAIAN</th>
+                <th className="w-17 py-1 px-1 text-right border-r border-stone-300">JUMLAH (Rp)</th>
+                <th className="w-15 py-1 px-1 text-right border-r border-stone-300">HURIA</th>
+                <th className="w-15 py-1 px-1 text-right border-r border-stone-300">SOSIAL HURIA</th>
+                <th className="w-15 py-1 px-1 text-right border-r border-stone-300">PEMBANGUNAN</th>
+                <th className="w-16 py-1 px-1 text-right border-r border-stone-300">SENTRALISASI (55%)</th>
+                <th className="w-15 py-1 px-1 text-right">TRANSITORIS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-200">
@@ -182,35 +181,35 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </section>
 
         {/* 2 KOLOM SUB-TABEL: B. PELEAN TAON & C. HAMAULIATEON */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[7pt]">
+        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-2.5 text-[7.3pt]">
           {/* B. DAFTAR PELEAN TAON */}
-          <section className="avoid-break border border-stone-300 p-1 bg-stone-50">
+          <section className="avoid-break border border-stone-400 p-1.5 bg-stone-50">
             <div className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex justify-between">
               <span>B. Rincian Pelean Taon</span>
               <span className="font-mono-num font-semibold">Total: Rp {formatRupiah(peleanTaonTotal)}</span>
             </div>
-            <table className="w-full text-[6.8pt]">
+            <table className="w-full text-[7pt]">
               <thead>
                 <tr className="border-b border-stone-300 text-left font-bold text-stone-700">
-                  <th className="w-5">No</th>
-                  <th>Keluarga / Ruas</th>
-                  <th className="w-14">Wijk</th>
-                  <th className="w-14 text-right">Jumlah (Rp)</th>
+                  <th className="w-5 py-0.5">No</th>
+                  <th className="py-0.5">Keluarga / Ruas</th>
+                  <th className="w-14 py-0.5">Wijk</th>
+                  <th className="w-16 py-0.5 text-right">Jumlah (Rp)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {pelean_taon.length > 0 ? (
                   pelean_taon.map((pt, idx) => (
                     <tr key={pt.id || idx}>
-                      <td className="text-stone-500">{idx + 1}.</td>
-                      <td className="font-medium text-stone-900">{pt.nama}</td>
-                      <td className="text-stone-600">{pt.lingkungan}</td>
-                      <td className="text-right font-mono-num">{formatRupiah(pt.jumlah)}</td>
+                      <td className="py-0.5 text-stone-500">{idx + 1}.</td>
+                      <td className="py-0.5 font-medium text-stone-900">{pt.nama}</td>
+                      <td className="py-0.5 text-stone-600">{pt.lingkungan}</td>
+                      <td className="py-0.5 text-right font-mono-num">{formatRupiah(pt.jumlah)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="text-center italic text-stone-400 py-1">
+                    <td colSpan={4} className="text-center italic text-stone-400 py-2">
                       Ndang adong pelean taon di periode on
                     </td>
                   </tr>
@@ -220,34 +219,29 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
           </section>
 
           {/* C. DAFTAR HAMAULIATEON */}
-          <section className="avoid-break border border-stone-300 p-1 bg-stone-50">
+          <section className="avoid-break border border-stone-400 p-1.5 bg-stone-50">
             <div className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex justify-between">
               <span>C. Rincian Hamauliateon (Ucapan Syukur)</span>
               <span className="font-mono-num font-semibold">Total: Rp {formatRupiah(hamauliateonTotal)}</span>
             </div>
-            <table className="w-full text-[6.8pt]">
+            <table className="w-full text-[7pt]">
               <thead>
                 <tr className="border-b border-stone-300 text-left font-bold text-stone-700">
-                  <th className="w-4 py-0.5 text-center">No</th>
+                  <th className="w-5 py-0.5 text-center">No</th>
                   <th className="py-0.5 px-1 text-left">Goar ni na pasahathon</th>
-                  <th className="py-0.5 px-1 text-left">Keterangan & Rincian Pos</th>
+                  <th className="py-0.5 px-1 text-left">Keterangan &amp; Rincian Pos</th>
                   <th className="py-0.5 text-right whitespace-nowrap">Jumlah (Rp)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {hamauliateon.length > 0 ? (
                   hamauliateon.map((h, idx) => {
-                    const isHamSentral = true;
-                    const posList: { label: string; amount: number; color: string; note?: string }[] = [];
+                    const posList: { label: string; amount: number; color: string }[] = [];
                     if (h.ke_huria && h.ke_huria > 0) {
-                      const split = calculateHuriaSentralSplit(h.ke_huria, isHamSentral);
                       posList.push({
                         label: 'Ke Huria',
                         amount: h.ke_huria,
-                        color: 'bg-emerald-50 text-emerald-900 border-emerald-200',
-                        note: isHamSentral
-                          ? `(45%: ${formatRupiah(split.huria45)} / Sentral 55%: ${formatRupiah(split.sentral55)})`
-                          : undefined
+                        color: 'bg-emerald-50 text-emerald-900 border-emerald-200'
                       });
                     }
                     if (h.ke_sosial && h.ke_sosial > 0) {
@@ -279,7 +273,7 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                             <div className="flex flex-wrap gap-x-1 gap-y-0.5 mt-0.5 text-[5.8pt] font-mono-num">
                               {posList.map((p, pIdx) => (
                                 <span key={pIdx} className={`px-1 py-0.2 rounded border ${p.color}`}>
-                                  {p.label}: Rp {formatRupiah(p.amount)}{p.note ? ` ${p.note}` : ''}
+                                  {p.label}: Rp {formatRupiah(p.amount)}
                                 </span>
                               ))}
                             </div>
@@ -305,21 +299,21 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </div>
 
         {/* D. LAPORAN PENGELUARAN */}
-        <section className="avoid-break space-y-0.5">
+        <section className="avoid-break space-y-1">
           <div className="border-b border-stone-700 pb-0.5">
-            <h3 className="font-bold text-stone-900 text-[8pt] uppercase">
+            <h3 className="font-bold text-stone-900 text-[8.2pt] uppercase">
               D. Pengeluaran (Uang Keluar)
             </h3>
           </div>
-          <table className="w-full border-collapse border border-stone-400 text-[7pt] font-mono-num">
+          <table className="w-full border-collapse border border-stone-400 text-[7.2pt] font-mono-num">
             <thead>
               <tr className="bg-stone-100 text-stone-900 border-b border-stone-400 text-center font-sans font-bold">
-                <th className="w-5 py-0.5 px-0.5 border-r border-stone-300">No</th>
-                <th className="py-0.5 px-1.5 text-left border-r border-stone-300">Uraian Belanja / Pengeluaran</th>
-                <th className="w-18 py-0.5 px-1 text-right border-r border-stone-300">Kas Huria (Rp)</th>
-                <th className="w-18 py-0.5 px-1 text-right border-r border-stone-300">Sosial Huria (Rp)</th>
-                <th className="w-18 py-0.5 px-1 text-right border-r border-stone-300">Pembangunan (Rp)</th>
-                <th className="w-18 py-0.5 px-1 text-right">Transitori (Rp)</th>
+                <th className="w-6 py-1 px-0.5 border-r border-stone-300">No</th>
+                <th className="py-1 px-1.5 text-left border-r border-stone-300">Uraian Belanja / Pengeluaran</th>
+                <th className="w-19 py-1 px-1 text-right border-r border-stone-300">Kas Huria (Rp)</th>
+                <th className="w-19 py-1 px-1 text-right border-r border-stone-300">Sosial Huria (Rp)</th>
+                <th className="w-19 py-1 px-1 text-right border-r border-stone-300">Pembangunan (Rp)</th>
+                <th className="w-19 py-1 px-1 text-right">Transitori (Rp)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-200">
@@ -382,21 +376,21 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         {/* E. REKAPITULASI 5 POS DANA */}
         <section className="avoid-break space-y-1">
           <div className="flex items-center justify-between border-b border-stone-800 pb-0.5">
-            <h3 className="font-bold text-stone-900 text-[8pt] uppercase">
-              E. Rekapitulasi Kas & Saldo Akhir
+            <h3 className="font-bold text-stone-900 text-[8.2pt] uppercase">
+              E. Rekapitulasi Kas &amp; Saldo Akhir
             </h3>
             {rekapitulasi.is_balanced ? (
-              <span className="flex items-center gap-1 text-[7pt] text-emerald-700 font-semibold">
+              <span className="flex items-center gap-1 text-[7.2pt] text-emerald-700 font-semibold">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Alokasi Seimbang (Balance)
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-[7pt] text-red-600 font-bold bg-red-50 px-1 rounded">
+              <span className="flex items-center gap-1 text-[7.2pt] text-red-600 font-bold bg-red-50 px-1 rounded">
                 <AlertCircle className="w-3.5 h-3.5" /> Peringatan: Selisih Rp {formatRupiah(rekapitulasi.selisih)}
               </span>
             )}
           </div>
 
-          <table className="w-full border-collapse border border-stone-400 text-[7.2pt] font-mono-num">
+          <table className="w-full border-collapse border border-stone-400 text-[7.5pt] font-mono-num">
             <thead>
               <tr className="bg-stone-800 text-white border-b border-stone-800 text-center font-sans font-bold">
                 <th className="py-1 px-1.5 text-left">Pos Dana Huria</th>
@@ -530,12 +524,12 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </section>
 
         {/* F. DAFTAR PEMAKAI SOPO GODANG (Setelah Rekapitulasi Keuangan) */}
-        <section className="avoid-break space-y-0.5">
+        <section className="avoid-break space-y-1">
           <div className="flex items-center justify-between border-b border-stone-800 pb-0.5">
-            <h3 className="font-bold text-stone-900 text-[8pt] uppercase">
+            <h3 className="font-bold text-stone-900 text-[8.2pt] uppercase">
               F. Daftar Pemakai Sopo Godang (Jadwal Gedung Serbaguna Huria)
             </h3>
-            <span className="text-[6.8pt] text-stone-500 italic">
+            <span className="text-[7pt] text-stone-500 italic">
               *Konfirmasi pamangkeon tu Kantor Huria / Sintua Parhepengon
             </span>
           </div>
@@ -545,14 +539,14 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
               ? data.sopo_godang_columns
               : DEFAULT_SOPO_GODANG_COLUMNS;
             return (
-              <table className="w-full border-collapse border border-stone-400 text-[6.8pt]">
+              <table className="w-full border-collapse border border-stone-400 text-[7.2pt]">
                 <thead>
                   <tr className="bg-stone-100 text-stone-900 border-b border-stone-400 font-bold">
-                    <th className="w-5 py-0.5 px-1 text-center border-r border-stone-300">No</th>
+                    <th className="w-6 py-1 px-1 text-center border-r border-stone-300">No</th>
                     {cols.map((c, ci) => (
                       <th
                         key={c.key}
-                        className={`py-0.5 px-1.5 ${c.key === 'tanggal' ? 'w-48 text-right' : 'text-left'} ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''}`}
+                        className={`py-1 px-1.5 ${c.key === 'tanggal' ? 'w-48 text-right' : 'text-left'} ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''}`}
                       >
                         {c.label}
                       </th>
@@ -582,14 +576,14 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
         </section>
 
         {/* Teks Penutup Resmi Batak Toba */}
-        <div className="avoid-break text-[7.5pt] italic text-stone-800 border-y border-stone-400 py-1 px-2 text-center bg-stone-50 font-serif-body">
-          "{pengaturan?.teks_penutup_keuangan ||
-            'Molo adong na hurang di tingting on, tapaboa ma tu Uluan ni Huria, manang tu Sintua Lingkunganta, asa boi tapasingkop tu tingting Minggu na naeng ro.'}"
+        <div className="avoid-break text-[7.8pt] italic text-stone-800 border-y border-stone-400 py-1.5 px-3 text-center bg-stone-50 font-serif-body">
+          &quot;{pengaturan?.teks_penutup_keuangan ||
+            'Molo adong na hurang di tingting on, tapaboa ma tu Uluan ni Huria, manang tu Sintua Lingkunganta, asa boi tapasingkop tu tingting Minggu na naeng ro.'}&quot;
         </div>
       </div>
 
       {/* Footer Halaman 3 */}
-      <div className="mt-2 pt-1 border-t border-stone-300 flex justify-between items-center text-[7.5pt] text-stone-500">
+      <div className="mt-2 pt-1.5 border-t border-stone-300 flex justify-between items-center text-[7.5pt] text-stone-500">
         <span>Warta Jemaat HKBP Ressort Hutaraja · Distrik VI Dairi</span>
         <span>Halaman 3 dari 3</span>
       </div>

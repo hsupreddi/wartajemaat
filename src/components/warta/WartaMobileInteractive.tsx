@@ -780,15 +780,9 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
                   </div>
                   <div className="space-y-1 max-h-64 overflow-y-auto">
                     {hamauliateon.map((ham, idx) => {
-                      const isHamSentral = true;
                       const posList: { label: string; amount: number; color: string }[] = [];
                       if (ham.ke_huria && ham.ke_huria > 0) {
-                        const sentralPart = isHamSentral ? Math.round(ham.ke_huria * 0.55) : 0;
-                        const huriaPart = ham.ke_huria - sentralPart;
-                        const label = isHamSentral
-                          ? `Ke Huria (45%: Rp ${formatRupiah(huriaPart)} · Sentral 55%: Rp ${formatRupiah(sentralPart)})`
-                          : 'Ke Huria';
-                        posList.push({ label, amount: ham.ke_huria, color: 'bg-emerald-50 text-emerald-800 border-emerald-200' });
+                        posList.push({ label: 'Ke Huria', amount: ham.ke_huria, color: 'bg-emerald-50 text-emerald-800 border-emerald-200' });
                       }
                       if (ham.ke_sosial && ham.ke_sosial > 0) {
                         posList.push({ label: 'Ke Sosial', amount: ham.ke_sosial, color: 'bg-sky-50 text-sky-800 border-sky-200' });

@@ -54,14 +54,14 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 6mm 8mm 6mm 8mm;
+    margin: 8mm 10mm 8mm 10mm;
   }
 
   body {
     background: #ffffff !important;
     color: #000000 !important;
-    font-size: 10pt;
-    line-height: 1.25;
+    font-size: 9.5pt;
+    line-height: 1.3;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -86,7 +86,7 @@
     break-inside: avoid;
   }
 
-  /* Remove screen shadow and force natural printable height */
+  /* Remove screen shadow and force full printable A4 height without overflow */
   .a4-sheet-preview {
     width: 100% !important;
     max-width: 100% !important;
@@ -97,8 +97,6 @@
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
-    page-break-inside: avoid;
-    break-inside: avoid;
   }
 
   .a4-page {
@@ -106,7 +104,7 @@
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-    min-height: 0 !important;
+    min-height: 274mm !important;
     height: auto !important;
     max-width: none !important;
     border: none !important;
