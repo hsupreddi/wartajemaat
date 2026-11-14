@@ -23,6 +23,18 @@ export interface ManagedUser {
   tanggal_dibuat: string;
 }
 
+export interface KopSuratLine {
+  id: string;
+  teks: string;
+  font?: 'display' | 'sans' | 'serif';
+  ukuran?: 'xl' | 'lg' | 'md' | 'sm' | 'xs';
+  tebal?: boolean;
+  miring?: boolean;
+  kapital?: boolean;
+  jarak_bawah?: '0' | '1' | '2';
+  warna?: 'hitam' | 'gelap' | 'abu';
+}
+
 export interface PengaturanHuria {
   id: string;
   nama_huria: string;
@@ -35,6 +47,7 @@ export interface PengaturanHuria {
   logo_transformasi_url?: string;
   tema_warna_aksen?: string;
   font_kop?: string;
+  kop_baris?: KopSuratLine[];
   ayat_tetap_default: string;
   ayat_ref_default: string;
   teks_ucapan_ulang_tahun: string;

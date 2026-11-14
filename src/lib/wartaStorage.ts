@@ -37,6 +37,7 @@ import { calculateRekapitulasi, syncHamauliateonToPenerimaanRows } from './finan
 import { getSeninMingguRange, getUlangTahunMingguIni } from './dateUtils';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { getUlangTahun } from './jemaatApi';
+import { parseKopBarisFromFontKop, serializeKopBarisToFontKop } from './kopSuratUtils';
 
 const STORAGE_KEYS = {
   WARTAS: 'hkbp_wartas_list',
@@ -917,6 +918,10 @@ export async function getPengaturan(): Promise<PengaturanHuria> {
 
       if (!error && data) {
         const merged: PengaturanHuria = { ...DEFAULT_PENGATURAN, ...data };
+        const parsedBaris = parseKopBarisFromFontKop(merged.font_kop);
+        if (parsedBaris && parsedBaris.length > 0) {
+          merged.kop_baris = parsedBaris;
+        }
         if (!merged.logo_salib_url) {
           merged.logo_salib_url = '/assets/aistudio/Logo-HKBP_02090ed7.png';
         }
@@ -936,6 +941,12 @@ export async function getPengaturan(): Promise<PengaturanHuria> {
   initializeLocalStorage(true);
   const raw = localStorage.getItem(STORAGE_KEYS.PENGATURAN);
   const data: PengaturanHuria = raw ? JSON.parse(raw) : { ...DEFAULT_PENGATURAN };
+  if (!data.kop_baris || data.kop_baris.length === 0) {
+    const parsedBaris = parseKopBarisFromFontKop(data.font_kop);
+    if (parsedBaris && parsedBaris.length > 0) {
+      data.kop_baris = parsedBaris;
+    }
+  }
   if (!data.logo_salib_url) {
     data.logo_salib_url = '/assets/aistudio/Logo-HKBP_02090ed7.png';
   }
@@ -946,23 +957,30 @@ export async function getPengaturan(): Promise<PengaturanHuria> {
 }
 
 export async function savePengaturan(data: PengaturanHuria): Promise<void> {
-  const payload: PengaturanHuria = {
+  const serializedFontKop =
+    data.kop_baris && data.kop_baris.length > 0
+      ? serializeKopBarisToFontKop(data.kop_baris)
+      : data.font_kop;
+
+  const localPayload: PengaturanHuria = {
     ...data,
     id: data.id || DEFAULT_PENGATURAN.id,
+    font_kop: serializedFontKop,
     updated_at: new Date().toISOString()
   };
 
   if (isSupabaseConfigured && supabase) {
+    const { kop_baris: _ignoredKopBaris, ...dbPayload } = localPayload;
     const { error } = await supabase
       .from('pengaturan_huria')
-      .upsert(payload, { onConflict: 'id' });
+      .upsert(dbPayload, { onConflict: 'id' });
     if (error) {
       throw new Error(`Gagal menyimpan pengaturan huria ke Supabase: ${error.message}`);
     }
     return;
   }
 
-  localStorage.setItem(STORAGE_KEYS.PENGATURAN, JSON.stringify(payload));
+  localStorage.setItem(STORAGE_KEYS.PENGATURAN, JSON.stringify(localPayload));
 }
 
 export async function getJadwalTetap(): Promise<JadwalTetapItem[]> {

@@ -1,20 +1,75 @@
 import React from 'react';
-import { PengaturanHuria } from '../../types';
+import { KopSuratLine, PengaturanHuria } from '../../types';
 import { HkbpCrossLogo, OFFICIAL_HKBP_CROSS_LOGO_URL } from '../logos/HkbpCrossLogo';
 import {
   HkbpTransformasiLogo,
   OFFICIAL_TRANSFORMASI_LOGO_URL
 } from '../logos/HkbpTransformasiLogo';
+import { buildDefaultKopBaris, parseKopBarisFromFontKop } from '../../lib/kopSuratUtils';
 
 interface KopSuratProps {
   pengaturan?: PengaturanHuria;
   compact?: boolean;
 }
 
+function getLineFontClass(font?: KopSuratLine['font']): string {
+  if (font === 'display') return 'font-display tracking-wider';
+  if (font === 'serif') return 'font-serif-body';
+  return 'font-sans tracking-wide';
+}
+
+function getLineSizeClass(ukuran: KopSuratLine['ukuran'], compact: boolean): string {
+  if (compact) {
+    switch (ukuran) {
+      case 'xl':
+        return 'text-[11pt] sm:text-[13.5pt] md:text-[14.5pt] leading-tight';
+      case 'lg':
+        return 'text-[8.5pt] sm:text-[10pt] md:text-[10.5pt] leading-tight';
+      case 'md':
+        return 'text-[7.8pt] sm:text-[9pt] leading-tight';
+      case 'sm':
+        return 'text-[6.8pt] sm:text-[7.8pt] leading-tight';
+      case 'xs':
+      default:
+        return 'text-[6.2pt] sm:text-[7pt] leading-tight';
+    }
+  }
+  switch (ukuran) {
+    case 'xl':
+      return 'text-xs sm:text-base md:text-lg leading-tight';
+    case 'lg':
+      return 'text-[10px] sm:text-xs md:text-sm leading-tight';
+    case 'md':
+      return 'text-[9px] sm:text-[11px] md:text-xs leading-tight';
+    case 'sm':
+      return 'text-[7pt] sm:text-[8pt] leading-tight';
+    case 'xs':
+    default:
+      return 'text-[6.4pt] sm:text-[7.4pt] md:text-[7.8pt] leading-tight';
+  }
+}
+
+function getLineColorClass(warna?: KopSuratLine['warna']): string {
+  if (warna === 'abu') return 'text-stone-600';
+  if (warna === 'gelap') return 'text-stone-700';
+  return 'text-stone-900';
+}
+
+function getLineBottomClass(jarak?: KopSuratLine['jarak_bawah']): string {
+  if (jarak === '2') return 'mb-1.5';
+  if (jarak === '1') return 'mb-0.5';
+  return 'mb-0';
+}
+
 export const KopSurat: React.FC<KopSuratProps> = ({ pengaturan, compact = false }) => {
+  const lines: KopSuratLine[] =
+    pengaturan?.kop_baris && pengaturan.kop_baris.length > 0
+      ? pengaturan.kop_baris
+      : parseKopBarisFromFontKop(pengaturan?.font_kop) || buildDefaultKopBaris(pengaturan);
+
   return (
     <div className="w-full border-b-2 border-stone-900 pb-2.5 mb-3">
-      <div className="flex items-center justify-between gap-2 sm:gap-4">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
         {/* Logo Kiri: Salib HKBP */}
         <div className="shrink-0 flex items-center justify-center">
           {pengaturan?.logo_salib_url ? (
@@ -41,25 +96,26 @@ export const KopSurat: React.FC<KopSuratProps> = ({ pengaturan, compact = false 
           )}
         </div>
 
-        {/* Kop Surat Center */}
-        <div className="flex-1 text-center min-w-0">
-          <h1 className="font-display font-bold text-stone-900 tracking-wider text-xs sm:text-base md:text-lg leading-tight uppercase">
-            {pengaturan?.nama_huria || 'HURIA KRISTEN BATAK PROTESTAN (HKBP)'}
-          </h1>
-
-          <p className="text-[6.5pt] sm:text-[7.5pt] md:text-[8pt] text-stone-700 leading-tight my-0.5 max-w-2xl mx-auto px-1 sm:px-2">
-            {pengaturan?.sk_pengakuan ||
-              'Pengakuan Pemerintah 11 Juni 1931 No. 48, Staatsblad Thn. 1932 No. 360 / jo. No. Dp/P/DAK/d/13568, jo. No. 33 Tahun 1988 / Pengakuan Ulang Pemerintah RI Tgl. 2 April 1968, Dp/P/DAK/d/135/68'}
-          </p>
-
-          <h2 className="font-sans font-bold text-stone-900 tracking-wide text-[10px] sm:text-xs md:text-sm uppercase leading-tight">
-            {pengaturan?.distrik || 'DISTRIK VI DAIRI – RESSORT HUTARAJA'}
-          </h2>
-
-          <p className="text-[7pt] sm:text-[8pt] text-stone-600 leading-tight">
-            {pengaturan?.alamat || 'Jl. Persada No. 205 Desa Hutarakyat, Kec. Sidikalang'}
-            {pengaturan?.telepon ? ` · Telp: ${pengaturan.telepon}` : ''}
-          </p>
+        {/* Kop Surat Center: Line by Line */}
+        <div className="flex-1 text-center min-w-0 px-0.5">
+          {lines.map((line) => (
+            <div
+              key={line.id}
+              className={[
+                getLineFontClass(line.font),
+                getLineSizeClass(line.ukuran, compact),
+                getLineColorClass(line.warna),
+                getLineBottomClass(line.jarak_bawah),
+                line.tebal ? 'font-bold' : 'font-normal',
+                line.miring ? 'italic' : '',
+                line.kapital ? 'uppercase' : ''
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              {line.teks || '\u00A0'}
+            </div>
+          ))}
         </div>
 
         {/* Logo Kanan: Transformasi HKBP 2024-2028 */}
