@@ -15,6 +15,7 @@ import {
   PengeluaranItem,
   PengumumanItem,
   SopoGodangItem,
+  SumbanganNatalItem,
   UlangTahunItem,
   WartaRecord,
   WartaStatus
@@ -33,7 +34,12 @@ import {
   createDefaultPenerimaanRows,
   getInitialFullWarta
 } from './mockData';
-import { calculateRekapitulasi, syncHamauliateonToPenerimaanRows } from './financialMath';
+import {
+  calculateRekapitulasi,
+  syncHamauliateonToPenerimaanRows,
+  syncSumbanganNatalToPenerimaanRows,
+  calculateHamauliateonTransitoriSum
+} from './financialMath';
 import { getSeninMingguRange, getUlangTahunMingguIni } from './dateUtils';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { getUlangTahun } from './jemaatApi';
@@ -249,6 +255,8 @@ function normalizeWartaRecord(raw: any): WartaRecord {
       raw.teks_ucapan_ulang_tahun ?? raw.table_columns?.teks_ucapan_ulang_tahun ?? undefined,
     tampilkan_partangiangan:
       raw.tampilkan_partangiangan ?? raw.table_columns?.tampilkan_partangiangan ?? true,
+    tampilkan_sumbangan_natal:
+      raw.tampilkan_sumbangan_natal ?? raw.table_columns?.tampilkan_sumbangan_natal ?? true,
     created_by: raw.created_by,
     created_at: raw.created_at,
     updated_at: raw.updated_at
@@ -348,21 +356,27 @@ export async function getWartaById(id: string): Promise<FullWartaData | null> {
       urutan: Number(r.urutan || 1)
     }));
 
-    const hamauliateon: HamauliateonItem[] = (hamauliateonRaw || []).map((r: any) => ({
-      id: r.id,
-      warta_id: r.warta_id,
-      nama: r.nama || '',
-      rincian: r.rincian || '',
-      jumlah: Number(r.jumlah || 0),
-      ke_huria: Number(r.ke_huria || 0),
-      ke_sosial: Number(r.ke_sosial || 0),
-      ke_pembangunan: Number(r.ke_pembangunan || 0),
-      ke_sentralisasi: Number(r.ke_sentralisasi || 0),
-      ke_transitori: Number(r.ke_transitori || 0),
-      transitori_kode: r.transitori_kode || '',
-      transitori_uraian: r.transitori_uraian || '',
-      urutan: Number(r.urutan || 1)
-    }));
+    const transitoriMap = (tableCols.hamauliateon_transitori_map || {}) as Record<string, any[]>;
+    const hamauliateon: HamauliateonItem[] = (hamauliateonRaw || []).map((r: any) => {
+      const mappedTrans = Array.isArray(transitoriMap[r.id]) ? transitoriMap[r.id] : undefined;
+      const baseItem: HamauliateonItem = {
+        id: r.id,
+        warta_id: r.warta_id,
+        nama: r.nama || '',
+        rincian: r.rincian || '',
+        jumlah: Number(r.jumlah || 0),
+        ke_huria: Number(r.ke_huria || 0),
+        ke_sosial: Number(r.ke_sosial || 0),
+        ke_pembangunan: Number(r.ke_pembangunan || 0),
+        ke_sentralisasi: Number(r.ke_sentralisasi || 0),
+        ke_transitori: Number(r.ke_transitori || 0),
+        transitori_kode: r.transitori_kode || '',
+        transitori_uraian: r.transitori_uraian || '',
+        ...(mappedTrans && mappedTrans.length > 0 ? { transitori_items: mappedTrans } : {}),
+        urutan: Number(r.urutan || 1)
+      };
+      return baseItem;
+    });
 
     let penerimaan: PenerimaanRow[] = (penerimaanRaw || []).map((r: any) => ({
       id: r.id,
@@ -408,6 +422,16 @@ export async function getWartaById(id: string): Promise<FullWartaData | null> {
       catatan: r.catatan || ''
     }));
 
+    const sumbangan_natal: SumbanganNatalItem[] = Array.isArray(tableCols.sumbangan_natal)
+      ? tableCols.sumbangan_natal
+      : [];
+    penerimaan = syncSumbanganNatalToPenerimaanRows(
+      penerimaan,
+      sumbangan_natal,
+      warta.tampilkan_sumbangan_natal !== false,
+      warta.id
+    );
+
     const ultah: UlangTahunItem[] = warta.ulang_tahun_snapshot || [];
     const rekap = calculateRekapitulasi(warta, penerimaan, pengeluaran);
 
@@ -428,6 +452,7 @@ export async function getWartaById(id: string): Promise<FullWartaData | null> {
       penerimaan,
       pelean_taon,
       hamauliateon,
+      sumbangan_natal,
       pengeluaran,
       ulang_tahun: ultah,
       rekapitulasi: rekap,
@@ -454,6 +479,14 @@ export async function getWartaById(id: string): Promise<FullWartaData | null> {
       if (data.hamauliateon && data.hamauliateon.length > 0) {
         data.penerimaan = syncHamauliateonToPenerimaanRows(data.penerimaan, data.hamauliateon);
       }
+      data.warta.tampilkan_sumbangan_natal = data.warta.tampilkan_sumbangan_natal ?? true;
+      data.sumbangan_natal = Array.isArray(data.sumbangan_natal) ? data.sumbangan_natal : [];
+      data.penerimaan = syncSumbanganNatalToPenerimaanRows(
+        data.penerimaan,
+        data.sumbangan_natal,
+        data.warta.tampilkan_sumbangan_natal !== false,
+        data.warta.id
+      );
       data.rekapitulasi = calculateRekapitulasi(
         data.warta,
         data.penerimaan,
@@ -482,9 +515,17 @@ export async function saveWarta(data: FullWartaData): Promise<void> {
   // Snapshot ulang tahun ke record warta sehingga pembaca publik tidak mengakses tabel anggota
   data.warta.ulang_tahun_snapshot = data.ulang_tahun || [];
 
-  // Sinkronkan Hamauliateon (Ke Kas Huria 45%/55%) sebelum menyimpan dan hitung ulang rekapitulasi
+  // Sinkronkan Hamauliateon & Sumbangan Natal Diakoni Sosial sebelum menyimpan dan hitung ulang rekapitulasi
   if (data.hamauliateon && data.penerimaan) {
     data.penerimaan = syncHamauliateonToPenerimaanRows(data.penerimaan, data.hamauliateon);
+  }
+  if (data.penerimaan) {
+    data.penerimaan = syncSumbanganNatalToPenerimaanRows(
+      data.penerimaan,
+      data.sumbangan_natal || [],
+      data.warta.tampilkan_sumbangan_natal !== false,
+      data.warta.id
+    );
   }
 
   // Recalculate rekapitulasi
@@ -507,6 +548,15 @@ export async function saveWarta(data: FullWartaData): Promise<void> {
       tableColumnsPayload.teks_ucapan_ulang_tahun = data.warta.teks_ucapan_ulang_tahun;
     }
     tableColumnsPayload.tampilkan_partangiangan = data.warta.tampilkan_partangiangan !== false;
+    tableColumnsPayload.tampilkan_sumbangan_natal = data.warta.tampilkan_sumbangan_natal !== false;
+    tableColumnsPayload.sumbangan_natal = data.sumbangan_natal || [];
+    const hamTransitoriMap: Record<string, any[]> = {};
+    for (const ham of data.hamauliateon || []) {
+      if (Array.isArray(ham.transitori_items) && ham.transitori_items.length > 0) {
+        hamTransitoriMap[ham.id] = ham.transitori_items;
+      }
+    }
+    tableColumnsPayload.hamauliateon_transitori_map = hamTransitoriMap;
 
     const wartaPayload = {
       id: wartaId,
@@ -651,21 +701,34 @@ export async function saveWarta(data: FullWartaData): Promise<void> {
       urutan: Number(it.urutan ?? idx + 1)
     }));
 
-    const hamauliateonRows = (data.hamauliateon || []).map((it, idx) => ({
-      id: it.id,
-      warta_id: wartaId,
-      nama: it.nama || '',
-      rincian: it.rincian || '',
-      jumlah: Number(it.jumlah || 0),
-      ke_huria: Number(it.ke_huria || 0),
-      ke_sosial: Number(it.ke_sosial || 0),
-      ke_pembangunan: Number(it.ke_pembangunan || 0),
-      ke_sentralisasi: Number(it.ke_sentralisasi || 0),
-      ke_transitori: Number(it.ke_transitori || 0),
-      transitori_kode: it.transitori_kode || '',
-      transitori_uraian: it.transitori_uraian || '',
-      urutan: Number(it.urutan ?? idx + 1)
-    }));
+    const hamauliateonRows = (data.hamauliateon || []).map((it, idx) => {
+      const transSum = calculateHamauliateonTransitoriSum(it);
+      const transList = Array.isArray(it.transitori_items) ? it.transitori_items : [];
+      const firstKode = transList.find((t) => t.kode)?.kode || it.transitori_kode || '';
+      const joinedUraian =
+        transList.length > 0
+          ? transList
+              .filter((t) => (t.jumlah || 0) > 0 && t.uraian)
+              .map((t) => t.uraian)
+              .join(', ')
+          : it.transitori_uraian || '';
+
+      return {
+        id: it.id,
+        warta_id: wartaId,
+        nama: it.nama || '',
+        rincian: it.rincian || '',
+        jumlah: Number(it.jumlah || 0),
+        ke_huria: Number(it.ke_huria || 0),
+        ke_sosial: Number(it.ke_sosial || 0),
+        ke_pembangunan: Number(it.ke_pembangunan || 0),
+        ke_sentralisasi: Number(it.ke_sentralisasi || 0),
+        ke_transitori: transSum,
+        transitori_kode: firstKode,
+        transitori_uraian: joinedUraian,
+        urutan: Number(it.urutan ?? idx + 1)
+      };
+    });
 
     const pengeluaranRows = (data.pengeluaran || []).map((it, idx) => ({
       id: it.id,
@@ -759,6 +822,37 @@ export async function deleteWarta(id: string): Promise<void> {
 }
 
 /**
+ * Fetch Sumbangan Natal Diakoni Sosial rows from the previous week's Warta
+ * so the table can be displayed cumulatively every Sunday until Christmas.
+ */
+export async function getPreviousWeekSumbanganNatal(
+  currentTanggalMinggu: string,
+  currentWartaId?: string
+): Promise<{ sourceWarta: WartaRecord; items: SumbanganNatalItem[] } | null> {
+  const allWartas = await getAllWartas(false);
+  const candidates = allWartas
+    .filter((w) => w.id !== currentWartaId)
+    .sort((a, b) => {
+      const aEarlier = a.tanggal_minggu < currentTanggalMinggu ? 1 : 0;
+      const bEarlier = b.tanggal_minggu < currentTanggalMinggu ? 1 : 0;
+      if (aEarlier !== bEarlier) return bEarlier - aEarlier;
+      return b.tanggal_minggu.localeCompare(a.tanggal_minggu);
+    });
+
+  for (const cand of candidates.slice(0, 6)) {
+    const full = await getWartaById(cand.id);
+    if (full && Array.isArray(full.sumbangan_natal) && full.sumbangan_natal.length > 0) {
+      return {
+        sourceWarta: full.warta,
+        items: full.sumbangan_natal
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Create a new weekly Warta
  * Inherits previous warta's ending balance as starting balance!
  */
@@ -773,6 +867,8 @@ export async function createNewWarta(
   let saldoAwalPembangunan = 38000000;
   let saldoAwalSentralisasi = 0;
   let saldoAwalTransitori = 1000000;
+  let prevSumbanganNatal: SumbanganNatalItem[] = [];
+  let prevShowSumbanganNatal = true;
 
   if (allWartas.length > 0) {
     const prev = await getWartaById(allWartas[0].id);
@@ -782,6 +878,12 @@ export async function createNewWarta(
       saldoAwalPembangunan = prev.rekapitulasi.pembangunan.saldo_akhir;
       saldoAwalSentralisasi = prev.rekapitulasi.sentralisasi.saldo_akhir;
       saldoAwalTransitori = prev.rekapitulasi.transitori.saldo_akhir;
+    }
+    if (prev) {
+      prevShowSumbanganNatal = prev.warta.tampilkan_sumbangan_natal !== false;
+      if (prevShowSumbanganNatal && Array.isArray(prev.sumbangan_natal) && prev.sumbangan_natal.length > 0) {
+        prevSumbanganNatal = prev.sumbangan_natal;
+      }
     }
   }
 
@@ -830,6 +932,7 @@ export async function createNewWarta(
     teks_ucapan_ulang_tahun:
       pengaturan.teks_ucapan_ulang_tahun || DEFAULT_PENGATURAN.teks_ucapan_ulang_tahun,
     tampilkan_partangiangan: true,
+    tampilkan_sumbangan_natal: prevShowSumbanganNatal,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
@@ -890,6 +993,13 @@ export async function createNewWarta(
   const penerimaan = createDefaultPenerimaanRows(0, 0, [], masterPenerimaan, false);
   const pelean_taon: PeleanTaonItem[] = [];
   const hamauliateon: HamauliateonItem[] = [];
+  const sumbangan_natal: SumbanganNatalItem[] = prevSumbanganNatal.map((it, idx) => ({
+    ...it,
+    id: `sn-prev-${ts}-${idx + 1}`,
+    warta_id: newId,
+    urutan: idx + 1,
+    dari_minggu_lalu: true
+  }));
   const pengeluaran: PengeluaranItem[] = [];
 
   const rekapitulasi = calculateRekapitulasi(warta, penerimaan, pengeluaran);
@@ -905,6 +1015,7 @@ export async function createNewWarta(
     penerimaan,
     pelean_taon,
     hamauliateon,
+    sumbangan_natal,
     pengeluaran,
     ulang_tahun: ultah,
     rekapitulasi

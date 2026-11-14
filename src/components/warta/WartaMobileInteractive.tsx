@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FullWartaData, PengaturanHuria, JadwalTetapItem } from '../../types';
 import { formatRupiah } from '../../lib/format';
-import { getPrintablePenerimaanRows, getPrintablePengeluaranRows } from '../../lib/financialMath';
+import { getPrintablePenerimaanRows, getPrintablePengeluaranRows, getHamauliateonTransitoriList } from '../../lib/financialMath';
 import { formatTanggalIndo, formatTanggalLengkap } from '../../lib/dateUtils';
 import { OFFICIAL_HKBP_MINGGU_LITURGI } from '../../lib/masterMingguData';
 import { getLiturgiColorBadge } from '../common/MingguLiturgiDropdown';
@@ -50,6 +50,7 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
     penerimaan,
     pelean_taon,
     hamauliateon,
+    sumbangan_natal = [],
     pengeluaran,
     ulang_tahun,
     rekapitulasi
@@ -802,11 +803,12 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
                       if (ham.ke_sentralisasi && ham.ke_sentralisasi > 0) {
                         posList.push({ label: 'Ke Sentral 55%', amount: ham.ke_sentralisasi, color: 'bg-purple-50 text-purple-800 border-purple-200' });
                       }
-                      if (ham.ke_transitori && ham.ke_transitori > 0) {
-                        const transLabel = ham.transitori_uraian
-                          ? `Ke Transitori (${ham.transitori_uraian})`
+                      const transEntries = getHamauliateonTransitoriList(ham).filter((t) => t.jumlah > 0);
+                      for (const t of transEntries) {
+                        const transLabel = t.uraian
+                          ? `Ke Transitori (${t.uraian})`
                           : 'Ke Transitori';
-                        posList.push({ label: transLabel, amount: ham.ke_transitori, color: 'bg-rose-50 text-rose-800 border-rose-200' });
+                        posList.push({ label: transLabel, amount: t.jumlah, color: 'bg-rose-50 text-rose-800 border-rose-200' });
                       }
 
                       return (
@@ -838,6 +840,44 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Sumbangan Natal Diakoni Sosial (Sementara / Opsional -> Kas Sosial Huria) */}
+          {warta.tampilkan_sumbangan_natal !== false && sumbangan_natal.length > 0 && (
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
+                <div>
+                  <h3 className="font-bold text-stone-900 text-sm">
+                    Sumbangan Natal Diakoni Sosial
+                  </h3>
+                  <p className="text-[11px] text-stone-500">
+                    Penerimaan masuk ke Kas Sosial Huria
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-rose-800 font-mono-num bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                  Sub Total: Rp {formatRupiah(sumbangan_natal.reduce((a, c) => a + (c.jumlah || 0), 0))}
+                </span>
+              </div>
+              <div className="divide-y divide-stone-100 text-xs">
+                {sumbangan_natal.map((sn, idx) => (
+                  <div key={sn.id || idx} className="py-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="font-semibold text-stone-900">
+                        {idx + 1}. {sn.nama || '-'}
+                      </span>
+                      {sn.lingkungan && (
+                        <span className="text-[11px] text-stone-500 ml-1.5">
+                          ({sn.lingkungan})
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-mono-num font-bold text-stone-900 shrink-0">
+                      Rp {formatRupiah(sn.jumlah)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

@@ -7,7 +7,12 @@ import {
   calculatePengeluaranTotals,
   calculateRekapitulasi,
   calculateHamauliateonTotals,
-  syncHamauliateonToPenerimaanRows
+  getHamauliateonTransitoriList,
+  syncHamauliateonToPenerimaanRows,
+  SUMBANGAN_NATAL_KODE,
+  calculateSumbanganNatalTotal,
+  calculateSumbanganNatalBreakdown,
+  syncSumbanganNatalToPenerimaanRows
 } from '../keuangan';
 import {
   formatRupiah,
@@ -309,6 +314,135 @@ describe('HKBP Financial Calculations (keuangan.ts)', () => {
     expect(added).toBeDefined();
     expect(added?.uraian).toBe('Persembahan Ibadah Pemuda Khusus');
     expect(added?.is_sentralisasi).toBe(true);
+  });
+
+  it('allocates Sumbangan Natal Diakoni Sosial 100% to Kas Sosial Huria and zeroes out when hidden', () => {
+    const defaultWarta = getInitialFullWarta();
+    const baseSosialMasuk = defaultWarta.rekapitulasi.sosial.masuk;
+
+    const sumbanganItems = [
+      { id: 'sn-1', urutan: 1, nama: 'Kel. St. R. Sitohang', lingkungan: 'Letare', jumlah: 250000 },
+      { id: 'sn-2', urutan: 2, nama: 'Kel. M. Silalahi', lingkungan: 'Galatia', jumlah: 150000 }
+    ];
+
+    expect(calculateSumbanganNatalTotal(sumbanganItems)).toBe(400000);
+
+    // Active (Tampilkan) -> 100% masuk ke Kas Sosial Huria
+    const syncedActive = syncSumbanganNatalToPenerimaanRows(
+      defaultWarta.penerimaan,
+      sumbanganItems,
+      true,
+      defaultWarta.warta.id
+    );
+    const { updatedRows: recalcActive } = recalculatePenerimaanRows(syncedActive);
+    const sumbRow = recalcActive.find((r) => r.kode === SUMBANGAN_NATAL_KODE);
+    expect(sumbRow).toBeDefined();
+    expect(sumbRow?.jumlah).toBe(400000);
+    expect(sumbRow?.sosial).toBe(400000);
+    expect(sumbRow?.huria_45).toBe(0);
+    expect(sumbRow?.sentral_55).toBe(0);
+
+    const rekapActive = calculateRekapitulasi(
+      defaultWarta.warta,
+      recalcActive,
+      defaultWarta.pengeluaran
+    );
+    expect(rekapActive.is_balanced).toBe(true);
+    expect(rekapActive.sosial.masuk).toBe(baseSosialMasuk + 400000);
+
+    // Hidden (Hilangkan) -> jumlah = 0, tidak dicetak, tidak masuk Kas Sosial Huria
+    const syncedHidden = syncSumbanganNatalToPenerimaanRows(
+      recalcActive,
+      sumbanganItems,
+      false,
+      defaultWarta.warta.id
+    );
+    const { updatedRows: recalcHidden } = recalculatePenerimaanRows(syncedHidden);
+    const hiddenRow = recalcHidden.find((r) => r.kode === SUMBANGAN_NATAL_KODE);
+    expect(hiddenRow?.jumlah).toBe(0);
+    expect(hiddenRow?.sosial).toBe(0);
+
+    const printableHidden = getPrintablePenerimaanRows(recalcHidden);
+    expect(printableHidden.some((r) => r.kode === SUMBANGAN_NATAL_KODE)).toBe(false);
+
+    const rekapHidden = calculateRekapitulasi(
+      defaultWarta.warta,
+      recalcHidden,
+      defaultWarta.pengeluaran
+    );
+    expect(rekapHidden.is_balanced).toBe(true);
+    expect(rekapHidden.sosial.masuk).toBe(baseSosialMasuk);
+  });
+
+  it('prevents double-counting carried-over Sumbangan Natal rows from previous weeks into Kas Sosial Huria', () => {
+    const defaultWarta = getInitialFullWarta();
+    const baseSosialMasuk = defaultWarta.rekapitulasi.sosial.masuk;
+
+    const cumulativeItems = [
+      { id: 'sn-prev-1', urutan: 1, nama: 'Kel. A. Manurung', lingkungan: 'Letare', jumlah: 500000, dari_minggu_lalu: true },
+      { id: 'sn-new-2', urutan: 2, nama: 'Kel. B. Simanjuntak', lingkungan: 'Exaudi', jumlah: 100000, dari_minggu_lalu: false }
+    ];
+
+    const breakdown = calculateSumbanganNatalBreakdown(cumulativeItems);
+    expect(breakdown.subTotal).toBe(600000);
+    expect(breakdown.dariMingguLalu).toBe(500000);
+    expect(breakdown.mingguIni).toBe(100000);
+
+    const synced = syncSumbanganNatalToPenerimaanRows(
+      defaultWarta.penerimaan,
+      cumulativeItems,
+      true,
+      defaultWarta.warta.id
+    );
+    const { updatedRows } = recalculatePenerimaanRows(synced);
+    const sumbRow = updatedRows.find((r) => r.kode === SUMBANGAN_NATAL_KODE);
+    expect(sumbRow?.jumlah).toBe(100000);
+    expect(sumbRow?.sosial).toBe(100000);
+
+    const rekap = calculateRekapitulasi(defaultWarta.warta, updatedRows, defaultWarta.pengeluaran);
+    expect(rekap.is_balanced).toBe(true);
+    expect(rekap.sosial.masuk).toBe(baseSosialMasuk + 100000);
+  });
+
+  it('aggregates multiple transitori recipients (e.g. Pendeta, Bibelvrow, Lingkungan) within a single Hamauliateon item', () => {
+    const defaultWarta = getInitialFullWarta();
+    const multiTransHam = [
+      {
+        id: 'ham-multi-tr',
+        urutan: 1,
+        nama: 'Kel. Pomparan Op. Teko',
+        rincian: 'Siala denggan adat parsaoran',
+        jumlah: 750000,
+        ke_huria: 250000,
+        ke_sosial: 200000,
+        ke_pembangunan: 0,
+        ke_transitori: 300000,
+        transitori_items: [
+          { id: 'tr-1', kode: 'TRANS_PENDETA', uraian: 'Pendeta', jumlah: 100000 },
+          { id: 'tr-2', kode: 'TRANS_BIBELVROW', uraian: 'Bibelvrow', jumlah: 100000 },
+          { id: 'tr-3', kode: 'TRANS_WIJK_JEREMIA', uraian: 'Lingkungan Jeremia', jumlah: 100000 }
+        ]
+      }
+    ];
+
+    const list = getHamauliateonTransitoriList(multiTransHam[0]);
+    expect(list).toHaveLength(3);
+
+    const totals = calculateHamauliateonTotals(multiTransHam, true);
+    expect(totals.totalTransitori).toBe(300000);
+    expect(totals.totalHuria).toBe(112500);
+    expect(totals.totalSentral).toBe(137500);
+    expect(totals.totalSosial).toBe(200000);
+    expect(totals.totalJumlah).toBe(750000);
+
+    const synced = syncHamauliateonToPenerimaanRows(defaultWarta.penerimaan, multiTransHam);
+    const { updatedRows } = recalculatePenerimaanRows(synced);
+    const hamRow = updatedRows.find((r) => r.kode === 'HAM_LAIN');
+    expect(hamRow?.transitori).toBe(300000);
+    expect(hamRow?.jumlah).toBe(750000);
+
+    const rekap = calculateRekapitulasi(defaultWarta.warta, updatedRows, defaultWarta.pengeluaran);
+    expect(rekap.is_balanced).toBe(true);
   });
 });
 

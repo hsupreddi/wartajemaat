@@ -24,8 +24,14 @@ import {
   calculatePengeluaranTotals,
   calculateRekapitulasi,
   calculateHamauliateonTotals,
-  calculateHuriaSentralSplit
+  getHamauliateonTransitoriList,
+  calculateHamauliateonTransitoriSum,
+  calculateHuriaSentralSplit,
+  SUMBANGAN_NATAL_KODE,
+  calculateSumbanganNatalBreakdown,
+  syncSumbanganNatalToPenerimaanRows
 } from '../../lib/keuangan';
+import { getPreviousWeekSumbanganNatal } from '../../lib/wartaStorage';
 import { getUlangTahunMingguIni, getSeninMingguRange } from '../../lib/dateUtils';
 import { getUlangTahun, notify } from '../../lib/jemaatApi';
 import { listMasterPetugas } from '../../lib/petugasApi';
@@ -57,7 +63,8 @@ import {
   Layers,
   UserCheck,
   Database,
-  RefreshCw
+  RefreshCw,
+  History
 } from 'lucide-react';
 import { AddColumnModal } from '../common/AddColumnModal';
 import { TambahPenerimaanModal, TambahPengeluaranModal } from './TambahPosKeuanganModal';
@@ -76,6 +83,8 @@ import {
   JadwalPartangianganItem,
   PengeluaranItem,
   HamauliateonItem,
+  HamauliateonTransitoriItem,
+  SumbanganNatalItem,
   PenerimaanRow,
   AturanAlokasi
 } from '../../types';
@@ -114,11 +123,12 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   const [isAddPengModalOpen, setIsAddPengModalOpen] = useState<boolean>(false);
   const [masterPetugas, setMasterPetugas] = useState<PetugasMaster[]>(MASTER_PETUGAS);
   const [isSyncingUltah, setIsSyncingUltah] = useState<boolean>(false);
+  const [isPullingPrevSumbangan, setIsPullingPrevSumbangan] = useState<boolean>(false);
   const lastAutoUltahKeyRef = useRef<string>('');
   const latestDataRef = useRef<FullWartaData>(data);
   latestDataRef.current = data;
 
-  const { warta, acara_minggu, acara_partangiangan, parhobas, sopo_godang, jadwal_partangiangan, pengumuman, penerimaan, pelean_taon, hamauliateon, pengeluaran, ulang_tahun, rekapitulasi } = data;
+  const { warta, acara_minggu, acara_partangiangan, parhobas, sopo_godang, jadwal_partangiangan, pengumuman, penerimaan, pelean_taon, hamauliateon, sumbangan_natal = [], pengeluaran, ulang_tahun, rekapitulasi } = data;
 
   // Muat daftar Sintua & Pengurus dari database Supabase / lokal
   useEffect(() => {
@@ -786,18 +796,22 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
       )
     ) {
       item.ke_sentralisasi = 0;
+      const transSum =
+        field === 'ke_transitori'
+          ? parsedVal
+          : calculateHamauliateonTransitoriSum(item);
       const sum =
         (item.ke_huria || 0) +
         (item.ke_sosial || 0) +
         (item.ke_pembangunan || 0) +
-        (item.ke_transitori || 0);
+        transSum;
       item.jumlah = sum;
     } else if (field === 'jumlah') {
       const sumPos =
         (item.ke_huria || 0) +
         (item.ke_sosial || 0) +
         (item.ke_pembangunan || 0) +
-        (item.ke_transitori || 0);
+        calculateHamauliateonTransitoriSum(item);
       if (sumPos === 0 || sumPos === updated[index].jumlah) {
         item.ke_huria = parsedVal;
       }
@@ -808,14 +822,92 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
     syncHamauliateonWizard(updated);
   };
 
-  const handleHamauliateonTransitoriJenisChange = (index: number, kode: string) => {
-    const updated = [...hamauliateon];
-    const matched = transitoriOptions.find((opt) => opt.kode === kode);
-    updated[index] = {
-      ...updated[index],
-      transitori_kode: kode,
-      transitori_uraian: matched ? matched.uraian : ''
+  const applyHamauliateonTransitoriEntries = (
+    item: HamauliateonItem,
+    entries: HamauliateonTransitoriItem[]
+  ): HamauliateonItem => {
+    const cleaned = entries.map((t, tIdx) => ({
+      id: t.id || `tr-${item.id || 'ham'}-${tIdx + 1}`,
+      kode: t.kode || '',
+      uraian: t.uraian || '',
+      jumlah: Math.max(0, Math.round(t.jumlah || 0))
+    }));
+    const transSum = cleaned.reduce((acc, cur) => acc + cur.jumlah, 0);
+    const firstKode = cleaned.find((t) => t.kode)?.kode || '';
+    const joinedUraian =
+      cleaned
+        .filter((t) => t.jumlah > 0 && t.uraian)
+        .map((t) => t.uraian)
+        .join(', ') ||
+      cleaned.find((t) => t.uraian)?.uraian ||
+      '';
+    const sum =
+      (item.ke_huria || 0) +
+      (item.ke_sosial || 0) +
+      (item.ke_pembangunan || 0) +
+      transSum;
+
+    return {
+      ...item,
+      transitori_items: cleaned,
+      ke_transitori: transSum,
+      transitori_kode: firstKode,
+      transitori_uraian: joinedUraian,
+      ke_sentralisasi: 0,
+      jumlah: sum
     };
+  };
+
+  const handleAddHamauliateonTransitoriEntry = (hamIdx: number) => {
+    const updated = [...hamauliateon];
+    const current = updated[hamIdx];
+    const existing = getHamauliateonTransitoriList(current);
+    const baseList: HamauliateonTransitoriItem[] =
+      existing.length > 0
+        ? existing
+        : [{ id: `tr-${current.id || hamIdx}-1`, kode: '', uraian: '', jumlah: 0 }];
+    const nextList: HamauliateonTransitoriItem[] = [
+      ...baseList,
+      { id: `tr-${Date.now()}-${baseList.length + 1}`, kode: '', uraian: '', jumlah: 0 }
+    ];
+    updated[hamIdx] = applyHamauliateonTransitoriEntries(current, nextList);
+    syncHamauliateonWizard(updated);
+  };
+
+  const handleUpdateHamauliateonTransitoriEntry = (
+    hamIdx: number,
+    transIdx: number,
+    field: 'kode' | 'jumlah',
+    val: any
+  ) => {
+    const updated = [...hamauliateon];
+    const current = updated[hamIdx];
+    const existing = getHamauliateonTransitoriList(current);
+    const list: HamauliateonTransitoriItem[] =
+      existing.length > 0
+        ? [...existing]
+        : [{ id: `tr-${current.id || hamIdx}-1`, kode: '', uraian: '', jumlah: 0 }];
+
+    const target = { ...list[transIdx] };
+    if (field === 'kode') {
+      const matched = transitoriOptions.find((opt) => opt.kode === val);
+      target.kode = val;
+      target.uraian = matched ? matched.uraian : '';
+    } else {
+      target.jumlah = parseRupiahInput(val);
+    }
+    list[transIdx] = target;
+
+    updated[hamIdx] = applyHamauliateonTransitoriEntries(current, list);
+    syncHamauliateonWizard(updated);
+  };
+
+  const handleDeleteHamauliateonTransitoriEntry = (hamIdx: number, transIdx: number) => {
+    const updated = [...hamauliateon];
+    const current = updated[hamIdx];
+    const existing = getHamauliateonTransitoriList(current);
+    const remaining = existing.filter((_, idx) => idx !== transIdx);
+    updated[hamIdx] = applyHamauliateonTransitoriEntries(current, remaining);
     syncHamauliateonWizard(updated);
   };
 
@@ -833,6 +925,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
       ke_transitori: 0,
       transitori_kode: '',
       transitori_uraian: '',
+      transitori_items: [],
       urutan: hamauliateon.length + 1
     };
     syncHamauliateonWizard([...hamauliateon, newItem]);
@@ -841,6 +934,108 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   const handleDeleteHamauliateonRow = (index: number) => {
     const updated = hamauliateon.filter((_, idx) => idx !== index);
     syncHamauliateonWizard(updated);
+  };
+
+  // Keuangan: Sumbangan Natal Diakoni Sosial (sementara/opsional) -> masuk ke Kas Sosial Huria
+  const syncSumbanganNatalWizard = (
+    updatedList: SumbanganNatalItem[],
+    nextVisible = warta.tampilkan_sumbangan_natal !== false
+  ) => {
+    const updatedWarta = { ...warta, tampilkan_sumbangan_natal: nextVisible };
+    const syncedPen = syncSumbanganNatalToPenerimaanRows(
+      penerimaan,
+      updatedList,
+      nextVisible,
+      warta.id
+    );
+    const { updatedRows: recalculated } = recalculatePenerimaanRows(syncedPen);
+    const rekap = calculateRekapitulasi(updatedWarta, recalculated, pengeluaran);
+
+    onChange({
+      ...data,
+      warta: updatedWarta,
+      sumbangan_natal: updatedList,
+      penerimaan: recalculated,
+      rekapitulasi: rekap
+    });
+  };
+
+  const handleSumbanganNatalChange = (
+    index: number,
+    field: 'nama' | 'lingkungan' | 'jumlah',
+    val: any
+  ) => {
+    const updated = [...sumbangan_natal];
+    updated[index] = {
+      ...updated[index],
+      [field]: field === 'jumlah' ? parseRupiahInput(val) : val
+    };
+    syncSumbanganNatalWizard(updated);
+  };
+
+  const handleAddSumbanganNatalRow = () => {
+    const newItem: SumbanganNatalItem = {
+      id: `sn-${Date.now()}`,
+      warta_id: warta.id,
+      nama: '',
+      lingkungan: '',
+      jumlah: 0,
+      urutan: sumbangan_natal.length + 1
+    };
+    syncSumbanganNatalWizard([...sumbangan_natal, newItem], true);
+  };
+
+  const handleDeleteSumbanganNatalRow = (index: number) => {
+    const updated = sumbangan_natal
+      .filter((_, idx) => idx !== index)
+      .map((item, idx) => ({ ...item, urutan: idx + 1 }));
+    syncSumbanganNatalWizard(updated);
+  };
+
+  const handleToggleSumbanganNatalVisibility = (visible: boolean) => {
+    syncSumbanganNatalWizard(sumbangan_natal, visible);
+  };
+
+  const handleToggleSumbanganNatalPeriod = (index: number) => {
+    const updated = [...sumbangan_natal];
+    updated[index] = {
+      ...updated[index],
+      dari_minggu_lalu: !updated[index].dari_minggu_lalu
+    };
+    syncSumbanganNatalWizard(updated);
+  };
+
+  const handlePullPrevSumbanganNatal = async () => {
+    setIsPullingPrevSumbangan(true);
+    try {
+      const prevRes = await getPreviousWeekSumbanganNatal(warta.tanggal_minggu, warta.id);
+      if (!prevRes || prevRes.items.length === 0) {
+        notify('info', 'Belum ada data Sumbangan Natal Diakoni Sosial di warta minggu sebelumnya.');
+        return;
+      }
+      const ts = Date.now();
+      const carriedRows: SumbanganNatalItem[] = prevRes.items.map((item, idx) => ({
+        ...item,
+        id: `sn-prev-${ts}-${idx + 1}`,
+        warta_id: warta.id,
+        dari_minggu_lalu: true,
+        urutan: idx + 1
+      }));
+      const currentWeekRows = sumbangan_natal.filter((item) => !item.dari_minggu_lalu);
+      const merged = [...carriedRows, ...currentWeekRows].map((item, idx) => ({
+        ...item,
+        urutan: idx + 1
+      }));
+      syncSumbanganNatalWizard(merged, true);
+      notify(
+        'success',
+        `Berhasil mengambil ${carriedRows.length} data penyumbang dari warta ${formatTanggalIndo(prevRes.sourceWarta.tanggal_minggu)}.`
+      );
+    } catch (err: any) {
+      notify('error', err?.message || 'Gagal mengambil data minggu sebelumnya.');
+    } finally {
+      setIsPullingPrevSumbangan(false);
+    }
   };
 
   // Keuangan: Pengeluaran change
@@ -2215,7 +2410,12 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                         let lastGroup = '';
 
                         return filtered.map(({ r, originalIndex }) => {
-                          const isAutoSource = r.kode === 'PEL_TAON' || r.kode === 'HAM_LAIN' || r.no_tampilan === '1.2.15' || r.no_tampilan === '1.2.17';
+                          const isAutoSource =
+                            r.kode === 'PEL_TAON' ||
+                            r.kode === 'HAM_LAIN' ||
+                            r.kode === SUMBANGAN_NATAL_KODE ||
+                            r.no_tampilan === '1.2.15' ||
+                            r.no_tampilan === '1.2.17';
                           const isSentral =
                             r.is_sentralisasi !== false &&
                             (r.is_sentralisasi === true || r.aturan_alokasi === 'split_45_55');
@@ -2256,7 +2456,12 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                                   )}
                                   {isAutoSource && (
                                     <span className="text-[9.5px] text-blue-700 bg-blue-50 px-1 py-0.2 rounded ml-1 font-semibold">
-                                      Auto {r.kode === 'PEL_TAON' || r.no_tampilan === '1.2.15' ? 'Rincian B' : 'Rincian C'}
+                                      Auto{' '}
+                                      {r.kode === 'PEL_TAON' || r.no_tampilan === '1.2.15'
+                                        ? 'Rincian B'
+                                        : r.kode === SUMBANGAN_NATAL_KODE
+                                        ? 'Sumb. Natal'
+                                        : 'Rincian C'}
                                     </span>
                                   )}
                                 </td>
@@ -2267,6 +2472,13 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                                       title="Pos Ke Kas Huria di Rincian C otomatis dikenakan 55% Sentralisasi / 45% Kas Huria"
                                     >
                                       Ya (55% Kas Huria)
+                                    </span>
+                                  ) : r.kode === SUMBANGAN_NATAL_KODE ? (
+                                    <span
+                                      className="inline-block text-[10px] px-1.5 py-0.5 rounded border font-bold bg-rose-50 text-rose-800 border-rose-200"
+                                      title="100% masuk ke Kas Sosial Huria"
+                                    >
+                                      Tidak (100% Sosial)
                                     </span>
                                   ) : (
                                     <select
@@ -2485,10 +2697,18 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     );
                   })()}
 
-                  <div className="border border-stone-200 rounded-lg p-2.5 bg-stone-50 space-y-2.5 max-h-[340px] overflow-y-auto">
+                  <div className="border border-stone-200 rounded-lg p-2.5 bg-stone-50 space-y-2.5 max-h-[380px] overflow-y-auto">
                     {hamauliateon.map((ham, idx) => {
                       const huriaSplit = calculateHuriaSentralSplit(ham.ke_huria || 0, isHamSentral);
-                      const needsTransJenis = (ham.ke_transitori || 0) > 0 && !ham.transitori_kode;
+                      const rawTransList = getHamauliateonTransitoriList(ham);
+                      const transEntries =
+                        rawTransList.length > 0
+                          ? rawTransList
+                          : [{ id: `tr-${ham.id || idx}-1`, kode: '', uraian: '', jumlah: 0 }];
+                      const transSum = calculateHamauliateonTransitoriSum(ham);
+                      const needsTransJenis = transEntries.some(
+                        (t) => (t.jumlah || 0) > 0 && !t.kode
+                      );
                       return (
                         <div
                           key={ham.id || idx}
@@ -2572,32 +2792,91 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                             </div>
 
                             <div className={`bg-indigo-50/40 p-1.5 rounded border ${needsTransJenis ? 'border-amber-400 ring-1 ring-amber-200' : 'border-indigo-200'}`}>
-                              <span className="block font-bold text-indigo-950 mb-0.5">Ke Transitoris:</span>
-                              <div className="space-y-1">
-                                <select
-                                  value={ham.transitori_kode || ''}
-                                  onChange={(e) => handleHamauliateonTransitoriJenisChange(idx, e.target.value)}
-                                  className="w-full px-1.5 py-0.5 border border-stone-200 rounded bg-white text-stone-800 font-medium text-[10.5px] cursor-pointer"
-                                  title="Pilih jenis penerimaan transitoris"
+                              <div className="flex items-center justify-between gap-1 mb-1">
+                                <span className="font-bold text-indigo-950">Ke Transitoris:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddHamauliateonTransitoriEntry(idx)}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-900 text-[9.5px] font-bold cursor-pointer transition"
+                                  title="Tambah tujuan transitoris lain (mis. Pendeta, Bibelvrow, Lingkungan)"
                                 >
-                                  <option value="">-- Pilih Jenis Transitoris --</option>
-                                  {transitoriOptions.map((opt) => (
-                                    <option key={opt.kode} value={opt.kode}>
-                                      {opt.no_tampilan ? `${opt.no_tampilan} ` : ''}{opt.uraian}
-                                    </option>
-                                  ))}
-                                </select>
-                                <input
-                                  type="text"
-                                  value={formatRupiah(ham.ke_transitori)}
-                                  onChange={(e) => handleHamauliateonChange(idx, 'ke_transitori', e.target.value)}
-                                  placeholder="0"
-                                  className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-stone-900 text-xs"
-                                />
-                                {needsTransJenis && (
-                                  <span className="block text-[9.5px] text-amber-700 font-semibold">
-                                    Pilih tujuan jenis transitoris
-                                  </span>
+                                  <Plus className="w-2.5 h-2.5" /> Tambah
+                                </button>
+                              </div>
+                              <div className="space-y-1.5">
+                                {transEntries.map((tEntry, tIdx) => {
+                                  const rowMissingKode = (tEntry.jumlah || 0) > 0 && !tEntry.kode;
+                                  const showDelete =
+                                    transEntries.length > 1 ||
+                                    (tEntry.jumlah || 0) > 0 ||
+                                    Boolean(tEntry.kode);
+                                  return (
+                                    <div
+                                      key={tEntry.id || tIdx}
+                                      className={`p-1 rounded bg-white/85 border space-y-1 ${
+                                        rowMissingKode ? 'border-amber-400' : 'border-indigo-100'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-1">
+                                        <select
+                                          value={tEntry.kode || ''}
+                                          onChange={(e) =>
+                                            handleUpdateHamauliateonTransitoriEntry(
+                                              idx,
+                                              tIdx,
+                                              'kode',
+                                              e.target.value
+                                            )
+                                          }
+                                          className="flex-1 min-w-0 px-1 py-0.5 border border-stone-200 rounded bg-white text-stone-800 font-medium text-[10px] cursor-pointer"
+                                          title="Pilih jenis penerimaan transitoris"
+                                        >
+                                          <option value="">-- Pilih Transitoris --</option>
+                                          {transitoriOptions.map((opt) => (
+                                            <option key={opt.kode} value={opt.kode}>
+                                              {opt.no_tampilan ? `${opt.no_tampilan} ` : ''}{opt.uraian}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        {showDelete && (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleDeleteHamauliateonTransitoriEntry(idx, tIdx)
+                                            }
+                                            className="p-0.5 text-stone-400 hover:text-rose-600 rounded cursor-pointer transition shrink-0"
+                                            title="Hapus item transitoris ini"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                      <input
+                                        type="text"
+                                        value={formatRupiah(tEntry.jumlah)}
+                                        onChange={(e) =>
+                                          handleUpdateHamauliateonTransitoriEntry(
+                                            idx,
+                                            tIdx,
+                                            'jumlah',
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="0"
+                                        className="w-full px-1.5 py-0.5 border border-stone-200 rounded text-right font-mono-num font-semibold bg-white text-stone-900 text-xs"
+                                      />
+                                      {rowMissingKode && (
+                                        <span className="block text-[9px] text-amber-700 font-semibold">
+                                          Pilih tujuan transitoris
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                {transEntries.length > 1 && (
+                                  <div className="pt-0.5 text-right font-mono-num text-[10px] font-bold text-indigo-900">
+                                    Total Transitoris: Rp {formatRupiah(transSum)}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -2608,6 +2887,216 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Sumbangan Natal Diakoni Sosial (Sementara / Opsional -> Kas Sosial Huria) */}
+              {(() => {
+                const showSumbanganNatal = warta.tampilkan_sumbangan_natal !== false;
+                const {
+                  subTotal: subTotalSumbanganNatal,
+                  dariMingguLalu,
+                  mingguIni
+                } = calculateSumbanganNatalBreakdown(sumbangan_natal);
+
+                return (
+                  <div className="space-y-2.5 pt-3 border-t border-stone-200">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h5 className="text-xs font-bold text-stone-900 uppercase flex items-center gap-1.5 flex-wrap">
+                          <span>Sumbangan Natal Diakoni Sosial</span>
+                          <span className="text-[10px] font-semibold text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                            Masuk ke Kas Sosial Huria
+                          </span>
+                          {!showSumbanganNatal && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded">
+                              Dihilangkan dari Warta
+                            </span>
+                          )}
+                        </h5>
+                        <p className="text-[11px] text-stone-500">
+                          Tabel kumulatif s.d. Natal. Baris <strong>Minggu Ini</strong> otomatis masuk ke Penerimaan <strong>Kas Sosial Huria</strong>; baris <strong>Minggu Lalu</strong> tetap tampil tanpa double hitung.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handlePullPrevSumbanganNatal}
+                          disabled={isPullingPrevSumbangan}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded text-xs font-semibold cursor-pointer transition disabled:opacity-50"
+                          title="Ambil data penyumbang dari warta minggu sebelumnya (otomatis ditandai Minggu Lalu agar tidak double hitung)"
+                        >
+                          <History className={`w-3.5 h-3.5 ${isPullingPrevSumbangan ? 'animate-spin' : ''}`} />
+                          {isPullingPrevSumbangan ? 'Mengambil...' : 'Ambil Minggu Sebelumnya'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddSumbanganNatalRow}
+                          disabled={!showSumbanganNatal}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded text-xs font-semibold cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Tambah Penyumbang
+                        </button>
+                        <div
+                          className="inline-flex items-center rounded border border-stone-300 bg-stone-100 p-0.5 shadow-2xs"
+                          role="group"
+                          aria-label="Tampilkan atau hilangkan tabel Sumbangan Natal Diakoni Sosial"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSumbanganNatalVisibility(true)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                              showSumbanganNatal
+                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                : 'text-stone-600 hover:text-stone-900'
+                            }`}
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Tampilkan
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSumbanganNatalVisibility(false)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                              !showSumbanganNatal
+                                ? 'bg-amber-600 text-white shadow-2xs'
+                                : 'text-stone-600 hover:text-stone-900'
+                            }`}
+                          >
+                            <EyeOff className="w-3.5 h-3.5" /> Hilangkan
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!showSumbanganNatal && (
+                      <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2">
+                        <EyeOff className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                        <span>
+                          Tabel <strong>Sumbangan Natal Diakoni Sosial</strong> sedang <strong>dihilangkan / disembunyikan</strong> dari halaman cetak warta dan tidak dihitung ke Kas Sosial Huria. Data baris tetap tersimpan jika sewaktu-waktu ditampilkan kembali.
+                        </span>
+                      </div>
+                    )}
+
+                    <datalist id="lingkungan-sumbangan-options">
+                      <option value="Letare" />
+                      <option value="Exaudi" />
+                      <option value="Judika" />
+                      <option value="Galatia" />
+                      <option value="Efesus" />
+                      <option value="Jeremia" />
+                    </datalist>
+
+                    <div className={`border border-stone-300 rounded-lg overflow-x-auto bg-white transition-opacity ${!showSumbanganNatal ? 'opacity-55' : ''}`}>
+                      <table className="w-full text-xs">
+                        <thead className="bg-stone-100 text-stone-800 font-bold border-b border-stone-300">
+                          <tr>
+                            <th className="w-10 py-1.5 px-2 text-center">No</th>
+                            <th className="py-1.5 px-2 text-left">Nama Penyumbang</th>
+                            <th className="w-32 py-1.5 px-2 text-left">Lingkungan</th>
+                            <th className="w-28 py-1.5 px-2 text-center">Periode Kas</th>
+                            <th className="w-36 py-1.5 px-2 text-right">Jumlah Sumbangan (Rp)</th>
+                            <th className="w-12 py-1.5 px-2 text-center">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-200">
+                          {sumbangan_natal.length > 0 ? (
+                            sumbangan_natal.map((item, idx) => (
+                              <tr
+                                key={item.id || idx}
+                                className={item.dari_minggu_lalu ? 'bg-amber-50/35 hover:bg-amber-50/60' : 'hover:bg-stone-50/70'}
+                              >
+                                <td className="py-1 px-2 text-center text-stone-500 font-medium">
+                                  {idx + 1}.
+                                </td>
+                                <td className="py-1 px-2">
+                                  <input
+                                    type="text"
+                                    value={item.nama}
+                                    onChange={(e) => handleSumbanganNatalChange(idx, 'nama', e.target.value)}
+                                    placeholder="Nama penyumbang / keluarga..."
+                                    className="w-full px-2 py-1 border border-stone-200 rounded text-xs bg-stone-50 focus:bg-white"
+                                  />
+                                </td>
+                                <td className="py-1 px-2">
+                                  <input
+                                    type="text"
+                                    list="lingkungan-sumbangan-options"
+                                    value={item.lingkungan}
+                                    onChange={(e) => handleSumbanganNatalChange(idx, 'lingkungan', e.target.value)}
+                                    placeholder="Lingkungan / Wijk"
+                                    className="w-full px-2 py-1 border border-stone-200 rounded text-xs bg-stone-50 focus:bg-white"
+                                  />
+                                </td>
+                                <td className="py-1 px-2 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleSumbanganNatalPeriod(idx)}
+                                    title={
+                                      item.dari_minggu_lalu
+                                        ? 'Sudah dibukukan minggu sebelumnya (klik untuk ubah ke Minggu Ini)'
+                                        : 'Masuk Kas Sosial minggu ini (klik untuk ubah ke Minggu Lalu)'
+                                    }
+                                    className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer transition ${
+                                      item.dari_minggu_lalu
+                                        ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                                        : 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
+                                    }`}
+                                  >
+                                    {item.dari_minggu_lalu ? 'Minggu Lalu' : 'Minggu Ini'}
+                                  </button>
+                                </td>
+                                <td className="py-1 px-2">
+                                  <input
+                                    type="text"
+                                    value={formatRupiah(item.jumlah)}
+                                    onChange={(e) => handleSumbanganNatalChange(idx, 'jumlah', e.target.value)}
+                                    placeholder="0"
+                                    className="w-full px-2 py-1 border border-stone-200 rounded text-xs text-right font-mono-num font-semibold bg-stone-50 focus:bg-white"
+                                  />
+                                </td>
+                                <td className="py-1 px-2 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSumbanganNatalRow(idx)}
+                                    className="text-stone-400 hover:text-rose-600 p-1 rounded cursor-pointer transition"
+                                    title="Hapus baris ini"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={6} className="py-3 px-3 text-center text-stone-400 italic text-xs">
+                                Belum ada data penyumbang. Klik <strong>Ambil Minggu Sebelumnya</strong> atau <strong>+ Tambah Penyumbang</strong>.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                        <tfoot className="bg-stone-100 border-t-2 border-stone-300 font-bold text-stone-900">
+                          <tr>
+                            <td colSpan={4} className="py-1.5 px-2 text-right uppercase text-[11px]">
+                              Sub Total (Kumulatif Sumbangan Natal):
+                            </td>
+                            <td className="py-1.5 px-2 text-right font-mono-num text-rose-900">
+                              Rp {formatRupiah(showSumbanganNatal ? subTotalSumbanganNatal : 0)}
+                            </td>
+                            <td />
+                          </tr>
+                          {showSumbanganNatal && dariMingguLalu > 0 && (
+                            <tr className="bg-stone-50 border-t border-stone-200 text-[11px] font-medium text-stone-600">
+                              <td colSpan={6} className="py-1 px-2 text-right">
+                                Sudah masuk kas minggu lalu: <strong className="font-mono-num text-stone-800">Rp {formatRupiah(dariMingguLalu)}</strong>
+                                {' · '}
+                                Tambahan Kas Sosial minggu ini: <strong className="font-mono-num text-emerald-800">Rp {formatRupiah(mingguIni)}</strong>
+                              </td>
+                            </tr>
+                          )}
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* D. Pengeluaran */}
               <div className="space-y-2 pt-2 border-t border-stone-100">

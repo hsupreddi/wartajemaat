@@ -5,7 +5,9 @@ import {
   recalculatePenerimaanRows,
   getPrintablePenerimaanRows,
   getPrintablePengeluaranRows,
-  calculatePengeluaranTotals
+  calculatePengeluaranTotals,
+  calculateSumbanganNatalBreakdown,
+  getHamauliateonTransitoriList
 } from '../../lib/financialMath';
 import { formatTanggalIndo } from '../../lib/dateUtils';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -17,7 +19,7 @@ interface Page3Props {
 }
 
 export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan }) => {
-  const { warta, penerimaan, pelean_taon, hamauliateon, pengeluaran, rekapitulasi, sopo_godang = [] } = data;
+  const { warta, penerimaan, pelean_taon, hamauliateon, sumbangan_natal = [], pengeluaran, rekapitulasi, sopo_godang = [] } = data;
 
   const penerimaanTotals = recalculatePenerimaanRows(penerimaan);
   const nonEmptyPenerimaan = getPrintablePenerimaanRows(penerimaanTotals.updatedRows);
@@ -26,6 +28,12 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
 
   const peleanTaonTotal = pelean_taon.reduce((acc, c) => acc + (c.jumlah || 0), 0);
   const hamauliateonTotal = hamauliateon.reduce((acc, c) => acc + (c.jumlah || 0), 0);
+  const showSumbanganNatal = warta.tampilkan_sumbangan_natal !== false && sumbangan_natal.length > 0;
+  const {
+    subTotal: sumbanganNatalSubTotal,
+    dariMingguLalu: sumbanganNatalMingguLalu,
+    mingguIni: sumbanganNatalMingguIni
+  } = calculateSumbanganNatalBreakdown(sumbangan_natal);
 
   // Pad sopo godang to 5 rows for authentic balanced printed look
   const sopoGodangList = [...sopo_godang];
@@ -253,11 +261,12 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                     if (h.ke_sentralisasi && h.ke_sentralisasi > 0) {
                       posList.push({ label: 'Ke Sentral 55%', amount: h.ke_sentralisasi, color: 'bg-purple-50 text-purple-900 border-purple-200' });
                     }
-                    if (h.ke_transitori && h.ke_transitori > 0) {
-                      const transLabel = h.transitori_uraian
-                        ? `Ke Transitori (${h.transitori_uraian})`
+                    const transEntries = getHamauliateonTransitoriList(h).filter((t) => t.jumlah > 0);
+                    for (const t of transEntries) {
+                      const transLabel = t.uraian
+                        ? `Ke Transitori (${t.uraian})`
                         : 'Ke Transitori';
-                      posList.push({ label: transLabel, amount: h.ke_transitori, color: 'bg-rose-50 text-rose-900 border-rose-200' });
+                      posList.push({ label: transLabel, amount: t.jumlah, color: 'bg-rose-50 text-rose-900 border-rose-200' });
                     }
 
                     return (
@@ -297,6 +306,59 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
             </table>
           </section>
         </div>
+
+        {/* SUB-TABEL SEMENTARA: SUMBANGAN NATAL DIAKONI SOSIAL (MASUK KE KAS SOSIAL HURIA) */}
+        {showSumbanganNatal && (
+          <section className="avoid-break border border-stone-400 p-1.5 bg-stone-50">
+            <div className="font-bold text-stone-900 border-b border-stone-300 pb-0.5 mb-1 flex items-center justify-between text-[7.5pt]">
+              <span>Sumbangan Natal Diakoni Sosial</span>
+              <span className="text-[6.8pt] font-semibold text-stone-600 italic">
+                Masuk ke Kas Sosial Huria
+              </span>
+            </div>
+            <table className="w-full border-collapse text-[7pt]">
+              <thead>
+                <tr className="border-b border-stone-300 text-left font-bold text-stone-700 bg-stone-100">
+                  <th className="w-7 py-0.5 px-1 text-center">No</th>
+                  <th className="py-0.5 px-1.5 text-left">Nama Penyumbang</th>
+                  <th className="w-28 py-0.5 px-1.5 text-left">Lingkungan</th>
+                  <th className="w-24 py-0.5 px-1 text-right">Jumlah Sumbangan (Rp)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-200">
+                {sumbangan_natal.map((sn, idx) => (
+                  <tr key={sn.id || idx}>
+                    <td className="py-0.5 px-1 text-center text-stone-500">{idx + 1}.</td>
+                    <td className="py-0.5 px-1.5 font-medium text-stone-900">{sn.nama || '-'}</td>
+                    <td className="py-0.5 px-1.5 text-stone-700">{sn.lingkungan || '-'}</td>
+                    <td className="py-0.5 px-1 text-right font-mono-num font-semibold text-stone-900">
+                      {formatRupiah(sn.jumlah)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-stone-400 bg-stone-200/70 font-bold text-stone-900">
+                  <td colSpan={3} className="py-0.5 px-1.5 text-right uppercase text-[6.8pt]">
+                    Sub Total (Masuk Kas Sosial Huria):
+                  </td>
+                  <td className="py-0.5 px-1 text-right font-mono-num">
+                    Rp {formatRupiah(sumbanganNatalSubTotal)}
+                  </td>
+                </tr>
+                {sumbanganNatalMingguLalu > 0 && (
+                  <tr className="border-t border-stone-300 bg-stone-100/80 text-[6.3pt] text-stone-600">
+                    <td colSpan={4} className="py-0.5 px-1.5 text-right">
+                      Sudah dibukukan minggu lalu: <span className="font-mono-num font-semibold">Rp {formatRupiah(sumbanganNatalMingguLalu)}</span>
+                      {' · '}
+                      Penerimaan minggu ini: <span className="font-mono-num font-semibold text-stone-900">Rp {formatRupiah(sumbanganNatalMingguIni)}</span>
+                    </td>
+                  </tr>
+                )}
+              </tfoot>
+            </table>
+          </section>
+        )}
 
         {/* D. LAPORAN PENGELUARAN */}
         <section className="avoid-break space-y-1">

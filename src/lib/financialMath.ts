@@ -1,9 +1,11 @@
 import {
   AturanAlokasi,
   HamauliateonItem,
+  HamauliateonTransitoriItem,
   PenerimaanRow,
   PengeluaranItem,
   RekapitulasiKeuangan,
+  SumbanganNatalItem,
   WartaRecord
 } from '../types';
 
@@ -50,6 +52,48 @@ export function calculateHuriaSentralSplit(
 }
 
 /**
+ * Return normalized list of transitori allocations on a HamauliateonItem,
+ * falling back seamlessly to legacy single transitori_kode/ke_transitori fields.
+ */
+export function getHamauliateonTransitoriList(
+  h: HamauliateonItem
+): HamauliateonTransitoriItem[] {
+  if (Array.isArray(h.transitori_items) && h.transitori_items.length > 0) {
+    return h.transitori_items.map((t, idx) => ({
+      id: t.id || `tr-${h.id || 'ham'}-${idx + 1}`,
+      kode: t.kode || '',
+      uraian: t.uraian || '',
+      jumlah: Math.max(0, Math.round(t.jumlah || 0))
+    }));
+  }
+  const legacyAmt = Math.max(0, Math.round(h.ke_transitori || 0));
+  if (legacyAmt > 0 || h.transitori_kode || h.transitori_uraian) {
+    return [
+      {
+        id: `tr-${h.id || 'ham'}-1`,
+        kode: h.transitori_kode || '',
+        uraian: h.transitori_uraian || '',
+        jumlah: legacyAmt
+      }
+    ];
+  }
+  return [];
+}
+
+/**
+ * Sum all transitori allocations for a single HamauliateonItem
+ */
+export function calculateHamauliateonTransitoriSum(h: HamauliateonItem): number {
+  if (Array.isArray(h.transitori_items) && h.transitori_items.length > 0) {
+    return h.transitori_items.reduce(
+      (acc, cur) => acc + Math.max(0, Math.round(cur.jumlah || 0)),
+      0
+    );
+  }
+  return Math.max(0, Math.round(h.ke_transitori || 0));
+}
+
+/**
  * Calculate multi-pos breakdown totals for Hamauliateon (Ucapan Syukur)
  * Allocates across Kas Huria (with 55% Sentralisasi / 45% Huria when active), Sosial Huria, Pembangunan, and Transitori.
  */
@@ -78,7 +122,7 @@ export function calculateHamauliateonTotals(
     const sosial = Math.max(0, Math.round(h.ke_sosial || 0));
     const pemb = Math.max(0, Math.round(h.ke_pembangunan || 0));
     const legacySentral = Math.max(0, Math.round(h.ke_sentralisasi || 0));
-    const trans = Math.max(0, Math.round(h.ke_transitori || 0));
+    const trans = calculateHamauliateonTransitoriSum(h);
     const sumPos = huriaInput + sosial + pemb + legacySentral + trans;
 
     if (sumPos > 0) {
@@ -138,6 +182,124 @@ export function syncHamauliateonToPenerimaanRows(
     }
     return r;
   });
+}
+
+export const SUMBANGAN_NATAL_KODE = 'SUMB_NATAL_DIAKONI';
+
+/**
+ * Calculate subtotal for Sumbangan Natal Diakoni Sosial
+ */
+export function calculateSumbanganNatalTotal(
+  items?: SumbanganNatalItem[]
+): number {
+  return (items || []).reduce(
+    (acc, cur) => acc + Math.max(0, Math.round(cur.jumlah || 0)),
+    0
+  );
+}
+
+/**
+ * Break down Sumbangan Natal Diakoni Sosial into total accumulated amount,
+ * amount already recorded in previous weeks (dari_minggu_lalu), and new donations this week.
+ */
+export function calculateSumbanganNatalBreakdown(items?: SumbanganNatalItem[]): {
+  subTotal: number;
+  dariMingguLalu: number;
+  mingguIni: number;
+} {
+  let subTotal = 0;
+  let dariMingguLalu = 0;
+
+  for (const cur of items || []) {
+    const amt = Math.max(0, Math.round(cur.jumlah || 0));
+    subTotal += amt;
+    if (cur.dari_minggu_lalu) {
+      dariMingguLalu += amt;
+    }
+  }
+
+  return {
+    subTotal,
+    dariMingguLalu,
+    mingguIni: Math.max(0, subTotal - dariMingguLalu)
+  };
+}
+
+/**
+ * Sync Sumbangan Natal Diakoni Sosial into Penerimaan rows (100% allocated to Kas Sosial Huria).
+ * Only new donations for the active week (!dari_minggu_lalu) are added to weekly Kas Sosial Huria
+ * receipts to avoid double-counting carried-over rows already in Saldo Awal.
+ * When hidden (isVisible === false), forces the synced row amount to 0.
+ */
+export function syncSumbanganNatalToPenerimaanRows(
+  penerimaanRows: PenerimaanRow[],
+  items: SumbanganNatalItem[] = [],
+  isVisible = true,
+  wartaId?: string
+): PenerimaanRow[] {
+  const { mingguIni } = calculateSumbanganNatalBreakdown(items);
+  const subTotal = isVisible ? mingguIni : 0;
+  const rows = penerimaanRows || [];
+  const existingIdx = rows.findIndex((r) => r.kode === SUMBANGAN_NATAL_KODE);
+
+  if (existingIdx >= 0) {
+    return rows.map((r, idx) =>
+      idx === existingIdx
+        ? {
+            ...r,
+            uraian: r.uraian || 'Sumbangan Natal Diakoni Sosial',
+            aturan_alokasi: 'sosial' as const,
+            is_sentralisasi: false,
+            dialihkan_ke_pembangunan: false,
+            jumlah: subTotal,
+            huria_45: 0,
+            sosial: subTotal,
+            pembangunan: 0,
+            sentral_55: 0,
+            transitori: 0
+          }
+        : r
+    );
+  }
+
+  if (subTotal <= 0) {
+    return rows;
+  }
+
+  const newRow: PenerimaanRow = {
+    id: wartaId ? `pen-SUMB_NATAL-${wartaId}` : `pen-SUMB_NATAL-${Date.now()}`,
+    kode: SUMBANGAN_NATAL_KODE,
+    kelompok: '1.2',
+    no_tampilan: '1.2.18',
+    urutan: 27,
+    uraian: 'Sumbangan Natal Diakoni Sosial',
+    aturan_alokasi: 'sosial',
+    is_sentralisasi: false,
+    dialihkan_ke_pembangunan: false,
+    jumlah: subTotal,
+    huria_45: 0,
+    sosial: subTotal,
+    pembangunan: 0,
+    sentral_55: 0,
+    transitori: 0
+  };
+
+  // Insert right after the last 1.2 item so numbering stays grouped cleanly
+  let insertAfterIdx = -1;
+  rows.forEach((r, idx) => {
+    if (r.kelompok === '1.2' || (r.no_tampilan && r.no_tampilan.startsWith('1.2'))) {
+      insertAfterIdx = idx;
+    }
+  });
+
+  if (insertAfterIdx >= 0) {
+    return [
+      ...rows.slice(0, insertAfterIdx + 1),
+      newRow,
+      ...rows.slice(insertAfterIdx + 1)
+    ];
+  }
+  return [...rows, newRow];
 }
 
 /**

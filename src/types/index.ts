@@ -222,6 +222,7 @@ export interface WartaRecord {
   ulang_tahun_snapshot?: UlangTahunItem[];
   teks_ucapan_ulang_tahun?: string;
   tampilkan_partangiangan?: boolean;
+  tampilkan_sumbangan_natal?: boolean;
   created_by?: string;
   created_at?: string;
   updated_at?: string;
@@ -326,6 +327,23 @@ export interface PeleanTaonItem {
   urutan: number;
 }
 
+export interface SumbanganNatalItem {
+  id: string;
+  warta_id?: string;
+  nama: string;
+  lingkungan: string;
+  jumlah: number;
+  urutan: number;
+  dari_minggu_lalu?: boolean;
+}
+
+export interface HamauliateonTransitoriItem {
+  id: string;
+  kode: string;
+  uraian: string;
+  jumlah: number;
+}
+
 export interface HamauliateonItem {
   id: string;
   warta_id?: string;
@@ -339,6 +357,7 @@ export interface HamauliateonItem {
   ke_transitori?: number;
   transitori_kode?: string;
   transitori_uraian?: string;
+  transitori_items?: HamauliateonTransitoriItem[];
   urutan: number;
   [key: string]: any;
 }
@@ -403,6 +422,7 @@ export interface FullWartaData {
   penerimaan: PenerimaanRow[];
   pelean_taon: PeleanTaonItem[];
   hamauliateon: HamauliateonItem[];
+  sumbangan_natal?: SumbanganNatalItem[];
   pengeluaran: PengeluaranItem[];
   ulang_tahun: UlangTahunItem[];
   rekapitulasi: RekapitulasiKeuangan;
