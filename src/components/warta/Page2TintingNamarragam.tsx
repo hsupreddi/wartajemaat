@@ -150,55 +150,58 @@ export const Page2TintingNamarragam: React.FC<Page2Props> = ({ data, pengaturan 
           </div>
 
           {/* 4. JADWAL PARTANGIANGAN DI LINGKUNGAN (Dynamic Columns) */}
-          <div className="avoid-break space-y-1">
-            <h3 className="font-bold text-stone-900 text-[8.5pt] uppercase border-b border-stone-800 pb-0.5">
-              4. Jadwal Partangiangan Lingkungan di Minggu on
-            </h3>
-            {(() => {
-              const cols = data.jadwal_partangiangan_columns && data.jadwal_partangiangan_columns.length > 0
-                ? data.jadwal_partangiangan_columns
-                : DEFAULT_PARTANGIANGAN_COLUMNS;
-              return (
-                <table className="w-full border-collapse border border-stone-400 text-[7.8pt]">
-                  <thead>
-                    <tr className="bg-stone-100 text-stone-900 border-b border-stone-400 font-bold">
-                      <th className="w-6 py-1 px-1 text-center border-r border-stone-300">No</th>
-                      {cols.map((c, ci) => (
-                        <th
-                          key={c.key}
-                          className={`py-1 px-1.5 ${c.key === 'pukul' ? 'w-18 text-center' : 'text-left'} ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''}`}
-                        >
-                          {c.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-200">
-                    {jadwal_partangiangan.map((jp, idx) => (
-                      <tr key={jp.id || idx} className="hover:bg-stone-50">
-                        <td className="py-1 px-1 text-center text-stone-600 font-medium border-r border-stone-200">
-                          {idx + 1}.
-                        </td>
+          {warta.tampilkan_partangiangan !== false && (
+            <div className="avoid-break space-y-1">
+              <h3 className="font-bold text-stone-900 text-[8.5pt] uppercase border-b border-stone-800 pb-0.5">
+                4. Jadwal Partangiangan Lingkungan di Minggu on
+              </h3>
+              {(() => {
+                const cols = data.jadwal_partangiangan_columns && data.jadwal_partangiangan_columns.length > 0
+                  ? data.jadwal_partangiangan_columns
+                  : DEFAULT_PARTANGIANGAN_COLUMNS;
+                return (
+                  <table className="w-full border-collapse border border-stone-400 text-[7.8pt]">
+                    <thead>
+                      <tr className="bg-stone-100 text-stone-900 border-b border-stone-400 font-bold">
+                        <th className="w-6 py-1 px-1 text-center border-r border-stone-300">No</th>
                         {cols.map((c, ci) => (
-                          <td
+                          <th
                             key={c.key}
-                            className={`py-1 px-1.5 ${c.key === 'pukul' ? 'text-center' : ''} ${c.key === 'lingkungan' ? 'font-semibold text-stone-900' : 'text-stone-800'} ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''}`}
+                            className={`py-1 px-1.5 ${c.key === 'pukul' ? 'w-18 text-center' : 'text-left'} ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''}`}
                           >
-                            {jp[c.key] || '-'}
-                          </td>
+                            {c.label}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              );
-            })()}
-          </div>
+                    </thead>
+                    <tbody className="divide-y divide-stone-200">
+                      {jadwal_partangiangan.map((jp, idx) => (
+                        <tr key={jp.id || idx} className="hover:bg-stone-50">
+                          <td className="py-1 px-1 text-center text-stone-600 font-medium border-r border-stone-200">
+                            {idx + 1}.
+                          </td>
+                          {cols.map((c, ci) => (
+                            <td
+                              key={c.key}
+                              className={`py-1 px-1.5 ${c.key === 'pukul' ? 'text-center' : ''} ${c.key === 'lingkungan' ? 'font-semibold text-stone-900' : 'text-stone-800'} ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''}`}
+                            >
+                              {jp[c.key] || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+          )}
 
           {/* 5+. DAFTAR PENGUMUMAN DINAMIS */}
           <div className="space-y-2.5 pt-1">
             {pengumuman.map((peng, idx) => {
-              const noNumber = idx + 5;
+              const startNo = warta.tampilkan_partangiangan !== false ? 5 : 4;
+              const noNumber = idx + startNo;
               return (
                 <div key={peng.id || idx} className="avoid-break text-[8.2pt] leading-relaxed border-l-2 border-stone-300 pl-2.5">
                   <h4 className="font-bold text-stone-900 uppercase tracking-wide">

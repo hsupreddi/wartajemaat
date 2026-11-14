@@ -47,6 +47,7 @@ import {
   Lock,
   Download,
   Eye,
+  EyeOff,
   Info,
   RotateCcw,
   AlertCircle,
@@ -1726,42 +1727,91 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
               </div>
 
               {/* Jadwal Partangiangan Lingkungan */}
-              <div className="space-y-2 pt-2 border-t border-stone-100">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h4 className="text-xs font-bold text-stone-900 uppercase">
-                      Jadwal Partangiangan Lingkungan di Minggu on
-                    </h4>
-                    <p className="text-[11px] text-stone-500">
-                      Kelola jadwal partangiangan lingkungan. Anda dapat menambah/menghapus baris dan kolom sesuai kebutuhan.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={handleAddPartangianganRow}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded cursor-pointer transition shadow-2xs"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Tambah Baris
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openAddColumn('jadwal_partangiangan', 'Jadwal Partangiangan')}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded cursor-pointer transition shadow-2xs"
-                    >
-                      <Columns className="w-3.5 h-3.5" /> Tambah Kolom
-                    </button>
-                  </div>
-                </div>
+              {(() => {
+                const showPartangiangan = warta.tampilkan_partangiangan !== false;
+                const partangianganCols =
+                  data.jadwal_partangiangan_columns && data.jadwal_partangiangan_columns.length > 0
+                    ? data.jadwal_partangiangan_columns
+                    : DEFAULT_PARTANGIANGAN_COLUMNS;
 
-                {(() => {
-                  const partangianganCols =
-                    data.jadwal_partangiangan_columns && data.jadwal_partangiangan_columns.length > 0
-                      ? data.jadwal_partangiangan_columns
-                      : DEFAULT_PARTANGIANGAN_COLUMNS;
+                return (
+                  <div className="space-y-2 pt-2 border-t border-stone-100">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold text-stone-900 uppercase">
+                            Jadwal Partangiangan Lingkungan di Minggu on
+                          </h4>
+                          {!showPartangiangan && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300 rounded">
+                              Disembunyikan dari Warta
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-stone-500">
+                          Kelola jadwal partangiangan lingkungan. Anda dapat menambah/menghapus baris dan kolom sesuai kebutuhan.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleAddPartangianganRow}
+                          disabled={!showPartangiangan}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded cursor-pointer transition shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Tambah Baris
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openAddColumn('jadwal_partangiangan', 'Jadwal Partangiangan')}
+                          disabled={!showPartangiangan}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded cursor-pointer transition shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Columns className="w-3.5 h-3.5" /> Tambah Kolom
+                        </button>
+                        <div
+                          className="inline-flex items-center rounded border border-stone-300 bg-stone-100 p-0.5 shadow-2xs"
+                          role="group"
+                          aria-label="Tampilkan atau sembunyikan Jadwal Partangiangan Lingkungan di warta"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => updateWarta({ tampilkan_partangiangan: true })}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                              showPartangiangan
+                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                : 'text-stone-600 hover:text-stone-900'
+                            }`}
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Tampilkan
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateWarta({ tampilkan_partangiangan: false })}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                              !showPartangiangan
+                                ? 'bg-amber-600 text-white shadow-2xs'
+                                : 'text-stone-600 hover:text-stone-900'
+                            }`}
+                          >
+                            <EyeOff className="w-3.5 h-3.5" /> Tidak Tampilkan
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
-                  return (
-                    <div className="border border-stone-300 rounded-lg overflow-x-auto">
+                    {!showPartangiangan && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <EyeOff className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                          <span>
+                            Bagian <strong>Jadwal Partangiangan Lingkungan</strong> sedang <strong>tidak ditampilkan</strong> pada halaman cetak warta maupun portal jemaat (misalnya saat kegiatan partangiangan sedang libur). Data tabel di bawah tetap tersimpan aman apabila sewaktu-waktu diaktifkan kembali.
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={`border border-stone-300 rounded-lg overflow-x-auto transition-opacity ${!showPartangiangan ? 'opacity-55' : ''}`}>
                       <table className="w-full text-xs">
                         <thead className="bg-stone-100 text-stone-800 font-bold border-b border-stone-300">
                           <tr>
@@ -1823,15 +1873,15 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                         </tbody>
                       </table>
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* Pengumuman Dinamis */}
               <div className="space-y-3 pt-2 border-t border-stone-100">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-stone-900 uppercase">
-                    Daftar Pengumuman Warta Jemaat (Mulai No. 5)
+                    Daftar Pengumuman Warta Jemaat (Mulai No. {warta.tampilkan_partangiangan !== false ? 5 : 4})
                   </h4>
                   <button
                     onClick={handleAddPengumuman}
@@ -1846,7 +1896,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     <div key={peng.id || idx} className="p-3 border border-stone-200 rounded-lg bg-stone-50/50 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-stone-800">
-                          {idx + 5}. Judul Pengumuman:
+                          {idx + (warta.tampilkan_partangiangan !== false ? 5 : 4)}. Judul Pengumuman:
                         </span>
                         <button
                           onClick={() => handleDeletePengumuman(idx)}

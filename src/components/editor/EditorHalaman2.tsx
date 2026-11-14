@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FullWartaData } from '../../types';
-import { Plus, Trash2, ArrowUp, ArrowDown, Cake, Music, Home, FileText, Sparkles, RefreshCw, Database } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Cake, Music, Home, FileText, Sparkles, RefreshCw, Database, Eye, EyeOff } from 'lucide-react';
 import { TemplateSelectorModal } from './TemplateSelectorModal';
 import { getSeninMingguRange } from '../../lib/dateUtils';
 import { getUlangTahun, notify } from '../../lib/jemaatApi';
@@ -288,84 +288,135 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
       </div>
 
       {/* 3. JADWAL PARTANGIANGAN LINGKUNGAN */}
-      <div className="bg-white p-5 rounded-lg border border-stone-200 shadow-sm space-y-3">
-        <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-          <div className="flex items-center gap-2">
-            <Home className="w-4 h-4 text-blue-700" />
-            <h3 className="font-bold text-stone-900 text-sm md:text-base">
-              4. Jadwal Partangiangan Lingkungan di Minggu On
-            </h3>
-          </div>
-          {!disabled && (
-            <button
-              onClick={handleAddPartangiangan}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-xs font-semibold transition"
-            >
-              <Plus className="w-3.5 h-3.5" /> Tambah Jadwal Lingkungan
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          {jadwal_partangiangan.map((jp, idx) => (
-            <div
-              key={jp.id || idx}
-              className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center p-2 bg-stone-50 rounded border border-stone-200"
-            >
-              <div className="md:col-span-2">
-                <input
-                  type="text"
-                  disabled={disabled}
-                  value={jp.hari}
-                  onChange={(e) => handleUpdatePartangiangan(idx, 'hari', e.target.value)}
-                  placeholder="Hari / Tgl"
-                  className="w-full px-2 py-1 text-xs border border-stone-300 rounded"
-                />
-              </div>
-              <div className="md:col-span-3">
-                <input
-                  type="text"
-                  disabled={disabled}
-                  value={jp.lingkungan}
-                  onChange={(e) => handleUpdatePartangiangan(idx, 'lingkungan', e.target.value)}
-                  placeholder="Nama Lingkungan"
-                  className="w-full px-2 py-1 text-xs border border-stone-300 rounded font-semibold"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <input
-                  type="text"
-                  disabled={disabled}
-                  value={jp.pukul}
-                  onChange={(e) => handleUpdatePartangiangan(idx, 'pukul', e.target.value)}
-                  placeholder="Pukul"
-                  className="w-full px-2 py-1 text-xs border border-stone-300 rounded text-center"
-                />
-              </div>
-              <div className="md:col-span-4">
-                <input
-                  type="text"
-                  disabled={disabled}
-                  value={jp.inganan}
-                  onChange={(e) => handleUpdatePartangiangan(idx, 'inganan', e.target.value)}
-                  placeholder="Inganan / Keluarga Tuan Rumah"
-                  className="w-full px-2 py-1 text-xs border border-stone-300 rounded"
-                />
+      {(() => {
+        const showPartangiangan = warta.tampilkan_partangiangan !== false;
+        return (
+          <div className="bg-white p-5 rounded-lg border border-stone-200 shadow-sm space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
+              <div className="flex items-center gap-2">
+                <Home className="w-4 h-4 text-blue-700" />
+                <h3 className="font-bold text-stone-900 text-sm md:text-base">
+                  4. Jadwal Partangiangan Lingkungan di Minggu On
+                </h3>
+                {!showPartangiangan && (
+                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300 rounded">
+                    Tidak Ditampilkan di Warta
+                  </span>
+                )}
               </div>
               {!disabled && (
-                <div className="md:col-span-1 flex justify-end">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => handleDeletePartangiangan(idx)}
-                    className="p-1 text-red-500 hover:text-red-700"
+                    type="button"
+                    onClick={handleAddPartangiangan}
+                    disabled={!showPartangiangan}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-xs font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5" /> Tambah Jadwal Lingkungan
                   </button>
+                  <div
+                    className="inline-flex items-center rounded border border-stone-300 bg-stone-100 p-0.5"
+                    role="group"
+                    aria-label="Tampilkan atau sembunyikan Jadwal Partangiangan Lingkungan"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...data, warta: { ...warta, tampilkan_partangiangan: true } })}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                        showPartangiangan
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Tampilkan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...data, warta: { ...warta, tampilkan_partangiangan: false } })}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                        !showPartangiangan
+                          ? 'bg-amber-600 text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <EyeOff className="w-3.5 h-3.5" /> Tidak Tampilkan
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      </div>
+
+            {!showPartangiangan && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2">
+                <EyeOff className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  Bagian <strong>Jadwal Partangiangan Lingkungan</strong> sedang <strong>tidak ditampilkan</strong> pada halaman cetak warta maupun portal jemaat. Data di bawah tetap tersimpan aman apabila suatu saat dibuka kembali.
+                </span>
+              </div>
+            )}
+
+            <div className={`space-y-2 transition-opacity ${!showPartangiangan ? 'opacity-55' : ''}`}>
+              {jadwal_partangiangan.map((jp, idx) => (
+                <div
+                  key={jp.id || idx}
+                  className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center p-2 bg-stone-50 rounded border border-stone-200"
+                >
+                  <div className="md:col-span-2">
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      value={jp.hari}
+                      onChange={(e) => handleUpdatePartangiangan(idx, 'hari', e.target.value)}
+                      placeholder="Hari / Tgl"
+                      className="w-full px-2 py-1 text-xs border border-stone-300 rounded"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      value={jp.lingkungan}
+                      onChange={(e) => handleUpdatePartangiangan(idx, 'lingkungan', e.target.value)}
+                      placeholder="Nama Lingkungan"
+                      className="w-full px-2 py-1 text-xs border border-stone-300 rounded font-semibold"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      value={jp.pukul}
+                      onChange={(e) => handleUpdatePartangiangan(idx, 'pukul', e.target.value)}
+                      placeholder="Pukul"
+                      className="w-full px-2 py-1 text-xs border border-stone-300 rounded text-center"
+                    />
+                  </div>
+                  <div className="md:col-span-4">
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      value={jp.inganan}
+                      onChange={(e) => handleUpdatePartangiangan(idx, 'inganan', e.target.value)}
+                      placeholder="Inganan / Keluarga Tuan Rumah"
+                      className="w-full px-2 py-1 text-xs border border-stone-300 rounded"
+                    />
+                  </div>
+                  {!disabled && (
+                    <div className="md:col-span-1 flex justify-end">
+                      <button
+                        onClick={() => handleDeletePartangiangan(idx)}
+                        className="p-1 text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 4. PENGUMUMAN DINAMIS (TINGTING NAMARRAGAM) */}
       <div className="bg-white p-5 rounded-lg border border-stone-200 shadow-sm space-y-4">
@@ -374,7 +425,7 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
             <FileText className="w-4 h-4 text-blue-700" />
             <div>
               <h3 className="font-bold text-stone-900 text-sm md:text-base">
-                5+. Daftar Pengumuman Dinamis (Tingting Namarragam)
+                {warta.tampilkan_partangiangan !== false ? 5 : 4}+. Daftar Pengumuman Dinamis (Tingting Namarragam)
               </h3>
               <p className="text-xs text-stone-500">
                 Pengumuman bernomor otomatis: Jemaat Baru, Kelahiran, Tukar Mimbar, Kalender, dsb.
@@ -401,7 +452,7 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
 
         <div className="space-y-3">
           {pengumuman.map((item, idx) => {
-            const noNumber = idx + 5;
+            const noNumber = idx + (warta.tampilkan_partangiangan !== false ? 5 : 4);
             return (
               <div
                 key={item.id || idx}

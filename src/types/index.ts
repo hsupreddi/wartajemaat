@@ -221,6 +221,7 @@ export interface WartaRecord {
   saldo_awal_transitori: number;
   ulang_tahun_snapshot?: UlangTahunItem[];
   teks_ucapan_ulang_tahun?: string;
+  tampilkan_partangiangan?: boolean;
   created_by?: string;
   created_at?: string;
   updated_at?: string;

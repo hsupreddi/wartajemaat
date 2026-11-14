@@ -173,8 +173,8 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
             </div>
             <div className="bg-white/10 backdrop-blur-xs p-2 rounded-xl border border-white/10">
               <div className="text-[10px] text-stone-300">Partangiangan</div>
-              <div className="text-sm font-bold text-amber-300 font-mono-num">
-                {jadwal_partangiangan.length} Wijk
+              <div className={`text-sm font-bold font-mono-num ${warta.tampilkan_partangiangan === false ? 'text-stone-300' : 'text-amber-300'}`}>
+                {warta.tampilkan_partangiangan === false ? 'Tidak Ada' : `${jadwal_partangiangan.length} Wijk`}
               </div>
             </div>
           </div>
@@ -526,37 +526,39 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
           )}
 
           {/* 3. Jadwal Partangiangan Lingkungan */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
-              <h3 className="font-bold text-stone-900 text-sm flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-800" />
-                Jadwal Partangiangan Lingkungan (Wijk)
-              </h3>
-              <span className="text-[10px] text-stone-500 font-medium">Minggu Ini</span>
-            </div>
+          {warta.tampilkan_partangiangan !== false && (
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                <h3 className="font-bold text-stone-900 text-sm flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-blue-800" />
+                  Jadwal Partangiangan Lingkungan (Wijk)
+                </h3>
+                <span className="text-[10px] text-stone-500 font-medium">Minggu Ini</span>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              {jadwal_partangiangan.map((jp, idx) => (
-                <div
-                  key={jp.id || idx}
-                  className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-1"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-stone-900 text-xs sm:text-sm">
-                      {jp.lingkungan}
-                    </span>
-                    <span className="text-[11px] font-semibold text-blue-800 bg-blue-50 px-2 py-0.5 rounded">
-                      {jp.hari}, {jp.pukul}
-                    </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                {jadwal_partangiangan.map((jp, idx) => (
+                  <div
+                    key={jp.id || idx}
+                    className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-stone-900 text-xs sm:text-sm">
+                        {jp.lingkungan}
+                      </span>
+                      <span className="text-[11px] font-semibold text-blue-800 bg-blue-50 px-2 py-0.5 rounded">
+                        {jp.hari}, {jp.pukul}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-stone-600 flex items-center gap-1.5 pt-0.5">
+                      <span className="font-semibold text-stone-800">Inganan:</span>
+                      <span className="font-medium text-stone-900">{jp.inganan}</span>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-stone-600 flex items-center gap-1.5 pt-0.5">
-                    <span className="font-semibold text-stone-800">Inganan:</span>
-                    <span className="font-medium text-stone-900">{jp.inganan}</span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 4. Pengumuman / Warta Huria */}
           {pengumuman && pengumuman.length > 0 && (

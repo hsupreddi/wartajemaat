@@ -383,7 +383,9 @@ export const PublicPortalPage: React.FC = () => {
                       <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/80">
                         <div className="text-[10px] text-stone-500 font-medium">Wijk / Lingk</div>
                         <div className="text-sm font-extrabold text-amber-700 font-mono-num">
-                          {selectedWarta.jadwal_partangiangan.length}
+                          {selectedWarta.warta.tampilkan_partangiangan === false
+                            ? 'Libur'
+                            : selectedWarta.jadwal_partangiangan.length}
                         </div>
                       </div>
                     </div>

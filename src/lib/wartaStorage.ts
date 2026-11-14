@@ -247,6 +247,8 @@ function normalizeWartaRecord(raw: any): WartaRecord {
       : [],
     teks_ucapan_ulang_tahun:
       raw.teks_ucapan_ulang_tahun ?? raw.table_columns?.teks_ucapan_ulang_tahun ?? undefined,
+    tampilkan_partangiangan:
+      raw.tampilkan_partangiangan ?? raw.table_columns?.tampilkan_partangiangan ?? true,
     created_by: raw.created_by,
     created_at: raw.created_at,
     updated_at: raw.updated_at
@@ -504,6 +506,7 @@ export async function saveWarta(data: FullWartaData): Promise<void> {
     if (data.warta.teks_ucapan_ulang_tahun !== undefined) {
       tableColumnsPayload.teks_ucapan_ulang_tahun = data.warta.teks_ucapan_ulang_tahun;
     }
+    tableColumnsPayload.tampilkan_partangiangan = data.warta.tampilkan_partangiangan !== false;
 
     const wartaPayload = {
       id: wartaId,
@@ -826,6 +829,7 @@ export async function createNewWarta(
     ulang_tahun_snapshot: ultah,
     teks_ucapan_ulang_tahun:
       pengaturan.teks_ucapan_ulang_tahun || DEFAULT_PENGATURAN.teks_ucapan_ulang_tahun,
+    tampilkan_partangiangan: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
