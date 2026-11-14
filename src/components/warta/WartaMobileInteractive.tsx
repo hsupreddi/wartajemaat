@@ -419,12 +419,19 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
               </span>
             </div>
 
-            {/* Biblical Blessing Jesayas 40:31 */}
-            {pengaturan?.teks_ucapan_ulang_tahun && (
-              <div className="p-3 bg-pink-50/70 border border-pink-200/80 rounded-xl text-xs text-pink-950 font-serif-body italic leading-relaxed">
-                "{pengaturan.teks_ucapan_ulang_tahun}"
-              </div>
-            )}
+            {/* Biblical Blessing / Dynamic Birthday Text */}
+            {(() => {
+              const ucapanText =
+                warta.teks_ucapan_ulang_tahun !== undefined
+                  ? warta.teks_ucapan_ulang_tahun.trim()
+                  : (pengaturan?.teks_ucapan_ulang_tahun || '').trim();
+              if (!ucapanText) return null;
+              return (
+                <div className="p-3 bg-pink-50/70 border border-pink-200/80 rounded-xl text-xs text-pink-950 font-serif-body italic leading-relaxed">
+                  &quot;{ucapanText}&quot;
+                </div>
+              );
+            })()}
 
             {/* Filter & Search */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

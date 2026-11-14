@@ -220,6 +220,20 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
             Tidak ada anggota jemaat yang berulang tahun pada periode {labelPeriode}. Anda dapat menambah anggota jemaat baru di menu Master Data Anggota.
           </div>
         )}
+
+        <div className="bg-pink-50/50 border border-pink-200 rounded-lg p-3 space-y-1.5">
+          <label className="block text-xs font-bold text-stone-800">
+            Teks Ucapan / Ayat Ulang Tahun (Halaman 2 — Dinamis per Minggu)
+          </label>
+          <textarea
+            rows={2}
+            disabled={disabled}
+            value={warta.teks_ucapan_ulang_tahun || ''}
+            onChange={(e) => updateWartaField('teks_ucapan_ulang_tahun', e.target.value)}
+            placeholder="Kosongkan untuk mengikuti teks default dari Pengaturan Huria, atau ketik ayat/ucapan khusus minggu ini..."
+            className="w-full px-3 py-2 text-xs bg-white border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-400"
+          />
+        </div>
       </div>
 
       {/* 2. JADWAL KOOR MINGGU DEPAN */}

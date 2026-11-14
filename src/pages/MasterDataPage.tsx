@@ -1846,7 +1846,7 @@ export const MasterDataPage: React.FC = () => {
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Teks Ucapan Ulang Tahun (Halaman 2 - Jesayas 40:31)
+                    Teks Ucapan Ulang Tahun Default (Halaman 2 — Dinamis, Dapat Diubah per Warta)
                   </label>
                   <textarea
                     rows={2}
@@ -1854,8 +1854,12 @@ export const MasterDataPage: React.FC = () => {
                     onChange={(e) =>
                       setPengaturan({ ...pengaturan, teks_ucapan_ulang_tahun: e.target.value })
                     }
-                    className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:outline-none"
+                    placeholder="Masukkan teks ucapan atau ayat ulang tahun default (dapat diubah lagi per minggu di editor warta)..."
+                    className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  <p className="text-[11px] text-stone-500 mt-1">
+                    Teks ini menjadi bawaan saat membuat warta baru, dan admin/sekretaris tetap bisa mengubahnya secara dinamis di Langkah 4 editor setiap edisi warta.
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">

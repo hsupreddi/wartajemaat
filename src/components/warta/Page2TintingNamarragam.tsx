@@ -115,11 +115,20 @@ export const Page2TintingNamarragam: React.FC<Page2Props> = ({ data, pengaturan 
               </div>
             )}
 
-            {/* Teks Ucapan Ulang Tahun Tetap (Jesayas 40:31) */}
-            <div className="text-[7.6pt] italic text-stone-700 bg-stone-50 p-1.5 border border-stone-300 text-center font-serif-body leading-snug">
-              &quot;{pengaturan?.teks_ucapan_ulang_tahun ||
-                'Alai angka na marhaposan tu Jahowa dapotan gogo imbaru, manangkup angka habong songon pidoli, marlojong nasida ndang marnaloja, mardalan nasida ndang marnatep. (Jesayas 40:31)'}&quot;
-            </div>
+            {/* Teks Ucapan Ulang Tahun (Dinamis per Warta / Default Huria) */}
+            {(() => {
+              const ucapanText =
+                warta.teks_ucapan_ulang_tahun !== undefined
+                  ? warta.teks_ucapan_ulang_tahun.trim()
+                  : (pengaturan?.teks_ucapan_ulang_tahun ||
+                      'Alai angka na marhaposan tu Jahowa dapotan gogo imbaru, manangkup angka habong songon pidoli, marlojong nasida ndang marnaloja, mardalan nasida ndang marnatep. (Jesayas 40:31)');
+              if (!ucapanText) return null;
+              return (
+                <div className="text-[7.6pt] italic text-stone-700 bg-stone-50 p-1.5 border border-stone-300 text-center font-serif-body leading-snug">
+                  &quot;{ucapanText}&quot;
+                </div>
+              );
+            })()}
           </div>
 
           {/* 3. JADWAL KOOR MINGGU DEPAN */}

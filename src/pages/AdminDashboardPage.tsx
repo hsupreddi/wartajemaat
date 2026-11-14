@@ -9,7 +9,7 @@ import {
   getPengaturan,
   savePengaturan
 } from '../lib/wartaStorage';
-import { getStatistikWijk, getCalonSidi } from '../lib/jemaatApi';
+import { getStatistikWijk, getCalonSidi, notify } from '../lib/jemaatApi';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -40,7 +40,8 @@ import {
   GraduationCap,
   Filter,
   AlertCircle,
-  MapPin
+  MapPin,
+  Save
 } from 'lucide-react';
 import { formatTanggalIndo, formatTanggalLengkap, getNextSunday } from '../lib/dateUtils';
 import { HkbpCrossLogo } from '../components/logos/HkbpCrossLogo';
@@ -1034,7 +1035,62 @@ export const AdminDashboardPage: React.FC = () => {
 
         {/* 4. TAB: UBAH LOGO & KOP SURAT (ADMIN ONLY) */}
         {activeMenu === 'kop' && canManageSettings && pengaturan && (
-          <KopLogoEditor pengaturan={pengaturan} onSave={handleSaveKop} />
+          <div className="space-y-6">
+            <KopLogoEditor pengaturan={pengaturan} onSave={handleSaveKop} />
+
+            <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                <div>
+                  <h3 className="font-bold text-stone-900 text-sm md:text-base">
+                    Teks Default Liturgi &amp; Ucapan Ulang Tahun
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Admin dapat mengubah teks bawaan ucapan ulang tahun dan doa penutup di sini (atau langsung per minggu di editor warta).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleSaveKop(pengaturan);
+                    notify('success', 'Teks default ucapan ulang tahun & dokumen berhasil disimpan.');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                >
+                  <Save className="w-4 h-4" /> Simpan Teks Default
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Teks Ucapan Ulang Tahun Default (Halaman 2 — Dinamis)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={pengaturan.teks_ucapan_ulang_tahun}
+                    onChange={(e) =>
+                      setPengaturan({ ...pengaturan, teks_ucapan_ulang_tahun: e.target.value })
+                    }
+                    className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Teks Doa / Penutup Keuangan (Halaman 3)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={pengaturan.teks_penutup_keuangan}
+                    onChange={(e) =>
+                      setPengaturan({ ...pengaturan, teks_penutup_keuangan: e.target.value })
+                    }
+                    className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
 

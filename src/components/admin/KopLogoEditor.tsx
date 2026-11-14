@@ -199,7 +199,10 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
     setIsSaving(true);
     try {
       const payload: PengaturanHuria = {
-        ...form,
+        ...pengaturan,
+        nama_huria: form.nama_huria,
+        logo_salib_url: form.logo_salib_url,
+        logo_transformasi_url: form.logo_transformasi_url,
         kop_baris: lines,
         font_kop: serializeKopBarisToFontKop(lines)
       };

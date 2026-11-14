@@ -1643,6 +1643,42 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     Tidak ada anggota jemaat yang berulang tahun pada periode minggu ini. Data akan otomatis muncul bila tanggal lahir anggota tersedia di Master Data Anggota.
                   </div>
                 )}
+
+                {/* Teks Ucapan / Ayat Ulang Tahun (Dinamis per Warta) */}
+                <div className="bg-pink-50/50 border border-pink-200 rounded-lg p-3 space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="block text-[11px] font-bold text-stone-800">
+                      Teks Ucapan / Ayat Ulang Tahun (Halaman 2 — Dinamis per Minggu):
+                    </label>
+                    {pengaturan?.teks_ucapan_ulang_tahun && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateWarta({
+                            teks_ucapan_ulang_tahun: pengaturan.teks_ucapan_ulang_tahun
+                          })
+                        }
+                        className="text-[10px] font-semibold text-pink-700 hover:text-pink-900 bg-white border border-pink-200 px-2 py-0.5 rounded cursor-pointer"
+                      >
+                        Isi dari Default Huria
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={
+                      warta.teks_ucapan_ulang_tahun !== undefined
+                        ? warta.teks_ucapan_ulang_tahun
+                        : (pengaturan?.teks_ucapan_ulang_tahun || '')
+                    }
+                    onChange={(e) => updateWarta({ teks_ucapan_ulang_tahun: e.target.value })}
+                    placeholder="Masukkan ucapan atau ayat ulang tahun untuk minggu ini..."
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  />
+                  <p className="text-[10px] text-stone-500">
+                    Teks ini langsung dicetak di bawah daftar jemaat ulang tahun pada Halaman 2 dan dapat diubah setiap minggu sesuai kebutuhan.
+                  </p>
+                </div>
               </div>
 
               {/* Jadwal Koor Minggu Depan */}
