@@ -135,3 +135,30 @@
   }
 }
 
+/* Force exact A4 geometry inside off-screen PDF export host on any viewport */
+.pdf-export-host .a4-sheet-preview {
+  width: 210mm !important;
+  min-height: 297mm !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+.pdf-export-host .a4-page {
+  padding: 8mm 10mm !important;
+  width: 210mm !important;
+  min-height: 297mm !important;
+}
+
+.pdf-export-host .md\:grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.pdf-export-host .md\:flex-row {
+  flex-direction: row !important;
+}
+
+.pdf-export-host .md\:items-center {
+  align-items: center !important;
+}
+

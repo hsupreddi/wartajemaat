@@ -35,6 +35,7 @@ import { getPreviousWeekSumbanganNatal } from '../../lib/wartaStorage';
 import { getUlangTahunMingguIni, getSeninMingguRange } from '../../lib/dateUtils';
 import { getUlangTahun, notify } from '../../lib/jemaatApi';
 import { listMasterPetugas } from '../../lib/petugasApi';
+import { exportWartaToPdf } from '../../lib/pdfExport';
 import { PetugasSelectCell } from './PetugasSelectCell';
 import { MingguLiturgiDropdown, getLiturgiColorBadge } from '../common/MingguLiturgiDropdown';
 import {
@@ -64,7 +65,8 @@ import {
   UserCheck,
   Database,
   RefreshCw,
-  History
+  History,
+  Loader2
 } from 'lucide-react';
 import { AddColumnModal } from '../common/AddColumnModal';
 import { TambahPenerimaanModal, TambahPengeluaranModal } from './TambahPosKeuanganModal';
@@ -124,6 +126,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   const [masterPetugas, setMasterPetugas] = useState<PetugasMaster[]>(MASTER_PETUGAS);
   const [isSyncingUltah, setIsSyncingUltah] = useState<boolean>(false);
   const [isPullingPrevSumbangan, setIsPullingPrevSumbangan] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const lastAutoUltahKeyRef = useRef<string>('');
   const latestDataRef = useRef<FullWartaData>(data);
   latestDataRef.current = data;
@@ -1143,6 +1146,24 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
     setTimeout(() => {
       document.title = originalTitle;
     }, 1500);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const fileName = await exportWartaToPdf({
+        data,
+        pengaturan,
+        jadwalTetap,
+        selectedPage: 'all'
+      });
+      notify('success', `PDF berhasil diunduh: ${fileName}`);
+    } catch (err: any) {
+      notify('error', err?.message || 'Gagal mengunduh file PDF.');
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   return (
@@ -3356,12 +3377,26 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     Periksa keseluruhan warta sebelum dicetak atau dipublikasikan.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    disabled={isExportingPdf}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
+                  >
+                    {isExportingPdf ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    <span>{isExportingPdf ? 'Membuat PDF...' : 'Unduh PDF'}</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={handlePrint}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
                   >
-                    <Download className="w-4 h-4" /> Cetak / Simpan PDF
+                    <Printer className="w-4 h-4" /> Cetak A4
                   </button>
                 </div>
               </div>
@@ -3420,12 +3455,28 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                 <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
-              <button
-                onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-sm"
-              >
-                <Printer className="w-4 h-4" /> Cetak / Unduh PDF A4
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={isExportingPdf}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-sm"
+                >
+                  {isExportingPdf ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{isExportingPdf ? 'Membuat PDF...' : 'Unduh PDF A4'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-sm"
+                >
+                  <Printer className="w-4 h-4" /> Cetak A4
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -3439,9 +3490,19 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                   <Eye className="w-3.5 h-3.5 text-amber-400" />
                   <span>Pratinjau Langsung (Live A4)</span>
                 </div>
-                <span className="text-[10px] text-stone-400 font-normal">
-                  Satu Sumber Data · Real-time
-                </span>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={isExportingPdf}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded text-[10.5px] font-bold transition cursor-pointer"
+                >
+                  {isExportingPdf ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Download className="w-3 h-3" />
+                  )}
+                  <span>{isExportingPdf ? 'PDF...' : 'Unduh PDF'}</span>
+                </button>
               </div>
               <div className="bg-stone-300 p-2 rounded-b-xl border border-stone-300 max-h-[82vh] overflow-y-auto">
                 <div className="transform origin-top scale-[0.68] sm:scale-[0.75] md:scale-[0.8] mb-[-25%]">

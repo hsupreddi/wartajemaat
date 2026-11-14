@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { getInitialFullWarta, DEFAULT_PENGATURAN, DEFAULT_JADWAL_TETAP } from '../lib/mockData';
 import { WartaDocument } from '../components/warta/WartaDocument';
-import { Printer, Download, ArrowLeft, CheckCircle2, Info, Eye } from 'lucide-react';
+import { Printer, Download, ArrowLeft, CheckCircle2, Info, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { exportWartaToPdf } from '../lib/pdfExport';
+import { notify } from '../lib/jemaatApi';
 
 /**
  * CetakContohPage (/dev/cetak-contoh)
@@ -13,6 +15,7 @@ export const CetakContohPage: React.FC = () => {
   const [data] = useState(() => getInitialFullWarta());
   const [selectedPage, setSelectedPage] = useState<'all' | '1' | '2' | '3'>('all');
   const [showChecklist, setShowChecklist] = useState(true);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handlePrint = () => {
     const targetFileName = `Warta_HKBP_Hutaraja_${data.warta.tanggal_minggu}`;
@@ -97,10 +100,40 @@ export const CetakContohPage: React.FC = () => {
             </button>
 
             <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow transition cursor-pointer"
+              type="button"
+              disabled={isExportingPdf}
+              onClick={async () => {
+                if (isExportingPdf) return;
+                setIsExportingPdf(true);
+                try {
+                  const fileName = await exportWartaToPdf({
+                    data,
+                    pengaturan: DEFAULT_PENGATURAN,
+                    jadwalTetap: DEFAULT_JADWAL_TETAP,
+                    selectedPage
+                  });
+                  notify('success', `PDF berhasil diunduh: ${fileName}`);
+                } catch (err: any) {
+                  notify('error', err?.message || 'Gagal mengunduh PDF.');
+                } finally {
+                  setIsExportingPdf(false);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded text-xs font-bold shadow transition cursor-pointer"
             >
-              <Download className="w-4 h-4" /> Cetak / Simpan PDF
+              {isExportingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span>{isExportingPdf ? 'Membuat PDF...' : 'Unduh PDF'}</span>
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow transition cursor-pointer"
+            >
+              <Printer className="w-4 h-4" /> Cetak A4
             </button>
           </div>
         </div>

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { FullWartaData, JadwalTetapItem, PengaturanHuria } from '../../types';
 import { WartaDocument } from './WartaDocument';
-import { Printer, ArrowLeft, Download, Layers } from 'lucide-react';
+import { exportWartaToPdf, buildWartaPdfFileName } from '../../lib/pdfExport';
+import { notify } from '../../lib/jemaatApi';
+import { Printer, ArrowLeft, Download, Layers, Loader2, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface PrintLayoutProps {
@@ -19,6 +21,8 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({
 }) => {
   const navigate = useNavigate();
   const [activePage, setActivePage] = useState<'all' | '1' | '2' | '3'>(initialPage);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfToast, setPdfToast] = useState<string | null>(null);
 
   const handlePrint = () => {
     // Exact file name formatting for browser Save as PDF
@@ -30,6 +34,29 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({
     setTimeout(() => {
       document.title = originalTitle;
     }, 1500);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const fileName = await exportWartaToPdf({
+        data,
+        pengaturan,
+        jadwalTetap,
+        selectedPage: activePage
+      });
+      notify('success', `PDF berhasil diunduh: ${fileName}`);
+      setPdfToast(`PDF berhasil diunduh: ${fileName}`);
+      setTimeout(() => setPdfToast(null), 3500);
+    } catch (err: any) {
+      const errMsg = err?.message || 'Gagal membuat file PDF.';
+      notify('error', errMsg);
+      setPdfToast(errMsg);
+      setTimeout(() => setPdfToast(null), 3500);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   return (
@@ -93,13 +120,32 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({
               </button>
             </div>
 
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow transition cursor-pointer min-h-[40px] whitespace-nowrap shrink-0"
-              title={`Simpan sebagai Warta_HKBP_Hutaraja_${data.warta.tanggal_minggu}.pdf`}
-            >
-              <Download className="w-4 h-4" /> Cetak / PDF
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={isExportingPdf}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer min-h-[40px] whitespace-nowrap"
+                title={`Unduh file ${buildWartaPdfFileName(data.warta.tanggal_minggu, activePage)}`}
+              >
+                {isExportingPdf ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                <span>{isExportingPdf ? 'Membuat PDF...' : 'Unduh PDF'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-800 hover:bg-stone-700 text-stone-100 border border-stone-700 rounded-lg text-xs font-semibold transition cursor-pointer min-h-[40px] whitespace-nowrap"
+                title="Cetak langsung ke printer"
+              >
+                <Printer className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">Cetak</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -113,6 +159,13 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({
           selectedPage={activePage}
         />
       </main>
+
+      {pdfToast && (
+        <div className="no-print fixed bottom-5 right-5 z-50 bg-stone-900 text-white px-4 py-2.5 rounded-xl shadow-xl border border-stone-700 flex items-center gap-2 text-xs font-medium">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{pdfToast}</span>
+        </div>
+      )}
     </div>
   );
 };

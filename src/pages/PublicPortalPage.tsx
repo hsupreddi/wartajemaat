@@ -8,6 +8,8 @@ import { HkbpCrossLogo } from '../components/logos/HkbpCrossLogo';
 import { HkbpTransformasiLogo } from '../components/logos/HkbpTransformasiLogo';
 import {
   Printer,
+  Download,
+  Loader2,
   Calendar,
   BookOpen,
   Archive,
@@ -23,6 +25,7 @@ import {
   Home
 } from 'lucide-react';
 import { formatTanggalIndo, formatTanggalLengkap } from '../lib/dateUtils';
+import { exportWartaToPdf } from '../lib/pdfExport';
 import { useAuth } from '../context/AuthContext';
 
 export const PublicPortalPage: React.FC = () => {
@@ -39,6 +42,7 @@ export const PublicPortalPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'interactive' | 'printA4'>('interactive');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [shareToast, setShareToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -310,11 +314,45 @@ export const PublicPortalPage: React.FC = () => {
                 {selectedWarta && (
                   <button
                     type="button"
+                    onClick={async () => {
+                      if (isExportingPdf) return;
+                      setIsExportingPdf(true);
+                      try {
+                        const fileName = await exportWartaToPdf({
+                          data: selectedWarta,
+                          pengaturan,
+                          jadwalTetap,
+                          selectedPage: 'all'
+                        });
+                        setShareToast(`PDF berhasil diunduh: ${fileName}`);
+                        setTimeout(() => setShareToast(null), 3500);
+                      } catch (err: any) {
+                        setShareToast(err?.message || 'Gagal mengunduh PDF.');
+                        setTimeout(() => setShareToast(null), 3500);
+                      } finally {
+                        setIsExportingPdf(false);
+                      }
+                    }}
+                    disabled={isExportingPdf}
+                    className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg transition cursor-pointer min-h-[44px] whitespace-nowrap"
+                  >
+                    {isExportingPdf ? (
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    ) : (
+                      <Download className="w-4 h-4 shrink-0" />
+                    )}
+                    <span>{isExportingPdf ? 'Membuat PDF...' : 'Unduh PDF'}</span>
+                  </button>
+                )}
+
+                {selectedWarta && (
+                  <button
+                    type="button"
                     onClick={() => navigate(`/warta/${selectedWarta.warta.id}/print`)}
                     className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xs text-white border border-white/25 font-bold rounded-xl text-xs sm:text-sm transition cursor-pointer min-h-[44px] whitespace-nowrap"
                   >
                     <Printer className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>Cetak / PDF A4</span>
+                    <span>Cetak A4</span>
                   </button>
                 )}
 
@@ -496,11 +534,43 @@ export const PublicPortalPage: React.FC = () => {
 
                 <button
                   type="button"
+                  onClick={async () => {
+                    if (!selectedWarta || isExportingPdf) return;
+                    setIsExportingPdf(true);
+                    try {
+                      const fileName = await exportWartaToPdf({
+                        data: selectedWarta,
+                        pengaturan,
+                        jadwalTetap,
+                        selectedPage: 'all'
+                      });
+                      setShareToast(`PDF berhasil diunduh: ${fileName}`);
+                      setTimeout(() => setShareToast(null), 3500);
+                    } catch (err: any) {
+                      setShareToast(err?.message || 'Gagal mengunduh PDF.');
+                      setTimeout(() => setShareToast(null), 3500);
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                  disabled={isExportingPdf}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-white font-bold rounded-xl text-xs shadow-md transition cursor-pointer min-h-[44px]"
+                >
+                  {isExportingPdf ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{isExportingPdf ? 'Membuat PDF...' : 'Unduh PDF'}</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => navigate(`/warta/${selectedWarta.warta.id}/print`)}
                   className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl text-xs shadow-md transition cursor-pointer min-h-[44px]"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Cetak / PDF A4</span>
+                  <span>Cetak A4</span>
                 </button>
               </div>
             </div>
@@ -758,11 +828,34 @@ export const PublicPortalPage: React.FC = () => {
         {selectedWarta && (
           <button
             type="button"
-            onClick={() => navigate(`/warta/${selectedWarta.warta.id}/print`)}
-            className="flex flex-col items-center justify-center min-w-[56px] min-h-[44px] text-emerald-800 text-[10px] font-bold cursor-pointer active:scale-95 transition"
+            disabled={isExportingPdf}
+            onClick={async () => {
+              if (isExportingPdf) return;
+              setIsExportingPdf(true);
+              try {
+                const fileName = await exportWartaToPdf({
+                  data: selectedWarta,
+                  pengaturan,
+                  jadwalTetap,
+                  selectedPage: 'all'
+                });
+                setShareToast(`PDF berhasil diunduh: ${fileName}`);
+                setTimeout(() => setShareToast(null), 3500);
+              } catch (err: any) {
+                setShareToast(err?.message || 'Gagal mengunduh PDF.');
+                setTimeout(() => setShareToast(null), 3500);
+              } finally {
+                setIsExportingPdf(false);
+              }
+            }}
+            className="flex flex-col items-center justify-center min-w-[56px] min-h-[44px] text-emerald-800 text-[10px] font-bold cursor-pointer active:scale-95 transition disabled:opacity-60"
           >
-            <Printer className="w-4 h-4 text-emerald-700 mb-0.5" />
-            <span>Cetak A4</span>
+            {isExportingPdf ? (
+              <Loader2 className="w-4 h-4 text-emerald-700 mb-0.5 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 text-emerald-700 mb-0.5" />
+            )}
+            <span>{isExportingPdf ? 'Proses...' : 'Unduh PDF'}</span>
           </button>
         )}
 

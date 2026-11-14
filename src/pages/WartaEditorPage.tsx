@@ -11,6 +11,8 @@ import { PrintLayout } from '../components/warta/PrintLayout';
 import {
   Save,
   Printer,
+  Download,
+  Loader2,
   Eye,
   CheckCircle,
   ArrowLeft,
@@ -22,6 +24,7 @@ import {
   Compass
 } from 'lucide-react';
 import { formatTanggalIndo } from '../lib/dateUtils';
+import { exportWartaToPdf } from '../lib/pdfExport';
 
 export const WartaEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +37,7 @@ export const WartaEditorPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'hal1' | 'hal2' | 'hal3' | 'preview'>('hal1');
   const [editorMode, setEditorMode] = useState<'wizard' | 'tabs'>('wizard');
   const [isSaving, setIsSaving] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -183,6 +187,40 @@ export const WartaEditorPage: React.FC = () => {
                 <span className="sm:hidden">{data.warta.status === 'published' ? 'Draft' : 'Publish'}</span>
               </button>
             )}
+
+            {/* Unduh PDF Button */}
+            <button
+              type="button"
+              onClick={async () => {
+                if (!data || isExportingPdf) return;
+                setIsExportingPdf(true);
+                try {
+                  const fileName = await exportWartaToPdf({
+                    data,
+                    pengaturan,
+                    jadwalTetap,
+                    selectedPage: 'all'
+                  });
+                  setSaveToast(`PDF berhasil diunduh: ${fileName}`);
+                  setTimeout(() => setSaveToast(null), 3500);
+                } catch (err: any) {
+                  setSaveToast(err?.message || 'Gagal membuat PDF.');
+                  setTimeout(() => setSaveToast(null), 3500);
+                } finally {
+                  setIsExportingPdf(false);
+                }
+              }}
+              disabled={isExportingPdf}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer shrink-0 min-h-[38px]"
+              title="Unduh file PDF warta A4 langsung"
+            >
+              {isExportingPdf ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden sm:inline">{isExportingPdf ? 'PDF...' : 'Unduh PDF'}</span>
+            </button>
 
             {/* Print Button */}
             <button
