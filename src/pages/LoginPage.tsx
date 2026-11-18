@@ -77,7 +77,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0B2545]/15 via-[#F7F5F0] to-[#F7F5F0] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-[#0B2545]/15 via-[#F7F5F0] to-[#F7F5F0] flex flex-col items-center justify-center px-4 py-6 pb-safe">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-stone-200/80 overflow-hidden">
         {/* Header */}
         <div className="bg-[#0B2545] text-white p-6 sm:p-7 text-center space-y-3 border-b-2 border-amber-500">
@@ -118,7 +118,7 @@ export const LoginPage: React.FC = () => {
                     setAuthMode('login');
                     setErrorMsg(null);
                   }}
-                  className={`py-2 rounded-lg transition cursor-pointer ${
+                  className={`min-h-[44px] py-2 rounded-lg transition cursor-pointer ${
                     authMode === 'login' ? 'bg-white text-[#0B2545] shadow-xs' : 'text-stone-500 hover:text-stone-800'
                   }`}
                 >
@@ -130,7 +130,7 @@ export const LoginPage: React.FC = () => {
                     setAuthMode('signup');
                     setErrorMsg(null);
                   }}
-                  className={`py-2 rounded-lg transition cursor-pointer ${
+                  className={`min-h-[44px] py-2 rounded-lg transition cursor-pointer ${
                     authMode === 'signup' ? 'bg-white text-[#0B2545] shadow-xs' : 'text-stone-500 hover:text-stone-800'
                   }`}
                 >
@@ -332,7 +332,7 @@ export const LoginPage: React.FC = () => {
       <div className="mt-4 text-center">
         <button
           onClick={() => navigate('/')}
-          className="text-xs text-stone-500 hover:text-[#0B2545] transition font-semibold"
+          className="inline-flex items-center justify-center min-h-[44px] px-4 text-xs text-stone-600 hover:text-[#0B2545] transition font-semibold cursor-pointer"
         >
           ← Kembali ke Beranda Warta Jemaat
         </button>

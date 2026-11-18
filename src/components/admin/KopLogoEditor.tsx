@@ -23,7 +23,8 @@ import {
   ArrowUp,
   ArrowDown,
   Scissors,
-  Wand2
+  Wand2,
+  UploadCloud
 } from 'lucide-react';
 
 interface KopLogoEditorProps {
@@ -312,7 +313,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
               <button
                 type="button"
                 onClick={handleApplyStandardPreset}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold transition cursor-pointer"
                 title="Susun ulang baris SK panjang agar seimbang tanpa kata yatim"
               >
                 <Wand2 className="w-3.5 h-3.5" /> Rapikan Otomatis (Standar HKBP)
@@ -320,7 +321,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
               <button
                 type="button"
                 onClick={handleAddLine}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Tambah Baris
               </button>
@@ -350,7 +351,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                       disabled={index === 0}
                       onClick={() => handleMoveLine(index, 'up')}
                       title="Geser ke Atas"
-                      className="p-1.5 text-stone-600 hover:text-stone-900 hover:bg-white rounded border border-transparent hover:border-stone-200 disabled:opacity-30 cursor-pointer"
+                      className="min-w-[36px] min-h-[36px] flex items-center justify-center p-1.5 text-stone-600 hover:text-stone-900 hover:bg-white rounded-lg border border-transparent hover:border-stone-200 disabled:opacity-30 cursor-pointer"
                     >
                       <ArrowUp className="w-3.5 h-3.5" />
                     </button>
@@ -359,7 +360,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                       disabled={index === lines.length - 1}
                       onClick={() => handleMoveLine(index, 'down')}
                       title="Geser ke Bawah"
-                      className="p-1.5 text-stone-600 hover:text-stone-900 hover:bg-white rounded border border-transparent hover:border-stone-200 disabled:opacity-30 cursor-pointer"
+                      className="min-w-[36px] min-h-[36px] flex items-center justify-center p-1.5 text-stone-600 hover:text-stone-900 hover:bg-white rounded-lg border border-transparent hover:border-stone-200 disabled:opacity-30 cursor-pointer"
                     >
                       <ArrowDown className="w-3.5 h-3.5" />
                     </button>
@@ -368,7 +369,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                         type="button"
                         onClick={() => handleSplitLine(index)}
                         title="Pecah baris ini menjadi 2 baris"
-                        className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-50 bg-white border border-blue-200 rounded cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-[11px] font-semibold text-blue-700 hover:bg-blue-50 bg-white border border-blue-200 rounded-lg cursor-pointer"
                       >
                         <Scissors className="w-3 h-3" /> Pecah 2 Baris
                       </button>
@@ -378,7 +379,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                       disabled={lines.length <= 1}
                       onClick={() => handleDeleteLine(index)}
                       title="Hapus Baris"
-                      className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded disabled:opacity-30 cursor-pointer"
+                      className="min-w-[36px] min-h-[36px] flex items-center justify-center p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-30 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -541,17 +542,21 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                 )}
               </div>
 
-              <div className="space-y-2 flex-1 min-w-0">
+              <div className="space-y-2.5 flex-1 min-w-0">
                 <div>
-                  <label className="block text-[11px] text-stone-600 mb-1">
+                  <span className="block text-[11px] text-stone-600 mb-1">
                     Unggah Berkas Gambar (PNG/JPG/SVG)
+                  </span>
+                  <label className="flex items-center justify-center gap-2 w-full min-h-[44px] px-3 py-2 bg-white hover:bg-blue-50 text-blue-800 border border-dashed border-blue-300 rounded-xl text-xs font-semibold transition cursor-pointer">
+                    <UploadCloud className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="truncate">Pilih Logo Salib dari Perangkat</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload('logo_salib_url', e)}
+                      className="sr-only"
+                    />
                   </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload('logo_salib_url', e)}
-                    className="block w-full text-xs text-stone-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                  />
                 </div>
                 <div>
                   <label className="block text-[11px] text-stone-600 mb-0.5">
@@ -562,7 +567,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                     value={form.logo_salib_url || ''}
                     onChange={(e) => handleChange('logo_salib_url', e.target.value)}
                     placeholder="https://.../logo-hkbp.png"
-                    className="w-full px-2.5 py-1.5 text-xs border border-stone-300 rounded-lg bg-white min-h-[38px]"
+                    className="w-full px-2.5 py-2 text-xs border border-stone-300 rounded-lg bg-white min-h-[40px]"
                   />
                 </div>
               </div>
@@ -579,7 +584,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                 <button
                   type="button"
                   onClick={() => handleResetLogo('logo_transformasi_url')}
-                  className="text-[11px] text-indigo-700 hover:text-indigo-900 font-semibold flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] text-indigo-700 hover:text-indigo-900 font-semibold flex items-center gap-1 cursor-pointer min-h-[36px] px-2"
                 >
                   <RotateCcw className="w-3 h-3" /> Gunakan Logo Resmi
                 </button>
@@ -602,17 +607,21 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                 )}
               </div>
 
-              <div className="space-y-2 flex-1 min-w-0">
+              <div className="space-y-2.5 flex-1 min-w-0">
                 <div>
-                  <label className="block text-[11px] text-stone-600 mb-1">
+                  <span className="block text-[11px] text-stone-600 mb-1">
                     Unggah Berkas Gambar (PNG/JPG/SVG)
+                  </span>
+                  <label className="flex items-center justify-center gap-2 w-full min-h-[44px] px-3 py-2 bg-white hover:bg-indigo-50 text-indigo-800 border border-dashed border-indigo-300 rounded-xl text-xs font-semibold transition cursor-pointer">
+                    <UploadCloud className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span className="truncate">Pilih Logo Transformasi dari Perangkat</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload('logo_transformasi_url', e)}
+                      className="sr-only"
+                    />
                   </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload('logo_transformasi_url', e)}
-                    className="block w-full text-xs text-stone-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                  />
                 </div>
                 <div>
                   <label className="block text-[11px] text-stone-600 mb-0.5">
@@ -623,7 +632,7 @@ export const KopLogoEditor: React.FC<KopLogoEditorProps> = ({ pengaturan, onSave
                     value={form.logo_transformasi_url || ''}
                     onChange={(e) => handleChange('logo_transformasi_url', e.target.value)}
                     placeholder="https://.../logo-transformasi.png"
-                    className="w-full px-2.5 py-1.5 text-xs border border-stone-300 rounded-lg bg-white min-h-[38px]"
+                    className="w-full px-2.5 py-2 text-xs border border-stone-300 rounded-lg bg-white min-h-[40px]"
                   />
                 </div>
               </div>

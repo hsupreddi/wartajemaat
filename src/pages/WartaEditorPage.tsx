@@ -38,7 +38,12 @@ export const WartaEditorPage: React.FC = () => {
   const [editorMode, setEditorMode] = useState<'wizard' | 'tabs'>('wizard');
   const [isSaving, setIsSaving] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [saveToast, setSaveToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const triggerToast = (message: string, type: 'success' | 'error' = 'success', duration = 3500) => {
+    setSaveToast({ type, message });
+    setTimeout(() => setSaveToast(null), duration);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -68,11 +73,10 @@ export const WartaEditorPage: React.FC = () => {
     try {
       await saveWarta(data);
       if (showToast) {
-        setSaveToast('Perubahan warta jemaat berhasil disimpan.');
-        setTimeout(() => setSaveToast(null), 3000);
+        triggerToast('Perubahan warta jemaat berhasil disimpan.', 'success', 3000);
       }
     } catch (err: any) {
-      alert(err?.message || 'Gagal menyimpan data warta.');
+      triggerToast(err?.message || 'Gagal menyimpan data warta.', 'error', 4000);
     } finally {
       setIsSaving(false);
     }
@@ -92,14 +96,15 @@ export const WartaEditorPage: React.FC = () => {
     setData(updated);
     try {
       await saveWarta(updated);
-      setSaveToast(
+      triggerToast(
         nextStatus === 'published'
           ? 'Warta telah DIPUBLIKASIKAN dan dapat dibaca oleh seluruh jemaat.'
-          : 'Status warta dikembalikan menjadi DRAFT.'
+          : 'Status warta dikembalikan menjadi DRAFT.',
+        'success',
+        3500
       );
-      setTimeout(() => setSaveToast(null), 3500);
     } catch (err: any) {
-      alert(err?.message || 'Gagal mengubah status publikasi warta.');
+      triggerToast(err?.message || 'Gagal mengubah status publikasi warta.', 'error', 4000);
     }
   };
 
@@ -118,20 +123,20 @@ export const WartaEditorPage: React.FC = () => {
   const isKeuanganDisabled = !canEditKeuangan;
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-900 pb-16">
+    <div className="min-h-screen bg-stone-100 text-stone-900 pb-24 lg:pb-16">
       {/* Top Action Bar */}
       <header className="sticky top-0 z-30 bg-[#0B2545] text-white shadow-md border-b border-amber-500/20 px-3 sm:px-4 py-2.5 sm:py-3">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
           <div className="flex items-center justify-between sm:justify-start gap-2.5">
             <button
               onClick={() => navigate('/admin')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-300 hover:text-white hover:bg-white/10 transition cursor-pointer min-h-[38px]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-300 hover:text-white hover:bg-white/10 transition cursor-pointer min-h-[40px] shrink-0"
             >
               <ArrowLeft className="w-4 h-4" /> Daftar Warta
             </button>
             <div className="h-4 w-px bg-stone-700 hidden sm:block" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 text-right sm:text-left">
+              <div className="flex items-center justify-end sm:justify-start gap-2">
                 <h1 className="text-xs sm:text-base font-bold text-white tracking-tight truncate">
                   Edit: MINGGU {data.warta.goar_minggu}
                 </h1>
@@ -156,7 +161,7 @@ export const WartaEditorPage: React.FC = () => {
             <div className="flex items-center bg-white/10 p-0.5 rounded-lg border border-white/20 text-xs shrink-0">
               <button
                 onClick={() => setEditorMode('wizard')}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 cursor-pointer min-h-[34px] ${
+                className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 cursor-pointer min-h-[36px] ${
                   editorMode === 'wizard' ? 'bg-amber-400 text-stone-950' : 'text-stone-200 hover:text-white'
                 }`}
               >
@@ -164,7 +169,7 @@ export const WartaEditorPage: React.FC = () => {
               </button>
               <button
                 onClick={() => setEditorMode('tabs')}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1 cursor-pointer min-h-[34px] ${
+                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1 cursor-pointer min-h-[36px] ${
                   editorMode === 'tabs' ? 'bg-amber-400 text-stone-950' : 'text-stone-200 hover:text-white'
                 }`}
               >
@@ -176,7 +181,7 @@ export const WartaEditorPage: React.FC = () => {
             {canPublish && (
               <button
                 onClick={handleTogglePublish}
-                className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold shadow transition cursor-pointer shrink-0 min-h-[38px] ${
+                className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold shadow transition cursor-pointer shrink-0 min-h-[40px] ${
                   data.warta.status === 'published'
                     ? 'bg-stone-800 hover:bg-stone-700 text-stone-200'
                     : 'bg-emerald-600 hover:bg-emerald-500 text-white font-bold'
@@ -201,17 +206,15 @@ export const WartaEditorPage: React.FC = () => {
                     jadwalTetap,
                     selectedPage: 'all'
                   });
-                  setSaveToast(`PDF berhasil diunduh: ${fileName}`);
-                  setTimeout(() => setSaveToast(null), 3500);
+                  triggerToast(`PDF berhasil diunduh: ${fileName}`, 'success', 3500);
                 } catch (err: any) {
-                  setSaveToast(err?.message || 'Gagal membuat PDF.');
-                  setTimeout(() => setSaveToast(null), 3500);
+                  triggerToast(err?.message || 'Gagal membuat PDF.', 'error', 3500);
                 } finally {
                   setIsExportingPdf(false);
                 }
               }}
               disabled={isExportingPdf}
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer shrink-0 min-h-[38px]"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer shrink-0 min-h-[40px]"
               title="Unduh file PDF warta A4 langsung"
             >
               {isExportingPdf ? (
@@ -225,7 +228,7 @@ export const WartaEditorPage: React.FC = () => {
             {/* Print Button */}
             <button
               onClick={() => navigate(`/warta/${data.warta.id}/print`)}
-              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium border border-white/20 transition cursor-pointer shrink-0 min-h-[38px]"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium border border-white/20 transition cursor-pointer shrink-0 min-h-[40px]"
               title="Cetak format kertas A4"
             >
               <Printer className="w-3.5 h-3.5 text-amber-400" />
@@ -236,7 +239,7 @@ export const WartaEditorPage: React.FC = () => {
             <button
               onClick={() => handleSave(true)}
               disabled={isSaving}
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg text-xs font-extrabold shadow-md transition cursor-pointer disabled:opacity-50 shrink-0 min-h-[38px]"
+              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg text-xs font-extrabold shadow-md transition cursor-pointer disabled:opacity-50 shrink-0 min-h-[40px]"
             >
               <Save className="w-4 h-4 text-stone-950" />
               <span>{isSaving ? 'Menyimpan...' : 'Simpan'}</span>
@@ -247,9 +250,19 @@ export const WartaEditorPage: React.FC = () => {
 
       {/* Save Toast */}
       {saveToast && (
-        <div className="fixed bottom-5 right-5 z-50 bg-stone-900 text-white px-4 py-2.5 rounded-lg shadow-xl border border-stone-700 flex items-center gap-2 text-xs font-medium animate-in fade-in slide-in-from-bottom-2">
-          <CheckCircle className="w-4 h-4 text-emerald-400" />
-          <span>{saveToast}</span>
+        <div
+          className={`fixed bottom-20 lg:bottom-5 right-4 left-4 sm:left-auto z-50 px-4 py-2.5 rounded-xl shadow-xl border flex items-center gap-2 text-xs font-medium animate-in fade-in slide-in-from-bottom-2 ${
+            saveToast.type === 'error'
+              ? 'bg-rose-950 text-rose-100 border-rose-700'
+              : 'bg-stone-900 text-white border-stone-700'
+          }`}
+        >
+          <CheckCircle
+            className={`w-4 h-4 shrink-0 ${
+              saveToast.type === 'error' ? 'text-rose-400' : 'text-emerald-400'
+            }`}
+          />
+          <span>{saveToast.message}</span>
         </div>
       )}
 

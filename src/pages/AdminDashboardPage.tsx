@@ -51,6 +51,8 @@ import { KopLogoEditor } from '../components/admin/KopLogoEditor';
 import { MingguLiturgiDropdown, getLiturgiColorBadge } from '../components/common/MingguLiturgiDropdown';
 import { MingguLiturgi } from '../types';
 import { GrafikPendapatanMingguan } from '../components/dashboard/GrafikPendapatanMingguan';
+import { MobileConfirmModal } from '../components/mobile/MobileConfirmModal';
+import { MobileAdminNav } from '../components/mobile/MobileAdminNav';
 
 export const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -88,6 +90,14 @@ export const AdminDashboardPage: React.FC = () => {
   const [newGoar, setNewGoar] = useState('REMINISCERE');
   const [newTopik, setNewTopik] = useState('Marpanghiramon tu Jahowa');
   const [selectedMingguInfo, setSelectedMingguInfo] = useState<MingguLiturgi | null>(null);
+  const [adminToast, setAdminToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const showAdminToast = (type: 'success' | 'error', message: string) => {
+    setAdminToast({ type, message });
+    setTimeout(() => setAdminToast(null), 3500);
+  };
 
   const loadData = async () => {
     try {
@@ -120,37 +130,52 @@ export const AdminDashboardPage: React.FC = () => {
       await loadData();
       navigate(`/admin/warta/${created.warta.id}/edit`);
     } catch (err: any) {
-      alert(err?.message || 'Gagal membuat warta baru.');
+      showAdminToast('error', err?.message || 'Gagal membuat warta baru.');
     } finally {
       setIsCreating(false);
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = (id: string, name: string) => {
     if (!canDeleteWarta) {
-      alert('Hanya akun Admin yang memiliki wewenang untuk menghapus warta jemaat.');
+      showAdminToast('error', 'Hanya akun Admin yang memiliki wewenang untuk menghapus warta jemaat.');
       return;
     }
-    if (!confirm(`Hapus warta MINGGU ${name}? Tindakan ini permanen.`)) return;
+    setDeleteConfirmTarget({ id, name });
+  };
+
+  const confirmDeleteWarta = async () => {
+    if (!deleteConfirmTarget) return;
+    setIsDeleting(true);
     try {
-      await deleteWarta(id);
+      await deleteWarta(deleteConfirmTarget.id);
+      setDeleteConfirmTarget(null);
       await loadData();
+      showAdminToast('success', `Warta MINGGU ${deleteConfirmTarget.name} berhasil dihapus.`);
     } catch (err: any) {
-      alert(err?.message || 'Gagal menghapus warta.');
+      showAdminToast('error', err?.message || 'Gagal menghapus warta.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleToggleStatus = async (warta: WartaRecord) => {
     if (!canPublish) {
-      alert('Anda tidak memiliki wewenang untuk mempublikasikan warta.');
+      showAdminToast('error', 'Anda tidak memiliki wewenang untuk mempublikasikan warta.');
       return;
     }
     try {
       const nextStatus = warta.status === 'published' ? 'draft' : 'published';
       await updateWartaStatus(warta.id, nextStatus);
       await loadData();
+      showAdminToast(
+        'success',
+        nextStatus === 'published'
+          ? `Warta MINGGU ${warta.goar_minggu} dipublikasikan.`
+          : `Warta MINGGU ${warta.goar_minggu} dikembalikan ke Draft.`
+      );
     } catch (err: any) {
-      alert(err?.message || 'Gagal mengubah status publikasi.');
+      showAdminToast('error', err?.message || 'Gagal mengubah status publikasi.');
     }
   };
 
@@ -158,8 +183,9 @@ export const AdminDashboardPage: React.FC = () => {
     try {
       await savePengaturan(updated);
       setPengaturan(updated);
+      showAdminToast('success', 'Pengaturan kop surat & logo berhasil disimpan.');
     } catch (err: any) {
-      alert(err?.message || 'Gagal menyimpan pengaturan kop & logo.');
+      showAdminToast('error', err?.message || 'Gagal menyimpan pengaturan kop & logo.');
     }
   };
 
@@ -173,7 +199,23 @@ export const AdminDashboardPage: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F7F5F0] text-stone-900 pb-16 flex flex-col justify-between">
+    <div className="min-h-screen bg-[#F7F5F0] text-stone-900 pb-24 lg:pb-16 flex flex-col justify-between">
+      {adminToast && (
+        <div
+          className={`fixed top-16 left-4 right-4 sm:left-auto sm:right-4 z-50 px-4 py-3 rounded-xl shadow-2xl border text-xs font-semibold flex items-center gap-2 ${
+            adminToast.type === 'error'
+              ? 'bg-rose-950 text-rose-100 border-rose-700'
+              : 'bg-emerald-950 text-emerald-100 border-emerald-700'
+          }`}
+        >
+          {adminToast.type === 'error' ? (
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          )}
+          <span>{adminToast.message}</span>
+        </div>
+      )}
       {/* Top Bar with Brand & Fast Role Switcher */}
       <header className="bg-[#0B2545] text-white shadow-lg border-b border-amber-500/20 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
@@ -789,7 +831,43 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="overflow-x-auto border border-stone-200 rounded-lg">
+              {/* Mobile Card View (< md) */}
+              <div className="block md:hidden space-y-2.5">
+                {statistikWijkList.map((st, i) => (
+                  <div
+                    key={i}
+                    className="p-3.5 rounded-xl border border-stone-200 bg-stone-50/70 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-stone-900 text-sm">{st.wijk}</span>
+                      <span className="font-mono-num font-bold text-[#0B2545]">
+                        {st.jumlah_anggota ?? st.total_anggota ?? 0} Jiwa ·{' '}
+                        {st.jumlah_keluarga ?? st.total_keluarga ?? 0} KK
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5 text-center pt-1 border-t border-stone-200/70 font-mono-num">
+                      <div className="bg-white rounded-lg p-1.5">
+                        <div className="text-[10px] text-stone-500">Laki</div>
+                        <div className="font-bold text-stone-800">{st.laki_laki ?? 0}</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-1.5">
+                        <div className="text-[10px] text-stone-500">Peremp</div>
+                        <div className="font-bold text-stone-800">{st.perempuan ?? 0}</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-1.5">
+                        <div className="text-[10px] text-emerald-700">Sidi</div>
+                        <div className="font-bold text-emerald-800">{st.sudah_sidi ?? 0}</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-1.5">
+                        <div className="text-[10px] text-amber-700">Baptis</div>
+                        <div className="font-bold text-amber-800">{st.belum_sidi ?? 0}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto border border-stone-200 rounded-lg">
                 <table className="w-full text-xs">
                   <thead className="bg-stone-100 font-bold text-stone-800 border-b border-stone-200">
                     <tr>
@@ -897,7 +975,50 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="overflow-x-auto border border-stone-200 rounded-lg">
+              {/* Mobile Card View Calon Sidi (< md) */}
+              <div className="block md:hidden space-y-2.5">
+                {calonSidiList
+                  .filter((cs) => {
+                    const matchQ =
+                      cs.nama.toLowerCase().includes(calonSidiSearch.toLowerCase()) ||
+                      (cs.registrasi || '').includes(calonSidiSearch);
+                    const matchWijk =
+                      calonSidiWijkFilter === 'all' || cs.wijk === calonSidiWijkFilter;
+                    return matchQ && matchWijk;
+                  })
+                  .map((cs, idx) => (
+                    <div
+                      key={cs.id || idx}
+                      className="p-3.5 rounded-xl border border-stone-200 bg-stone-50/70 space-y-1.5 text-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-bold text-stone-900 text-sm break-words">
+                            {idx + 1}. {cs.nama}
+                          </div>
+                          <div className="text-[11px] text-stone-600">
+                            Reg {cs.registrasi} · {cs.wijk}
+                          </div>
+                        </div>
+                        <span className="font-bold text-amber-900 font-mono-num shrink-0">
+                          {cs.usia} Thn
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-stone-600 flex flex-wrap gap-x-3 gap-y-0.5 pt-1 border-t border-stone-200/70">
+                        <span>{cs.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                        <span>Lahir: {cs.tgl_lahir || '-'}</span>
+                        <span>Baptis: {cs.tgl_baptis || '-'}</span>
+                      </div>
+                    </div>
+                  ))}
+                {calonSidiList.length === 0 && (
+                  <div className="py-6 text-center text-xs text-stone-400 italic">
+                    Tidak ada calon sidi yang terdaftar dalam kriteria usia 14-20 tahun.
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto border border-stone-200 rounded-lg">
                 <table className="w-full text-xs">
                   <thead className="bg-stone-100 font-bold text-stone-800 border-b border-stone-200">
                     <tr>
@@ -1203,6 +1324,32 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Mobile Delete Confirmation Modal */}
+      <MobileConfirmModal
+        isOpen={Boolean(deleteConfirmTarget)}
+        title="Hapus Warta Jemaat?"
+        message={
+          deleteConfirmTarget
+            ? `Hapus warta MINGGU ${deleteConfirmTarget.name}? Tindakan ini permanen dan tidak dapat dibatalkan.`
+            : ''
+        }
+        confirmLabel="Ya, Hapus Permanen"
+        tone="danger"
+        isProcessing={isDeleting}
+        onConfirm={confirmDeleteWarta}
+        onCancel={() => setDeleteConfirmTarget(null)}
+      />
+
+      {/* Mobile Admin Bottom Navigation */}
+      <MobileAdminNav
+        currentPage="dashboard"
+        activeMenu={activeMenu}
+        onSelectDashboardMenu={(menu) => setActiveMenu(menu)}
+        onCreateWarta={() => setIsModalOpen(true)}
+        onGoDashboard={() => setActiveMenu('warta')}
+        onGoMaster={() => navigate('/admin/master')}
+        onGoPortal={() => navigate('/')}
+      />
     </div>
   );
 };

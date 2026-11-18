@@ -70,6 +70,7 @@ import {
 } from 'lucide-react';
 import { AddColumnModal } from '../common/AddColumnModal';
 import { TambahPenerimaanModal, TambahPengeluaranModal } from './TambahPosKeuanganModal';
+import { MobileConfirmModal } from '../mobile/MobileConfirmModal';
 import {
   DEFAULT_PARHOBAS_COLUMNS,
   DEFAULT_ACARA_MINGGU_COLUMNS,
@@ -127,6 +128,13 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   const [isSyncingUltah, setIsSyncingUltah] = useState<boolean>(false);
   const [isPullingPrevSumbangan, setIsPullingPrevSumbangan] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    tone?: 'danger' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
   const lastAutoUltahKeyRef = useRef<string>('');
   const latestDataRef = useRef<FullWartaData>(data);
   latestDataRef.current = data;
@@ -317,44 +325,52 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
     table: 'parhobas' | 'acara_minggu' | 'acara_partangiangan' | 'sopo_godang' | 'jadwal_partangiangan',
     columnKey: string
   ) => {
-    if (!confirm('Yakin ingin menghapus kolom ini dari tabel?')) return;
-    switch (table) {
-      case 'parhobas': {
-        const current = data.parhobas_columns && data.parhobas_columns.length > 0
-          ? data.parhobas_columns
-          : DEFAULT_PARHOBAS_COLUMNS;
-        onChange({ ...data, parhobas_columns: current.filter((c) => c.key !== columnKey) });
-        break;
+    setConfirmModal({
+      title: 'Hapus Kolom Tabel',
+      message: 'Yakin ingin menghapus kolom ini dari tabel? Data pada kolom tersebut tidak akan ditampilkan.',
+      confirmLabel: 'Ya, Hapus Kolom',
+      tone: 'danger',
+      onConfirm: () => {
+        setConfirmModal(null);
+        switch (table) {
+          case 'parhobas': {
+            const current = data.parhobas_columns && data.parhobas_columns.length > 0
+              ? data.parhobas_columns
+              : DEFAULT_PARHOBAS_COLUMNS;
+            onChange({ ...data, parhobas_columns: current.filter((c) => c.key !== columnKey) });
+            break;
+          }
+          case 'acara_minggu': {
+            const current = data.acara_minggu_columns && data.acara_minggu_columns.length > 0
+              ? data.acara_minggu_columns
+              : DEFAULT_ACARA_MINGGU_COLUMNS;
+            onChange({ ...data, acara_minggu_columns: current.filter((c) => c.key !== columnKey) });
+            break;
+          }
+          case 'acara_partangiangan': {
+            const current = data.acara_partangiangan_columns && data.acara_partangiangan_columns.length > 0
+              ? data.acara_partangiangan_columns
+              : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
+            onChange({ ...data, acara_partangiangan_columns: current.filter((c) => c.key !== columnKey) });
+            break;
+          }
+          case 'jadwal_partangiangan': {
+            const current = data.jadwal_partangiangan_columns && data.jadwal_partangiangan_columns.length > 0
+              ? data.jadwal_partangiangan_columns
+              : DEFAULT_PARTANGIANGAN_COLUMNS;
+            onChange({ ...data, jadwal_partangiangan_columns: current.filter((c) => c.key !== columnKey) });
+            break;
+          }
+          case 'sopo_godang': {
+            const current = data.sopo_godang_columns && data.sopo_godang_columns.length > 0
+              ? data.sopo_godang_columns
+              : DEFAULT_SOPO_GODANG_COLUMNS;
+            onChange({ ...data, sopo_godang_columns: current.filter((c) => c.key !== columnKey) });
+            break;
+          }
+        }
       }
-      case 'acara_minggu': {
-        const current = data.acara_minggu_columns && data.acara_minggu_columns.length > 0
-          ? data.acara_minggu_columns
-          : DEFAULT_ACARA_MINGGU_COLUMNS;
-        onChange({ ...data, acara_minggu_columns: current.filter((c) => c.key !== columnKey) });
-        break;
-      }
-      case 'acara_partangiangan': {
-        const current = data.acara_partangiangan_columns && data.acara_partangiangan_columns.length > 0
-          ? data.acara_partangiangan_columns
-          : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
-        onChange({ ...data, acara_partangiangan_columns: current.filter((c) => c.key !== columnKey) });
-        break;
-      }
-      case 'jadwal_partangiangan': {
-        const current = data.jadwal_partangiangan_columns && data.jadwal_partangiangan_columns.length > 0
-          ? data.jadwal_partangiangan_columns
-          : DEFAULT_PARTANGIANGAN_COLUMNS;
-        onChange({ ...data, jadwal_partangiangan_columns: current.filter((c) => c.key !== columnKey) });
-        break;
-      }
-      case 'sopo_godang': {
-        const current = data.sopo_godang_columns && data.sopo_godang_columns.length > 0
-          ? data.sopo_godang_columns
-          : DEFAULT_SOPO_GODANG_COLUMNS;
-        onChange({ ...data, sopo_godang_columns: current.filter((c) => c.key !== columnKey) });
-        break;
-      }
-    }
+    });
   };
 
   // Acara Minggu handlers (Row & Cell)
@@ -384,21 +400,28 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   };
 
   const handleResetAcaraMinggu = () => {
-    if (confirm('Kembalikan susunan Acara Minggu ke template standar liturgi HKBP?')) {
-      const resetItems = DEFAULT_ACARA_MINGGU_TEMPLATE.map((it, idx) => ({
-        id: `am-reset-${idx + 1}`,
-        warta_id: warta.id,
-        jenis: 'minggu' as const,
-        urutan: idx + 1,
-        uraian: it.uraian,
-        keterangan: it.keterangan || ''
-      }));
-      onChange({
-        ...data,
-        acara_minggu: resetItems,
-        acara_minggu_columns: DEFAULT_ACARA_MINGGU_COLUMNS
-      });
-    }
+    setConfirmModal({
+      title: 'Reset Acara Ibadah Minggu',
+      message: 'Kembalikan susunan Acara Minggu ke template standar liturgi HKBP?',
+      confirmLabel: 'Ya, Kembalikan Template',
+      tone: 'primary',
+      onConfirm: () => {
+        setConfirmModal(null);
+        const resetItems = DEFAULT_ACARA_MINGGU_TEMPLATE.map((it, idx) => ({
+          id: `am-reset-${idx + 1}`,
+          warta_id: warta.id,
+          jenis: 'minggu' as const,
+          urutan: idx + 1,
+          uraian: it.uraian,
+          keterangan: it.keterangan || ''
+        }));
+        onChange({
+          ...data,
+          acara_minggu: resetItems,
+          acara_minggu_columns: DEFAULT_ACARA_MINGGU_COLUMNS
+        });
+      }
+    });
   };
 
   // Acara Partangiangan handlers (Row & Cell)
@@ -428,21 +451,28 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   };
 
   const handleResetAcaraPartangiangan = () => {
-    if (confirm('Kembalikan susunan Acara Partangiangan ke template standar?')) {
-      const resetItems = DEFAULT_ACARA_PARTANGIANGAN_TEMPLATE.map((it, idx) => ({
-        id: `ap-reset-${idx + 1}`,
-        warta_id: warta.id,
-        jenis: 'partangiangan' as const,
-        urutan: idx + 1,
-        uraian: it.uraian,
-        keterangan: it.keterangan || ''
-      }));
-      onChange({
-        ...data,
-        acara_partangiangan: resetItems,
-        acara_partangiangan_columns: DEFAULT_ACARA_PARTANGIANGAN_COLUMNS
-      });
-    }
+    setConfirmModal({
+      title: 'Reset Acara Partangiangan',
+      message: 'Kembalikan susunan Acara Partangiangan ke template standar?',
+      confirmLabel: 'Ya, Kembalikan Template',
+      tone: 'primary',
+      onConfirm: () => {
+        setConfirmModal(null);
+        const resetItems = DEFAULT_ACARA_PARTANGIANGAN_TEMPLATE.map((it, idx) => ({
+          id: `ap-reset-${idx + 1}`,
+          warta_id: warta.id,
+          jenis: 'partangiangan' as const,
+          urutan: idx + 1,
+          uraian: it.uraian,
+          keterangan: it.keterangan || ''
+        }));
+        onChange({
+          ...data,
+          acara_partangiangan: resetItems,
+          acara_partangiangan_columns: DEFAULT_ACARA_PARTANGIANGAN_COLUMNS
+        });
+      }
+    });
   };
 
   // Parhobas handlers (Row & Cell)
@@ -1198,8 +1228,35 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
           </div>
         </div>
 
-        {/* Stepper Navigation Pills */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        {/* Mobile Compact Step Switcher (< 640px) */}
+        <div className="sm:hidden space-y-2">
+          <div className="flex items-center gap-2">
+            <label htmlFor="mobile-wizard-step" className="sr-only">
+              Pilih Langkah Pengisian Warta
+            </label>
+            <select
+              id="mobile-wizard-step"
+              value={currentStep}
+              onChange={(e) => setCurrentStep(Number(e.target.value))}
+              className="flex-1 min-h-[44px] px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold text-[#0B2545]"
+            >
+              {steps.map((st) => (
+                <option key={st.num} value={st.num}>
+                  Langkah {st.num}/6: {st.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#0B2545] transition-all duration-300"
+              style={{ width: `${(currentStep / 6) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Stepper Navigation Pills (Desktop & Tablet >= 640px) */}
+        <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {steps.map((st) => {
             const Icon = st.icon;
             const isActive = currentStep === st.num;
@@ -3564,6 +3621,62 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
           const rekap = calculateRekapitulasi(warta, penerimaan, updated);
           onChange({ ...data, pengeluaran: updated, rekapitulasi: rekap });
         }}
+      />
+
+      {/* Sticky Mobile Bottom Wizard Bar (< 1024px) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-stone-200 px-3 py-2 pb-safe shadow-[0_-8px_24px_rgba(11,37,69,0.08)]">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+          <button
+            type="button"
+            disabled={currentStep === 1}
+            onClick={() => {
+              setCurrentStep((prev) => Math.max(1, prev - 1));
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="min-h-[42px] px-3 py-2 border border-stone-300 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-40 inline-flex items-center gap-1 cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Sebel.</span>
+          </button>
+
+          <span className="text-[11px] font-bold text-[#0B2545] px-2 truncate">
+            {currentStep}/6 · {steps[currentStep - 1]?.title}
+          </span>
+
+          {currentStep < 6 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentStep((prev) => Math.min(6, prev + 1));
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="min-h-[42px] px-3.5 py-2 bg-[#0B2545] text-white rounded-xl text-xs font-bold inline-flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              <span>Lanjut</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExportingPdf}
+              className="min-h-[42px] px-3.5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-60"
+            >
+              <Download className="w-4 h-4" />
+              <span>{isExportingPdf ? 'PDF...' : 'PDF'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <MobileConfirmModal
+        isOpen={Boolean(confirmModal)}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmLabel={confirmModal?.confirmLabel}
+        tone={confirmModal?.tone || 'primary'}
+        onConfirm={() => confirmModal?.onConfirm()}
+        onCancel={() => setConfirmModal(null)}
       />
     </div>
   );

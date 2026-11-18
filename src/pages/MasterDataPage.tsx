@@ -71,6 +71,8 @@ import { KopLogoEditor } from '../components/admin/KopLogoEditor';
 import { MingguLiturgiManager } from '../components/admin/MingguLiturgiManager';
 import { MasterKeuanganManager } from '../components/admin/MasterKeuanganManager';
 import { MasterPetugasManager } from '../components/admin/MasterPetugasManager';
+import { MobileConfirmModal } from '../components/mobile/MobileConfirmModal';
+import { MobileAdminNav } from '../components/mobile/MobileAdminNav';
 
 export const MasterDataPage: React.FC = () => {
   const navigate = useNavigate();
@@ -130,8 +132,14 @@ export const MasterDataPage: React.FC = () => {
   } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Toast
+  // Toast & Mobile Confirm Modal
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
 
   const showToast = (type: 'success' | 'error' | 'warning' | 'info', message: string) => {
     setToast({ type, message });
@@ -272,15 +280,22 @@ export const MasterDataPage: React.FC = () => {
   };
 
   // Anggota Delete
-  const handleDeleteAnggota = async (id: string, nama: string) => {
-    if (!confirm(`Hapus anggota jemaat "${nama}"?`)) return;
-    try {
-      await deleteAnggota(id);
-      await Promise.all([fetchAnggota(), fetchKeluarga(), fetchKeluargaLookup()]);
-      showToast('success', `Data anggota "${nama}" berhasil dihapus.`);
-    } catch (err: any) {
-      showToast('error', err?.message || 'Gagal menghapus anggota.');
-    }
+  const handleDeleteAnggota = (id: string, nama: string) => {
+    setConfirmState({
+      title: 'Hapus Anggota Jemaat',
+      message: `Hapus anggota jemaat "${nama}" dari database ruas?`,
+      confirmLabel: 'Ya, Hapus Anggota',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          await deleteAnggota(id);
+          await Promise.all([fetchAnggota(), fetchKeluarga(), fetchKeluargaLookup()]);
+          showToast('success', `Data anggota "${nama}" berhasil dihapus.`);
+        } catch (err: any) {
+          showToast('error', err?.message || 'Gagal menghapus anggota.');
+        }
+      }
+    });
   };
 
   // Keluarga Save / Upsert
@@ -317,15 +332,22 @@ export const MasterDataPage: React.FC = () => {
   };
 
   // Keluarga Delete
-  const handleDeleteKeluarga = async (registrasi: string, nama_kk: string) => {
-    if (!confirm(`Hapus keluarga "${nama_kk}" (${registrasi})? Seluruh anggota dengan nomor registrasi ini juga akan terhapus.`)) return;
-    try {
-      await deleteKeluarga(registrasi);
-      await Promise.all([fetchKeluarga(), fetchAnggota(), fetchKeluargaLookup()]);
-      showToast('success', `Keluarga "${nama_kk}" berhasil dihapus.`);
-    } catch (err: any) {
-      showToast('error', err?.message || 'Gagal menghapus keluarga.');
-    }
+  const handleDeleteKeluarga = (registrasi: string, nama_kk: string) => {
+    setConfirmState({
+      title: 'Hapus Kepala Keluarga',
+      message: `Hapus keluarga "${nama_kk}" (${registrasi})? Seluruh anggota dengan nomor registrasi ini juga akan terhapus.`,
+      confirmLabel: 'Ya, Hapus Keluarga',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          await deleteKeluarga(registrasi);
+          await Promise.all([fetchKeluarga(), fetchAnggota(), fetchKeluargaLookup()]);
+          showToast('success', `Keluarga "${nama_kk}" berhasil dihapus.`);
+        } catch (err: any) {
+          showToast('error', err?.message || 'Gagal menghapus keluarga.');
+        }
+      }
+    });
   };
 
   // Download CSV Template Handlers
@@ -646,7 +668,7 @@ export const MasterDataPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F5F0] text-stone-900 pb-16">
+    <div className="min-h-screen bg-[#F7F5F0] text-stone-900 pb-24 lg:pb-16">
       {/* Top Header */}
       <header className="bg-[#0B2545] text-white shadow-md border-b border-amber-500/20 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
@@ -706,9 +728,34 @@ export const MasterDataPage: React.FC = () => {
       )}
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 mt-6">
-        {/* Navigation Tabs Bar */}
-        <div className="bg-white rounded-xl border border-stone-200 shadow-xs p-1.5 flex items-center mb-6 overflow-x-auto scrollbar-none gap-1.5">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 mt-5 sm:mt-6">
+        {/* Mobile Quick Module Switcher (< 768px) */}
+        <div className="block md:hidden mb-4">
+          <label htmlFor="mobile-master-tab" className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">
+            Pilih Modul Master Data
+          </label>
+          <select
+            id="mobile-master-tab"
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value as any)}
+            className="w-full min-h-[44px] px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-sm font-bold text-[#0B2545] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#0B2545]"
+          >
+            <option value="anggota">Anggota Jemaat ({anggotaTotal})</option>
+            <option value="keluarga">Data Keluarga ({keluargaTotal})</option>
+            <option value="petugas">Sintua &amp; Pengurus</option>
+            <option value="minggu">63 Minggu Liturgi</option>
+            <option value="keuangan">Pos Penerimaan &amp; Pengeluaran</option>
+            {(currentRole === 'admin' || currentRole === 'sekretaris') && (
+              <option value="impor">Impor &amp; Template CSV</option>
+            )}
+            <option value="jadwal">Jadwal Tetap</option>
+            <option value="lingkungan">Lingkungan / Wijk</option>
+            <option value="pengaturan">Kop &amp; Pengaturan</option>
+          </select>
+        </div>
+
+        {/* Navigation Tabs Bar (Tablet & Desktop >= 768px) */}
+        <div className="hidden md:flex bg-white rounded-xl border border-stone-200 shadow-xs p-1.5 items-center mb-6 overflow-x-auto scrollbar-none gap-1.5">
           <button
             onClick={() => setActiveTab('anggota')}
             className={`px-3.5 py-2.5 rounded-lg text-xs md:text-sm font-bold transition whitespace-nowrap shrink-0 flex items-center gap-2 cursor-pointer min-h-[44px] ${
@@ -919,8 +966,105 @@ export const MasterDataPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto border border-stone-200 rounded-lg">
+            {/* Mobile Card List: Anggota (< 768px) */}
+            <div className="block md:hidden space-y-2.5">
+              {isAnggotaLoading ? (
+                <div className="py-8 text-center text-xs text-stone-500">
+                  <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2" />
+                  Memuat data anggota jemaat...
+                </div>
+              ) : anggotaList.length === 0 ? (
+                <div className="py-8 text-center text-xs text-stone-500 border border-stone-200 rounded-xl bg-stone-50">
+                  Tidak ada data anggota yang cocok dengan pencarian / filter.
+                </div>
+              ) : (
+                anggotaList.map((ang) => (
+                  <div
+                    key={`mob-${ang.id}`}
+                    className="p-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[11px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded">
+                            {ang.registrasi}
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              ang.jenis_kelamin === 'L'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-pink-100 text-pink-800'
+                            }`}
+                          >
+                            {ang.jenis_kelamin}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              ang.aktif !== false
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-stone-200 text-stone-600'
+                            }`}
+                          >
+                            {ang.aktif !== false ? 'Aktif' : 'Non-Aktif'}
+                          </span>
+                        </div>
+                        <div className="font-bold text-sm text-stone-900 mt-1 break-words">
+                          {ang.nama}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-stone-600 bg-stone-50 p-2.5 rounded-lg">
+                      <div>
+                        <span className="text-stone-400 block text-[10px]">Wijk</span>
+                        <span className="font-semibold text-stone-800">{ang.wijk}</span>
+                      </div>
+                      <div>
+                        <span className="text-stone-400 block text-[10px]">Hubungan</span>
+                        <span className="font-semibold text-stone-800">{ang.hub_keluarga || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-stone-400 block text-[10px]">Tgl Lahir</span>
+                        <span className="font-mono-num font-medium text-stone-800">
+                          {ang.tgl_lahir || '(kosong)'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-stone-400 block text-[10px]">Sakramen</span>
+                        <span className="font-semibold text-stone-800">
+                          {ang.tgl_sidi ? 'Sidi' : ang.tgl_baptis ? 'Baptis' : '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsNewAnggotaModal(false);
+                          setAutoNamaKK('');
+                          setEditingAnggota(ang);
+                        }}
+                        className="min-h-[44px] flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAnggota(ang.id, ang.nama)}
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold cursor-pointer"
+                        title="Hapus Anggota"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Table (>= 768px) */}
+            <div className="hidden md:block overflow-x-auto border border-stone-200 rounded-lg">
               <table className="w-full text-xs">
                 <thead className="bg-stone-100 text-stone-800 border-b border-stone-200 font-bold">
                   <tr>
@@ -1155,8 +1299,90 @@ export const MasterDataPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto border border-stone-200 rounded-lg">
+            {/* Mobile Card List: Keluarga (< 768px) */}
+            <div className="block md:hidden space-y-2.5">
+              {isKeluargaLoading ? (
+                <div className="py-8 text-center text-xs text-stone-500">
+                  <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2" />
+                  Memuat data keluarga...
+                </div>
+              ) : keluargaList.length === 0 ? (
+                <div className="py-8 text-center text-xs text-stone-500 border border-stone-200 rounded-xl bg-stone-50">
+                  Tidak ada data keluarga yang sesuai.
+                </div>
+              ) : (
+                keluargaList.map((kel) => (
+                  <div
+                    key={`mob-kel-${kel.registrasi}`}
+                    className="p-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[11px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded">
+                            {kel.registrasi}
+                          </span>
+                          {kel.kk_wafat ? (
+                            <span className="text-[10px] font-bold text-stone-600 bg-stone-200 px-1.5 py-0.5 rounded">
+                              Almarhum
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                              Hidup
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-bold text-sm text-stone-900 mt-1 break-words">
+                          {kel.nama_kk}
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold text-[#0B2545] bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg shrink-0">
+                        {kel.jumlah_anggota || 0} Jiwa
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-stone-600 bg-stone-50 p-2.5 rounded-lg">
+                      <div>
+                        <span className="text-stone-400 block text-[10px]">Wijk</span>
+                        <span className="font-semibold text-stone-800">{kel.wijk}</span>
+                      </div>
+                      <div>
+                        <span className="text-stone-400 block text-[10px]">No. HP</span>
+                        <span className="font-mono-num font-medium text-stone-800">{kel.hp || '-'}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-stone-400 block text-[10px]">Alamat / Jalan</span>
+                        <span className="text-stone-700">{kel.jalan || '-'}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOriginalKeluargaRegistrasi(kel.registrasi);
+                          setEditingKeluarga(kel);
+                        }}
+                        className="min-h-[44px] flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteKeluarga(kel.registrasi, kel.nama_kk)}
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold cursor-pointer"
+                        title="Hapus Keluarga"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Table (>= 768px) */}
+            <div className="hidden md:block overflow-x-auto border border-stone-200 rounded-lg">
               <table className="w-full text-xs">
                 <thead className="bg-stone-100 text-stone-800 border-b border-stone-200 font-bold">
                   <tr>
@@ -1386,15 +1612,21 @@ export const MasterDataPage: React.FC = () => {
                   Registrasi dibaca sebagai teks (misal: &quot;0101&quot;).
                 </p>
 
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleParseKeluargaCsv(f);
-                  }}
-                  className="block w-full text-xs text-stone-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                />
+                <label className="flex items-center justify-center gap-2 w-full min-h-[52px] px-4 py-3 bg-white hover:bg-blue-50 text-blue-800 border border-blue-300 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer">
+                  <UploadCloud className="w-4 h-4 text-blue-700 shrink-0" />
+                  <span className="truncate">
+                    {keluargaCsvFile ? `Ganti File (${keluargaCsvFile.name})` : 'Pilih File keluarga.csv'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleParseKeluargaCsv(f);
+                    }}
+                    className="sr-only"
+                  />
+                </label>
 
                 {keluargaCsvFile && (
                   <div className="text-[11px] text-stone-600 bg-white p-2 rounded border border-stone-200">
@@ -1426,15 +1658,21 @@ export const MasterDataPage: React.FC = () => {
                   </span>
                 </p>
 
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleParseAnggotaCsv(f);
-                  }}
-                  className="block w-full text-xs text-stone-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                />
+                <label className="flex items-center justify-center gap-2 w-full min-h-[52px] px-4 py-3 bg-white hover:bg-blue-50 text-blue-800 border border-blue-300 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer">
+                  <UploadCloud className="w-4 h-4 text-blue-700 shrink-0" />
+                  <span className="truncate">
+                    {anggotaCsvFile ? `Ganti File (${anggotaCsvFile.name})` : 'Pilih File anggota.csv'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleParseAnggotaCsv(f);
+                    }}
+                    className="sr-only"
+                  />
+                </label>
 
                 {anggotaCsvFile && (
                   <div className="text-[11px] text-stone-600 bg-white p-2 rounded border border-stone-200">
@@ -1624,7 +1862,87 @@ export const MasterDataPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile Cards: Jadwal Tetap (< 768px) */}
+            <div className="block md:hidden space-y-3">
+              {jadwalList.map((item) => (
+                <div
+                  key={`mob-jd-${item.id}`}
+                  className="p-3.5 rounded-xl border border-stone-200 bg-stone-50/70 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <select
+                      value={item.kelompok}
+                      onChange={(e) =>
+                        handleUpdateJadwal(item.id, 'kelompok', e.target.value as any)
+                      }
+                      className="flex-1 min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs font-semibold bg-white"
+                    >
+                      <option value="minggu">Ibadah Minggu</option>
+                      <option value="partangiangan">Partangiangan</option>
+                      <option value="kategorial">Kategorial / Punguan</option>
+                      <option value="kemajelisan">Kemajelisan / Parhalado</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteJadwal(item.id)}
+                      className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 cursor-pointer"
+                      title="Hapus Jadwal"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                      Nama Kegiatan / Punguan
+                    </label>
+                    <input
+                      type="text"
+                      value={item.label}
+                      onChange={(e) => handleUpdateJadwal(item.id, 'label', e.target.value)}
+                      className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-bold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 mb-0.5">Hari</label>
+                      <input
+                        type="text"
+                        value={item.hari}
+                        onChange={(e) => handleUpdateJadwal(item.id, 'hari', e.target.value)}
+                        className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 mb-0.5">Pukul</label>
+                      <input
+                        type="text"
+                        value={item.jam}
+                        onChange={(e) => handleUpdateJadwal(item.id, 'jam', e.target.value)}
+                        className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                      Keterangan / Tempat
+                    </label>
+                    <input
+                      type="text"
+                      value={item.keterangan || ''}
+                      onChange={(e) =>
+                        handleUpdateJadwal(item.id, 'keterangan', e.target.value)
+                      }
+                      className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-xs">
                 <thead className="bg-stone-50 text-stone-700 border-b border-stone-200">
                   <tr>
@@ -1719,13 +2037,78 @@ export const MasterDataPage: React.FC = () => {
               </div>
               <button
                 onClick={handleAddLingkungan}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow transition cursor-pointer min-h-[40px]"
               >
                 <Plus className="w-3.5 h-3.5" /> Tambah Lingkungan
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile Cards: Lingkungan (< 768px) */}
+            <div className="block md:hidden space-y-3">
+              {lingkunganList.map((ling, idx) => (
+                <div
+                  key={`mob-ling-${ling.id}`}
+                  className="p-3.5 rounded-xl border border-stone-200 bg-stone-50/70 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-[#0B2545] bg-amber-100 px-2 py-0.5 rounded">
+                      Wijk #{idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteLingkungan(ling.id)}
+                      className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 cursor-pointer"
+                      title="Hapus Lingkungan"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                      Nama Lingkungan / Wijk
+                    </label>
+                    <input
+                      type="text"
+                      value={ling.nama}
+                      onChange={(e) => handleUpdateLingkungan(ling.id, 'nama', e.target.value)}
+                      className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-bold text-stone-800"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                        Hari Standar
+                      </label>
+                      <input
+                        type="text"
+                        value={ling.hari_default}
+                        onChange={(e) =>
+                          handleUpdateLingkungan(ling.id, 'hari_default', e.target.value)
+                        }
+                        className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                        Jam Standar
+                      </label>
+                      <input
+                        type="text"
+                        value={ling.jam_default}
+                        onChange={(e) =>
+                          handleUpdateLingkungan(ling.id, 'jam_default', e.target.value)
+                        }
+                        className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-xs">
                 <thead className="bg-stone-50 text-stone-700 border-b border-stone-200">
                   <tr>
@@ -2298,14 +2681,14 @@ export const MasterDataPage: React.FC = () => {
                     setEditingKeluarga(null);
                     setOriginalKeluargaRegistrasi(null);
                   }}
-                  className="px-4 py-2 border border-stone-300 rounded-lg font-semibold text-stone-600 hover:bg-stone-50 cursor-pointer"
+                  className="px-4 py-2 border border-stone-300 rounded-lg font-semibold text-stone-600 hover:bg-stone-50 cursor-pointer min-h-[42px]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingEntity}
-                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded-lg font-bold shadow transition cursor-pointer"
+                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded-lg font-bold shadow transition cursor-pointer min-h-[42px]"
                 >
                   {isSavingEntity ? 'Menyimpan...' : 'Simpan Data Keluarga'}
                 </button>
@@ -2314,6 +2697,23 @@ export const MasterDataPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <MobileConfirmModal
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmLabel={confirmState?.confirmLabel}
+        tone="danger"
+        onConfirm={() => confirmState?.onConfirm()}
+        onCancel={() => setConfirmState(null)}
+      />
+
+      <MobileAdminNav
+        currentPage="master"
+        onGoDashboard={() => navigate('/admin')}
+        onGoMaster={() => setActiveTab('anggota')}
+        onGoPortal={() => navigate('/')}
+      />
     </div>
   );
 };

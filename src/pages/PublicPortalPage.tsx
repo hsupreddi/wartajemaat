@@ -27,12 +27,30 @@ import {
 import { formatTanggalIndo, formatTanggalLengkap } from '../lib/dateUtils';
 import { exportWartaToPdf } from '../lib/pdfExport';
 import { useAuth } from '../context/AuthContext';
+import { MobilePublicPortal } from '../components/mobile/MobilePublicPortal';
+import { MobilePortalView, MobileReaderSection } from '../lib/shareUtils';
 
 export const PublicPortalPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentRole } = useAuth();
   const readerSectionRef = useRef<HTMLDivElement>(null);
+
+  const initialViewParam = searchParams.get('view') as MobilePortalView | null;
+  const initialSecParam = searchParams.get('sec') as MobileReaderSection | null;
+  const validViews: MobilePortalView[] = ['beranda', 'baca', 'kegiatan', 'pengumuman'];
+  const validSecs: MobileReaderSection[] = ['liturgi', 'warta', 'ultah', 'keuangan', 'jadwal'];
+
+  const [mobileView, setMobileView] = useState<MobilePortalView>(
+    initialViewParam && validViews.includes(initialViewParam)
+      ? initialViewParam
+      : initialSecParam && validSecs.includes(initialSecParam)
+      ? 'baca'
+      : 'beranda'
+  );
+  const [mobileReaderSec, setMobileReaderSec] = useState<MobileReaderSection>(
+    initialSecParam && validSecs.includes(initialSecParam) ? initialSecParam : 'liturgi'
+  );
 
   const [wartasList, setWartasList] = useState<WartaRecord[]>([]);
   const [selectedWarta, setSelectedWarta] = useState<FullWartaData | null>(null);
@@ -69,9 +87,15 @@ export const PublicPortalPage: React.FC = () => {
       });
   }, []);
 
-  const handleSelectWarta = async (id: string) => {
+  const handleSelectWarta = async (id: string, openMobileReader = false) => {
     setIsLoading(true);
-    setSearchParams({ id });
+    const nextParams: Record<string, string> = { id };
+    if (openMobileReader) {
+      nextParams.view = 'baca';
+      nextParams.sec = mobileReaderSec;
+      setMobileView('baca');
+    }
+    setSearchParams(nextParams);
     try {
       const full = await getWartaById(id);
       setSelectedWarta(full);
@@ -81,6 +105,56 @@ export const PublicPortalPage: React.FC = () => {
       setIsLoading(false);
     }
     readerSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleMobileViewChange = (view: MobilePortalView, section?: MobileReaderSection) => {
+    setMobileView(view);
+    const nextSec = section || mobileReaderSec;
+    if (section) {
+      setMobileReaderSec(section);
+    }
+    const nextParams: Record<string, string> = {};
+    if (selectedWarta?.warta.id) {
+      nextParams.id = selectedWarta.warta.id;
+    }
+    if (view !== 'beranda') {
+      nextParams.view = view;
+    }
+    if (view === 'baca') {
+      nextParams.sec = nextSec;
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handleMobileSectionChange = (section: MobileReaderSection) => {
+    setMobileReaderSec(section);
+    const nextParams: Record<string, string> = {};
+    if (selectedWarta?.warta.id) {
+      nextParams.id = selectedWarta.warta.id;
+    }
+    nextParams.view = 'baca';
+    nextParams.sec = section;
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handleDownloadSelectedPdf = async () => {
+    if (!selectedWarta || isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const fileName = await exportWartaToPdf({
+        data: selectedWarta,
+        pengaturan,
+        jadwalTetap,
+        selectedPage: 'all'
+      });
+      setShareToast(`PDF berhasil diunduh: ${fileName}`);
+      setTimeout(() => setShareToast(null), 3500);
+    } catch (err: any) {
+      setShareToast(err?.message || 'Gagal mengunduh PDF.');
+      setTimeout(() => setShareToast(null), 3500);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const handleShare = () => {
@@ -103,7 +177,41 @@ export const PublicPortalPage: React.FC = () => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-[#F8F6F0] text-stone-900 flex flex-col justify-between selection:bg-amber-800 selection:text-white pb-16 lg:pb-0">
+    <>
+      {/* Toast Notification (Shared Mobile & Desktop) */}
+      {shareToast && (
+        <div className="fixed top-16 lg:top-20 right-4 left-4 lg:left-auto z-50 bg-stone-900 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-stone-700 text-xs font-semibold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{shareToast}</span>
+        </div>
+      )}
+
+      {/* DEDICATED MOBILE & TABLET EXPERIENCE (< 1024px) */}
+      <MobilePublicPortal
+        wartasList={wartasList}
+        selectedWarta={selectedWarta}
+        pengaturan={pengaturan}
+        jadwalTetap={jadwalTetap}
+        isLoading={isLoading}
+        isExportingPdf={isExportingPdf}
+        activeView={mobileView}
+        activeReaderSection={mobileReaderSec}
+        currentRole={currentRole}
+        onChangeView={handleMobileViewChange}
+        onChangeReaderSection={handleMobileSectionChange}
+        onSelectWarta={(id, openReader) => handleSelectWarta(id, openReader)}
+        onDownloadPdf={handleDownloadSelectedPdf}
+        onOpenPrintA4={(id) => navigate(`/warta/${id}/print`)}
+        onOpenArchive={() => navigate('/arsip')}
+        onOpenAdminOrLogin={() => navigate(currentRole !== 'publik' ? '/admin' : '/login')}
+        onNotify={(msg) => {
+          setShareToast(msg);
+          setTimeout(() => setShareToast(null), 3500);
+        }}
+      />
+
+      {/* PRESERVED DESKTOP EXPERIENCE (>= 1024px) */}
+      <div className="hidden lg:flex min-h-screen bg-[#F8F6F0] text-stone-900 flex-col justify-between selection:bg-amber-800 selection:text-white pb-0">
       {/* 1. COMPACT TOP NAVIGATION BAR (3-Zone Contract) */}
       <header className="sticky top-0 z-40 bg-[#0B2545]/95 backdrop-blur-md text-white shadow-lg border-b border-amber-500/20 px-3 sm:px-6 py-2.5 sm:py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 lg:gap-8">
@@ -868,6 +976,7 @@ export const PublicPortalPage: React.FC = () => {
           <span>{currentRole !== 'publik' ? 'Admin' : 'Login'}</span>
         </button>
       </nav>
-    </div>
+      </div>
+    </>
   );
 };
