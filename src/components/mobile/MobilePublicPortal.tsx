@@ -26,6 +26,7 @@ import { HkbpCrossLogo } from '../logos/HkbpCrossLogo';
 import { HkbpTransformasiLogo } from '../logos/HkbpTransformasiLogo';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileWartaReader } from './MobileWartaReader';
+import { PWAInstallButton, OfflineIndicator } from './PWAInstallButton';
 import {
   MobilePortalView,
   MobileReaderSection,
@@ -186,6 +187,10 @@ export const MobilePublicPortal: React.FC<MobilePublicPortalProps> = ({
         </button>
 
         <div className="flex items-center gap-1 shrink-0">
+          <PWAInstallButton
+            variant="header"
+            onInstalled={() => onNotify('Aplikasi E-Warta HKBP berhasil dipasang di HP.')}
+          />
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -566,6 +571,11 @@ export const MobilePublicPortal: React.FC<MobilePublicPortalProps> = ({
               </div>
             </section>
           )}
+          {/* PASANG APLIKASI KE HP (PWA / WebAPK) */}
+          <PWAInstallButton
+            variant="banner"
+            onInstalled={() => onNotify('Aplikasi E-Warta HKBP berhasil dipasang di HP.')}
+          />
         </main>
       )}
 
@@ -937,6 +947,8 @@ export const MobilePublicPortal: React.FC<MobilePublicPortalProps> = ({
           </div>
         </div>
       )}
+
+      <OfflineIndicator />
 
       {/* Fixed Bottom Thumb Navigation Bar */}
       <MobileBottomNav
