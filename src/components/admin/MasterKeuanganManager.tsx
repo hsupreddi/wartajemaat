@@ -23,6 +23,7 @@ import {
   ArrowDownLeft,
   Info
 } from 'lucide-react';
+import { MobileConfirmModal } from '../mobile/MobileConfirmModal';
 
 interface MasterKeuanganManagerProps {
   onNotify?: (type: 'success' | 'error' | 'warning' | 'info', message: string) => void;
@@ -48,6 +49,12 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
   const [newPengUraian, setNewPengUraian] = useState('');
   const [newPengPos, setNewPengPos] = useState<PosPengeluaranDefault>('huria');
   const [newPengSentral, setNewPengSentral] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
 
   useEffect(() => {
     Promise.all([getMasterKategoriPenerimaan(), getMasterKategoriPengeluaran()])
@@ -114,29 +121,41 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
     }
   };
 
-  const handleDeletePenerimaan = async (id: string, uraian: string) => {
-    if (!confirm(`Hapus jenis penerimaan "${uraian}" dari daftar master?`)) return;
-    const updated = penerimaanList.filter((it) => it.id !== id);
-    setPenerimaanList(updated);
-    try {
-      await saveMasterKategoriPenerimaan(updated);
-      onNotify?.('info', `Jenis penerimaan "${uraian}" dihapus dari master.`);
-    } catch (err: any) {
-      onNotify?.('error', err?.message || 'Gagal menghapus jenis penerimaan di Supabase.');
-    }
+  const handleDeletePenerimaan = (id: string, uraian: string) => {
+    setConfirmState({
+      title: 'Hapus Jenis Penerimaan',
+      message: `Hapus jenis penerimaan "${uraian}" dari daftar master?`,
+      confirmLabel: 'Ya, Hapus Pos',
+      onConfirm: async () => {
+        setConfirmState(null);
+        const updated = penerimaanList.filter((it) => it.id !== id);
+        setPenerimaanList(updated);
+        try {
+          await saveMasterKategoriPenerimaan(updated);
+          onNotify?.('info', `Jenis penerimaan "${uraian}" dihapus dari master.`);
+        } catch (err: any) {
+          onNotify?.('error', err?.message || 'Gagal menghapus jenis penerimaan di Supabase.');
+        }
+      }
+    });
   };
 
-  const handleResetPenerimaan = async () => {
-    if (!confirm('Kembalikan daftar Master Jenis Penerimaan ke standar HKBP Hutaraja (47 pos)?')) {
-      return;
-    }
-    try {
-      const defaults = await resetMasterKategoriPenerimaan();
-      setPenerimaanList(defaults);
-      onNotify?.('info', 'Master Jenis Penerimaan dikembalikan ke standar HKBP Hutaraja.');
-    } catch (err: any) {
-      onNotify?.('error', err?.message || 'Gagal mereset master penerimaan di Supabase.');
-    }
+  const handleResetPenerimaan = () => {
+    setConfirmState({
+      title: 'Reset Master Jenis Penerimaan',
+      message: 'Kembalikan daftar Master Jenis Penerimaan ke standar HKBP Hutaraja (47 pos)?',
+      confirmLabel: 'Ya, Reset Standar',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          const defaults = await resetMasterKategoriPenerimaan();
+          setPenerimaanList(defaults);
+          onNotify?.('info', 'Master Jenis Penerimaan dikembalikan ke standar HKBP Hutaraja.');
+        } catch (err: any) {
+          onNotify?.('error', err?.message || 'Gagal mereset master penerimaan di Supabase.');
+        }
+      }
+    });
   };
 
   // Handlers Pengeluaran
@@ -181,29 +200,41 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
     }
   };
 
-  const handleDeletePengeluaran = async (id: string, uraian: string) => {
-    if (!confirm(`Hapus jenis pengeluaran "${uraian}" dari daftar master?`)) return;
-    const updated = pengeluaranList.filter((it) => it.id !== id);
-    setPengeluaranList(updated);
-    try {
-      await saveMasterKategoriPengeluaran(updated);
-      onNotify?.('info', `Jenis pengeluaran "${uraian}" dihapus dari master.`);
-    } catch (err: any) {
-      onNotify?.('error', err?.message || 'Gagal menghapus jenis pengeluaran di Supabase.');
-    }
+  const handleDeletePengeluaran = (id: string, uraian: string) => {
+    setConfirmState({
+      title: 'Hapus Jenis Pengeluaran',
+      message: `Hapus jenis pengeluaran "${uraian}" dari daftar master?`,
+      confirmLabel: 'Ya, Hapus Pos',
+      onConfirm: async () => {
+        setConfirmState(null);
+        const updated = pengeluaranList.filter((it) => it.id !== id);
+        setPengeluaranList(updated);
+        try {
+          await saveMasterKategoriPengeluaran(updated);
+          onNotify?.('info', `Jenis pengeluaran "${uraian}" dihapus dari master.`);
+        } catch (err: any) {
+          onNotify?.('error', err?.message || 'Gagal menghapus jenis pengeluaran di Supabase.');
+        }
+      }
+    });
   };
 
-  const handleResetPengeluaran = async () => {
-    if (!confirm('Kembalikan daftar Master Jenis Pengeluaran ke standar default?')) {
-      return;
-    }
-    try {
-      const defaults = await resetMasterKategoriPengeluaran();
-      setPengeluaranList(defaults);
-      onNotify?.('info', 'Master Jenis Pengeluaran dikembalikan ke daftar default.');
-    } catch (err: any) {
-      onNotify?.('error', err?.message || 'Gagal mereset master pengeluaran di Supabase.');
-    }
+  const handleResetPengeluaran = () => {
+    setConfirmState({
+      title: 'Reset Master Jenis Pengeluaran',
+      message: 'Kembalikan daftar Master Jenis Pengeluaran ke standar default?',
+      confirmLabel: 'Ya, Reset Default',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          const defaults = await resetMasterKategoriPengeluaran();
+          setPengeluaranList(defaults);
+          onNotify?.('info', 'Master Jenis Pengeluaran dikembalikan ke daftar default.');
+        } catch (err: any) {
+          onNotify?.('error', err?.message || 'Gagal mereset master pengeluaran di Supabase.');
+        }
+      }
+    });
   };
 
   const filteredPenerimaan = penerimaanList.filter((item) => {
@@ -434,8 +465,125 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
             </div>
           </div>
 
-          {/* Table Master Penerimaan */}
-          <div className="overflow-x-auto border border-stone-200 rounded-lg max-h-[480px] overflow-y-auto">
+          {/* Mobile Cards: Master Penerimaan (< 768px) */}
+          <div className="block md:hidden space-y-2.5">
+            {filteredPenerimaan.map((item) => {
+              const isAutoLocked = item.kode === 'PEL_TAON' || item.kode === 'HAM_LAIN';
+              const isSentral =
+                item.kode === 'HAM_LAIN' || item.no_tampilan === '1.2.17'
+                  ? true
+                  : item.is_sentralisasi !== undefined
+                  ? item.is_sentralisasi
+                  : item.aturan_alokasi === 'split_45_55';
+              return (
+                <div
+                  key={`mob-pen-${item.id}`}
+                  className="p-3.5 rounded-xl border border-stone-200 bg-stone-50/70 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={item.no_tampilan || ''}
+                        onChange={(e) =>
+                          handleUpdatePenerimaan(item.id, { no_tampilan: e.target.value })
+                        }
+                        className="w-20 min-h-[38px] px-2 py-1 border border-stone-300 rounded-lg bg-white text-center font-mono text-xs font-bold"
+                        aria-label="Nomor Pos"
+                      />
+                      <select
+                        value={item.kelompok || '1.1'}
+                        onChange={(e) =>
+                          handleUpdatePenerimaan(item.id, { kelompok: e.target.value })
+                        }
+                        className="min-h-[38px] px-2 py-1 border border-stone-300 rounded-lg bg-white text-xs font-semibold"
+                      >
+                        <option value="1.1">1.1 Kebaktian</option>
+                        <option value="1.2">1.2 Lainnya</option>
+                        <option value="1.3">1.3 Transitori</option>
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isAutoLocked}
+                      onClick={() => handleDeletePenerimaan(item.id, item.uraian)}
+                      className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border ${
+                        isAutoLocked
+                          ? 'border-stone-200 text-stone-300 bg-stone-100 cursor-not-allowed'
+                          : 'border-rose-200 bg-white text-rose-600 hover:bg-rose-50 cursor-pointer'
+                      }`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                      Uraian Jenis Penerimaan
+                    </label>
+                    <input
+                      type="text"
+                      value={item.uraian}
+                      onChange={(e) =>
+                        handleUpdatePenerimaan(item.id, { uraian: e.target.value })
+                      }
+                      className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-semibold text-stone-900"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                        Pos Kas Tujuan
+                      </label>
+                      <select
+                        disabled={isAutoLocked && item.kode === 'HAM_LAIN'}
+                        value={item.aturan_alokasi}
+                        onChange={(e) =>
+                          handleUpdatePenerimaan(item.id, {
+                            aturan_alokasi: e.target.value as AturanAlokasi
+                          })
+                        }
+                        className="w-full min-h-[38px] px-2 py-1 border border-stone-300 rounded-lg bg-white text-xs"
+                      >
+                        <option value="split_45_55">Kas Huria (Rutin)</option>
+                        <option value="huria">Kas Huria (100%)</option>
+                        <option value="sosial">Sosial Huria</option>
+                        <option value="pembangunan">Pembangunan</option>
+                        <option value="transitori">Transitori</option>
+                        <option value="manual">Manual Multi-Pos</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                        Sentralisasi?
+                      </label>
+                      <select
+                        disabled={item.aturan_alokasi === 'manual'}
+                        value={isSentral ? 'ya' : 'tidak'}
+                        onChange={(e) =>
+                          handleUpdatePenerimaan(item.id, {
+                            is_sentralisasi: e.target.value === 'ya'
+                          })
+                        }
+                        className={`w-full min-h-[38px] px-2 py-1 rounded-lg border text-xs font-bold ${
+                          isSentral
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-white text-stone-700 border-stone-300'
+                        }`}
+                      >
+                        <option value="ya">Ya (55%)</option>
+                        <option value="tidak">Tidak</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Table Master Penerimaan (>= 768px) */}
+          <div className="hidden md:block overflow-x-auto border border-stone-200 rounded-lg max-h-[480px] overflow-y-auto">
             <table className="w-full text-xs">
               <thead className="bg-stone-100 text-stone-800 border-b border-stone-200 font-bold sticky top-0 z-10">
                 <tr>
@@ -671,8 +819,86 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
             </div>
           </div>
 
-          {/* Table Master Pengeluaran */}
-          <div className="overflow-x-auto border border-stone-200 rounded-lg">
+          {/* Mobile Cards: Master Pengeluaran (< 768px) */}
+          <div className="block md:hidden space-y-2.5">
+            {filteredPengeluaran.map((item, idx) => (
+              <div
+                key={`mob-peng-${item.id}`}
+                className="p-3.5 rounded-xl border border-stone-200 bg-stone-50/70 space-y-2.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold text-stone-500">Pos #{idx + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePengeluaran(item.id, item.uraian)}
+                    className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                    Uraian Jenis Pengeluaran
+                  </label>
+                  <input
+                    type="text"
+                    value={item.uraian}
+                    onChange={(e) =>
+                      handleUpdatePengeluaran(item.id, { uraian: e.target.value })
+                    }
+                    className="w-full min-h-[40px] px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-semibold text-stone-900"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                      Pos Dana Default
+                    </label>
+                    <select
+                      value={item.pos_default}
+                      onChange={(e) =>
+                        handleUpdatePengeluaran(item.id, {
+                          pos_default: e.target.value as PosPengeluaranDefault
+                        })
+                      }
+                      className="w-full min-h-[38px] px-2 py-1 border border-stone-300 rounded-lg bg-white text-xs"
+                    >
+                      <option value="huria">Kas Huria</option>
+                      <option value="sosial">Sosial Huria</option>
+                      <option value="pembangunan">Pembangunan</option>
+                      <option value="transitori">Transitori</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-500 mb-0.5">
+                      Sentralisasi?
+                    </label>
+                    <select
+                      value={item.is_sentralisasi ? 'ya' : 'tidak'}
+                      onChange={(e) =>
+                        handleUpdatePengeluaran(item.id, {
+                          is_sentralisasi: e.target.value === 'ya'
+                        })
+                      }
+                      className={`w-full min-h-[38px] px-2 py-1 rounded-lg border text-xs font-bold ${
+                        item.is_sentralisasi
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : 'bg-white text-stone-700 border-stone-300'
+                      }`}
+                    >
+                      <option value="tidak">Tidak</option>
+                      <option value="ya">Ya (55%)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Table Master Pengeluaran (>= 768px) */}
+          <div className="hidden md:block overflow-x-auto border border-stone-200 rounded-lg">
             <table className="w-full text-xs">
               <thead className="bg-stone-100 text-stone-800 border-b border-stone-200 font-bold">
                 <tr>
@@ -748,6 +974,16 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
           </div>
         </div>
       )}
+
+      <MobileConfirmModal
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmLabel={confirmState?.confirmLabel}
+        tone="danger"
+        onConfirm={() => confirmState?.onConfirm()}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 };

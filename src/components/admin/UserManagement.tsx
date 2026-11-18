@@ -13,6 +13,7 @@ import {
   Mail,
   UserCheck
 } from 'lucide-react';
+import { MobileConfirmModal } from '../mobile/MobileConfirmModal';
 
 export const UserManagement: React.FC = () => {
   const { managedUsers, addUser, updateUserRole, deleteUser, isSupabaseConnected } = useAuth();
@@ -24,6 +25,7 @@ export const UserManagement: React.FC = () => {
   const [newJabatan, setNewJabatan] = useState('Sintua Lingkungan');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,8 +62,14 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Hapus akses untuk ${name}?`)) return;
+  const handleDelete = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const { id, name } = deleteTarget;
+    setDeleteTarget(null);
     setErrorMsg(null);
     try {
       await deleteUser(id);
@@ -157,7 +165,51 @@ export const UserManagement: React.FC = () => {
           </h4>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Card View (< 768px) */}
+        <div className="block md:hidden divide-y divide-stone-100">
+          {managedUsers.map((u) => (
+            <div key={`mob-u-${u.id}`} className="p-4 space-y-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-bold text-sm text-stone-900 break-words">{u.nama}</div>
+                  <div className="text-[11px] font-mono text-stone-500 break-all">{u.email}</div>
+                  <div className="text-xs text-stone-600 mt-0.5">{u.jabatan}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(u.id, u.nama)}
+                  className="min-w-[42px] min-h-[42px] flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 shrink-0 cursor-pointer"
+                  title="Hapus Pengguna"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <select
+                  value={u.role}
+                  onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
+                  className={`min-h-[40px] flex-1 text-xs font-bold px-3 py-1.5 rounded-xl border capitalize cursor-pointer ${
+                    u.role === 'admin'
+                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                      : u.role === 'sekretaris'
+                      ? 'bg-purple-50 text-purple-800 border-purple-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
+                  <option value="admin">Admin</option>
+                  <option value="sekretaris">Sekretaris</option>
+                  <option value="bendahara">Bendahara</option>
+                </select>
+                <span className="text-[11px] text-stone-500 font-mono shrink-0">
+                  {u.tanggal_dibuat}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Table (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-stone-50 text-stone-700 border-b border-stone-200">
               <tr>
@@ -297,6 +349,16 @@ export const UserManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      <MobileConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title="Hapus Akses Pengguna"
+        message={deleteTarget ? `Hapus akses pengurus untuk ${deleteTarget.name}?` : ''}
+        confirmLabel="Ya, Hapus Akses"
+        tone="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };

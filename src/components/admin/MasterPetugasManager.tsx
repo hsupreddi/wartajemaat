@@ -12,6 +12,7 @@ import {
 } from '../../lib/petugasApi';
 import { listAnggota } from '../../lib/jemaatApi';
 import { isSupabaseConfigured } from '../../lib/supabase';
+import { MobileConfirmModal } from '../mobile/MobileConfirmModal';
 import {
   UserCheck,
   Plus,
@@ -60,6 +61,7 @@ export const MasterPetugasManager: React.FC<MasterPetugasManagerProps> = ({
   const [isImportingAnggota, setIsImportingAnggota] = useState(false);
 
   const [copiedSql, setCopiedSql] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PetugasMaster | null>(null);
 
   const notify = (type: 'success' | 'error' | 'warning' | 'info', message: string) => {
     if (onNotify) {
@@ -145,8 +147,14 @@ export const MasterPetugasManager: React.FC<MasterPetugasManagerProps> = ({
     }
   };
 
-  const handleDelete = async (item: PetugasMaster) => {
-    if (!confirm(`Hapus "${item.nama}" dari database Sintua & Pengurus?`)) return;
+  const handleDelete = (item: PetugasMaster) => {
+    setDeleteTarget(item);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const item = deleteTarget;
+    setDeleteTarget(null);
     try {
       await deleteMasterPetugas(item.id);
       await loadData();
@@ -402,8 +410,91 @@ export const MasterPetugasManager: React.FC<MasterPetugasManagerProps> = ({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto border border-stone-200 rounded-lg">
+      {/* Mobile Card List (< 768px) */}
+      <div className="block md:hidden space-y-2.5">
+        {isLoading ? (
+          <div className="py-8 text-center text-xs text-stone-500">
+            <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2" />
+            Memuat database Sintua &amp; Pengurus...
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="py-8 text-center text-xs text-stone-500 border border-stone-200 rounded-xl bg-stone-50 px-4">
+            Belum ada data Sintua / Pengurus yang cocok. Klik <strong>+ Tambah Sintua / Pengurus</strong> atau <strong>Sinkronkan Default</strong>.
+          </div>
+        ) : (
+          filteredItems.map((item, idx) => (
+            <div
+              key={`mob-pet-${item.id}`}
+              className="p-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-mono text-stone-400 font-semibold">
+                      #{idx + 1}
+                    </span>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded border text-[10px] font-bold ${getJabatanBadgeClass(
+                        item.jabatan
+                      )}`}
+                    >
+                      {item.jabatan}
+                    </span>
+                  </div>
+                  <div className="font-bold text-sm text-stone-900 mt-1 break-words">
+                    {item.nama}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleAktif(item)}
+                  className={`min-h-[34px] px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition shrink-0 ${
+                    item.aktif !== false
+                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                      : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                  }`}
+                >
+                  {item.aktif !== false ? 'Aktif' : 'Non-Aktif'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px] bg-stone-50 p-2.5 rounded-lg">
+                <div>
+                  <span className="text-stone-400 block text-[10px]">Peran Utama</span>
+                  <span className="font-semibold text-stone-800">
+                    {item.peran_default || 'Semua Peran'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-stone-400 block text-[10px]">Lingkungan / Wijk</span>
+                  <span className="font-semibold text-stone-800">{item.lingkungan || '-'}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(item)}
+                  className="min-h-[42px] flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(item)}
+                  className="min-h-[42px] min-w-[42px] inline-flex items-center justify-center px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 cursor-pointer"
+                  title="Hapus"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table (>= 768px) */}
+      <div className="hidden md:block overflow-x-auto border border-stone-200 rounded-lg">
         <table className="w-full text-xs">
           <thead className="bg-stone-100 text-stone-800 border-b border-stone-200 font-bold">
             <tr>
@@ -755,6 +846,20 @@ export const MasterPetugasManager: React.FC<MasterPetugasManagerProps> = ({
           </div>
         </div>
       )}
+
+      <MobileConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title="Hapus Sintua / Pengurus"
+        message={
+          deleteTarget
+            ? `Hapus "${deleteTarget.nama}" dari database Sintua & Pengurus?`
+            : ''
+        }
+        confirmLabel="Ya, Hapus"
+        tone="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };

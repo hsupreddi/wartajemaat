@@ -10,6 +10,7 @@ import {
 } from '../../lib/mingguLiturgiApi';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { getLiturgiColorBadge } from '../common/MingguLiturgiDropdown';
+import { MobileConfirmModal } from '../mobile/MobileConfirmModal';
 import {
   Calendar,
   Search,
@@ -42,6 +43,13 @@ export const MingguLiturgiManager: React.FC<MingguLiturgiManagerProps> = ({ onNo
   const [isSyncing, setIsSyncing] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
   const [toast, setToast] = useState<{ type: string; message: string } | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    tone: 'danger' | 'primary';
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
 
   const notify = (type: 'success' | 'error' | 'warning' | 'info', message: string) => {
     if (onNotify) {
@@ -116,34 +124,43 @@ export const MingguLiturgiManager: React.FC<MingguLiturgiManagerProps> = ({ onNo
     }
   };
 
-  const handleDeleteItem = async (item: MingguLiturgi) => {
-    if (!confirm(`Hapus minggu liturgi "${item.nama_minggu}" (No. ${item.no_urut})?`)) {
-      return;
-    }
-    try {
-      await deleteMingguLiturgi(item.id);
-      await loadData();
-      notify('info', `Minggu "${item.nama_minggu}" berhasil dihapus.`);
-    } catch (err: any) {
-      notify('error', `Gagal menghapus: ${err.message}`);
-    }
+  const handleDeleteItem = (item: MingguLiturgi) => {
+    setConfirmState({
+      title: 'Hapus Minggu Liturgi',
+      message: `Hapus minggu liturgi "${item.nama_minggu}" (No. ${item.no_urut})?`,
+      confirmLabel: 'Ya, Hapus',
+      tone: 'danger',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          await deleteMingguLiturgi(item.id);
+          await loadData();
+          notify('info', `Minggu "${item.nama_minggu}" berhasil dihapus.`);
+        } catch (err: any) {
+          notify('error', `Gagal menghapus: ${err.message}`);
+        }
+      }
+    });
   };
 
-  const handleResetToDefault = async () => {
-    if (
-      !confirm(
-        'Kembalikan seluruh daftar kalender ke standar 63 Minggu Liturgi HKBP resmi? Data kustom akan diganti dengan data resmi dari dokumen gereja.'
-      )
-    ) {
-      return;
-    }
-    try {
-      await resetMingguLiturgiToDefault();
-      await loadData();
-      notify('success', 'Kalender minggu liturgi berhasil di-reset ke 63 nama minggu resmi HKBP.');
-    } catch (err: any) {
-      notify('error', `Gagal reset: ${err.message}`);
-    }
+  const handleResetToDefault = () => {
+    setConfirmState({
+      title: 'Reset Kalender 63 Minggu HKBP',
+      message:
+        'Kembalikan seluruh daftar kalender ke standar 63 Minggu Liturgi HKBP resmi? Data kustom akan diganti dengan data resmi dari dokumen gereja.',
+      confirmLabel: 'Ya, Reset Standar',
+      tone: 'danger',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          await resetMingguLiturgiToDefault();
+          await loadData();
+          notify('success', 'Kalender minggu liturgi berhasil di-reset ke 63 nama minggu resmi HKBP.');
+        } catch (err: any) {
+          notify('error', `Gagal reset: ${err.message}`);
+        }
+      }
+    });
   };
 
   const handleSyncToSupabase = async () => {
@@ -741,6 +758,16 @@ export const MingguLiturgiManager: React.FC<MingguLiturgiManagerProps> = ({ onNo
           </div>
         </div>
       )}
+
+      <MobileConfirmModal
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmLabel={confirmState?.confirmLabel}
+        tone={confirmState?.tone || 'danger'}
+        onConfirm={() => confirmState?.onConfirm()}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 };
