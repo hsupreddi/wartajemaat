@@ -1478,7 +1478,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
           {/* STEP 2: ACARA IBADAH */}
           {currentStep === 2 && (
             <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 md:p-6 space-y-5">
-              <div className="border-b border-stone-200 pb-3 flex items-center justify-between">
+              <div className="border-b border-stone-200 pb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-base font-bold text-stone-900">Langkah 2: Susunan Acara Ibadah</h3>
                   <p className="text-xs text-stone-500">
@@ -1488,7 +1488,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleResetAcaraMinggu}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded cursor-pointer"
                   >
                     <RotateCcw className="w-3.5 h-3.5" /> Reset Template
                   </button>
@@ -1531,7 +1531,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     : DEFAULT_ACARA_MINGGU_COLUMNS;
                   return (
                     <div className="border border-stone-300 rounded-lg overflow-x-auto">
-                      <table className="w-full text-xs">
+                      <table className="w-full min-w-[540px] text-xs">
                         <thead className="bg-stone-100 border-b border-stone-300 text-stone-800">
                           <tr>
                             <th className="w-8 py-1.5 px-2 text-center">No</th>
@@ -1631,7 +1631,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
                   return (
                     <div className="border border-stone-300 rounded-lg overflow-x-auto">
-                      <table className="w-full text-xs">
+                      <table className="w-full min-w-[540px] text-xs">
                         <thead className="bg-stone-100 border-b border-stone-300 text-stone-800">
                           <tr>
                             <th className="w-8 py-1.5 px-2 text-center">No</th>
@@ -1757,7 +1757,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     : DEFAULT_PARHOBAS_COLUMNS;
                   return (
                     <div className="border border-stone-300 rounded-lg overflow-x-auto">
-                      <table className="w-full text-xs">
+                      <table className="w-full min-w-[600px] text-xs">
                         <thead className="bg-stone-800 text-white font-bold">
                           <tr>
                             {cols.map((col) => (
@@ -2085,7 +2085,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     )}
 
                     <div className={`border border-stone-300 rounded-lg overflow-x-auto transition-opacity ${!showPartangiangan ? 'opacity-55' : ''}`}>
-                      <table className="w-full text-xs">
+                      <table className="w-full min-w-[580px] text-xs">
                         <thead className="bg-stone-100 text-stone-800 font-bold border-b border-stone-300">
                           <tr>
                             <th className="w-8 py-1.5 px-1.5 text-center">No</th>
@@ -2202,14 +2202,14 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
           {/* STEP 5: KEUANGAN (TINGTING PARHEPENGON) */}
           {currentStep === 5 && (
             <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 md:p-6 space-y-5">
-              <div className="border-b border-stone-200 pb-3 flex items-center justify-between">
+              <div className="border-b border-stone-200 pb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-base font-bold text-stone-900">Langkah 5: Tingting Parhepengon (Keuangan)</h3>
                   <p className="text-xs text-stone-500">
                     Input pos penerimaan standar HKBP Hutaraja (Kebaktian Umum, Persembahan Lainnya & Transitori), rincian B & C, serta pengeluaran.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {rekapitulasi.is_balanced ? (
                     <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Balance
@@ -3063,7 +3063,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     </datalist>
 
                     <div className={`border border-stone-300 rounded-lg overflow-x-auto bg-white transition-opacity ${!showSumbanganNatal ? 'opacity-55' : ''}`}>
-                      <table className="w-full text-xs">
+                      <table className="w-full min-w-[600px] text-xs">
                         <thead className="bg-stone-100 text-stone-800 font-bold border-b border-stone-300">
                           <tr>
                             <th className="w-10 py-1.5 px-2 text-center">No</th>
@@ -3357,7 +3357,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
 
                   return (
                     <div className="border border-stone-300 rounded-lg overflow-x-auto">
-                      <table className="w-full text-xs">
+                      <table className="w-full min-w-[500px] text-xs">
                         <thead className="bg-stone-100 border-b border-stone-300 text-stone-800 font-bold">
                           <tr>
                             <th className="w-8 py-1.5 px-2 text-center">No</th>
@@ -3489,8 +3489,8 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
             </div>
           )}
 
-          {/* Stepper Navigation Buttons */}
-          <div className="flex items-center justify-between pt-4">
+          {/* Stepper Navigation Buttons (Desktop inline; mobile uses fixed bottom bar) */}
+          <div className="hidden lg:flex items-center justify-between pt-4">
             <button
               onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1))}
               disabled={currentStep === 1}

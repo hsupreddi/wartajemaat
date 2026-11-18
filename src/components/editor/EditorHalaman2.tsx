@@ -190,7 +190,7 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
 
         {ulang_tahun && ulang_tahun.length > 0 ? (
           <div className="overflow-x-auto border border-stone-200 rounded">
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[520px] text-xs">
               <thead className="bg-stone-50 text-stone-700 border-b border-stone-200">
                 <tr>
                   <th className="py-1.5 px-2 text-center w-8">No</th>
@@ -458,8 +458,8 @@ export const EditorHalaman2: React.FC<EditorHalaman2Props> = ({ data, onChange, 
                 key={item.id || idx}
                 className="p-3.5 bg-stone-50 rounded-lg border border-stone-200 space-y-2 hover:border-stone-300 transition"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                     <span className="w-6 text-xs font-bold text-stone-600">{noNumber}.</span>
                     <input
                       type="text"

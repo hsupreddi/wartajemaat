@@ -358,52 +358,56 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
           {acara_minggu.map((item, idx) => (
             <div
               key={item.id || idx}
-              className="flex items-center gap-2 p-1.5 bg-stone-50 rounded border border-stone-200 hover:border-stone-300"
+              className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 sm:p-1.5 bg-stone-50 rounded border border-stone-200 hover:border-stone-300"
             >
-              <span className="w-6 text-center text-xs font-bold text-stone-500">{idx + 1}.</span>
-              <input
-                type="text"
-                disabled={disabled}
-                value={item.uraian}
-                onChange={(e) => handleUpdateAcaraMinggu(idx, 'uraian', e.target.value)}
-                placeholder="Uraian Tata Ibadah"
-                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-300 rounded focus:ring-1 focus:ring-blue-600 focus:outline-none"
-              />
-              <input
-                type="text"
-                disabled={disabled}
-                value={item.keterangan || ''}
-                onChange={(e) => handleUpdateAcaraMinggu(idx, 'keterangan', e.target.value)}
-                placeholder="Keterangan (Jongjong, Pel 1a/1b)"
-                className="w-36 px-2 py-1 text-xs bg-white border border-stone-300 rounded focus:ring-1 focus:ring-blue-600 focus:outline-none text-right font-medium text-stone-700"
-              />
-              {!disabled && (
-                <div className="flex items-center gap-0.5">
-                  <button
-                    onClick={() => handleMoveAcaraMinggu(idx, 'up')}
-                    disabled={idx === 0}
-                    className="p-1 text-stone-400 hover:text-stone-700 disabled:opacity-20"
-                    title="Pindah ke atas"
-                  >
-                    <ArrowUp className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleMoveAcaraMinggu(idx, 'down')}
-                    disabled={idx === acara_minggu.length - 1}
-                    className="p-1 text-stone-400 hover:text-stone-700 disabled:opacity-20"
-                    title="Pindah ke bawah"
-                  >
-                    <ArrowDown className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteAcaraMinggu(idx)}
-                    className="p-1 text-red-500 hover:text-red-700"
-                    title="Hapus baris"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="w-6 text-center text-xs font-bold text-stone-500 shrink-0">{idx + 1}.</span>
+                <input
+                  type="text"
+                  disabled={disabled}
+                  value={item.uraian}
+                  onChange={(e) => handleUpdateAcaraMinggu(idx, 'uraian', e.target.value)}
+                  placeholder="Uraian Tata Ibadah"
+                  className="flex-1 min-w-0 px-2 py-1.5 sm:py-1 text-xs bg-white border border-stone-300 rounded focus:ring-1 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 pl-8 sm:pl-0">
+                <input
+                  type="text"
+                  disabled={disabled}
+                  value={item.keterangan || ''}
+                  onChange={(e) => handleUpdateAcaraMinggu(idx, 'keterangan', e.target.value)}
+                  placeholder="Keterangan (Jongjong, Pel 1a/1b)"
+                  className="flex-1 sm:w-36 sm:flex-none px-2 py-1.5 sm:py-1 text-xs bg-white border border-stone-300 rounded focus:ring-1 focus:ring-blue-600 focus:outline-none sm:text-right font-medium text-stone-700"
+                />
+                {!disabled && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      onClick={() => handleMoveAcaraMinggu(idx, 'up')}
+                      disabled={idx === 0}
+                      className="p-1.5 sm:p-1 text-stone-400 hover:text-stone-700 disabled:opacity-20"
+                      title="Pindah ke atas"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveAcaraMinggu(idx, 'down')}
+                      disabled={idx === acara_minggu.length - 1}
+                      className="p-1.5 sm:p-1 text-stone-400 hover:text-stone-700 disabled:opacity-20"
+                      title="Pindah ke bawah"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteAcaraMinggu(idx)}
+                      className="p-1.5 sm:p-1 text-red-500 hover:text-red-700"
+                      title="Hapus baris"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -434,33 +438,37 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
           {acara_partangiangan.map((item, idx) => (
             <div
               key={item.id || idx}
-              className="flex items-center gap-2 p-1.5 bg-stone-50 rounded border border-stone-200"
+              className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 sm:p-1.5 bg-stone-50 rounded border border-stone-200"
             >
-              <span className="w-6 text-center text-xs font-bold text-stone-500">{idx + 1}.</span>
-              <input
-                type="text"
-                disabled={disabled}
-                value={item.uraian}
-                onChange={(e) => handleUpdateAcaraPart(idx, 'uraian', e.target.value)}
-                placeholder="Uraian Partangiangan"
-                className="flex-1 px-2 py-1 text-xs bg-white border border-stone-300 rounded focus:outline-none"
-              />
-              <input
-                type="text"
-                disabled={disabled}
-                value={item.keterangan || ''}
-                onChange={(e) => handleUpdateAcaraPart(idx, 'keterangan', e.target.value)}
-                placeholder="Keterangan"
-                className="w-32 px-2 py-1 text-xs bg-white border border-stone-300 rounded text-right"
-              />
-              {!disabled && (
-                <button
-                  onClick={() => handleDeleteAcaraPart(idx)}
-                  className="p-1 text-red-500 hover:text-red-700"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="w-6 text-center text-xs font-bold text-stone-500 shrink-0">{idx + 1}.</span>
+                <input
+                  type="text"
+                  disabled={disabled}
+                  value={item.uraian}
+                  onChange={(e) => handleUpdateAcaraPart(idx, 'uraian', e.target.value)}
+                  placeholder="Uraian Partangiangan"
+                  className="flex-1 min-w-0 px-2 py-1.5 sm:py-1 text-xs bg-white border border-stone-300 rounded focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 pl-8 sm:pl-0">
+                <input
+                  type="text"
+                  disabled={disabled}
+                  value={item.keterangan || ''}
+                  onChange={(e) => handleUpdateAcaraPart(idx, 'keterangan', e.target.value)}
+                  placeholder="Keterangan"
+                  className="flex-1 sm:w-32 sm:flex-none px-2 py-1.5 sm:py-1 text-xs bg-white border border-stone-300 rounded sm:text-right"
+                />
+                {!disabled && (
+                  <button
+                    onClick={() => handleDeleteAcaraPart(idx)}
+                    className="p-1.5 sm:p-1 text-red-500 hover:text-red-700 shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -483,7 +491,7 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full min-w-[600px] text-xs">
             <thead>
               <tr className="bg-stone-100 text-stone-800 border-b border-stone-300">
                 <th className="py-2 px-2 text-left font-bold w-24">Peran / Ulaon</th>

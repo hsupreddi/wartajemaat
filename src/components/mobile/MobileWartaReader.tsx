@@ -983,9 +983,9 @@ export const MobileWartaReader: React.FC<MobileWartaReaderProps> = ({
             {/* Pelean Taon */}
             {pelean_taon.length > 0 && (
               <section className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-4 sm:p-5 space-y-3">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap border-b border-stone-100 pb-2.5">
                   <h3 className="text-base font-bold text-[#0B2545]">B. Rincian Pelean Taon</h3>
-                  <span className="text-sm font-bold text-[#0B2545] font-mono-num">
+                  <span className="text-sm font-bold text-[#0B2545] font-mono-num shrink-0">
                     Rp {formatRupiah(pelean_taon.reduce((a, c) => a + c.jumlah, 0))}
                   </span>
                 </div>
@@ -1007,9 +1007,9 @@ export const MobileWartaReader: React.FC<MobileWartaReaderProps> = ({
             {/* Hamauliateon */}
             {hamauliateon.length > 0 && (
               <section className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-4 sm:p-5 space-y-3">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap border-b border-stone-100 pb-2.5">
                   <h3 className="text-base font-bold text-[#0B2545]">C. Rincian Hamauliateon</h3>
-                  <span className="text-sm font-bold text-[#0B2545] font-mono-num">
+                  <span className="text-sm font-bold text-[#0B2545] font-mono-num shrink-0">
                     Rp {formatRupiah(hamauliateon.reduce((a, c) => a + c.jumlah, 0))}
                   </span>
                 </div>
@@ -1059,14 +1059,14 @@ export const MobileWartaReader: React.FC<MobileWartaReaderProps> = ({
             {/* Sumbangan Natal Diakoni Sosial */}
             {warta.tampilkan_sumbangan_natal !== false && sumbangan_natal.length > 0 && (
               <section className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-4 sm:p-5 space-y-3">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap border-b border-stone-100 pb-2.5">
                   <div>
                     <h3 className="text-base font-bold text-[#0B2545]">
                       Sumbangan Natal Diakoni Sosial
                     </h3>
                     <p className="text-xs text-stone-500">Masuk ke Kas Sosial Huria</p>
                   </div>
-                  <span className="text-sm font-bold text-rose-800 font-mono-num">
+                  <span className="text-sm font-bold text-rose-800 font-mono-num shrink-0">
                     Rp {formatRupiah(sumbanganTotal)}
                   </span>
                 </div>
@@ -1091,9 +1091,9 @@ export const MobileWartaReader: React.FC<MobileWartaReaderProps> = ({
             {/* Pengeluaran */}
             {printablePengeluaran.length > 0 && (
               <section className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-4 sm:p-5 space-y-3">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap border-b border-stone-100 pb-2.5">
                   <h3 className="text-base font-bold text-rose-900">Rincian Pengeluaran</h3>
-                  <span className="text-sm font-bold text-rose-800 font-mono-num">
+                  <span className="text-sm font-bold text-rose-800 font-mono-num shrink-0">
                     Rp {formatRupiah(rekapitulasi.total_keluar)}
                   </span>
                 </div>
@@ -1141,9 +1141,9 @@ export const MobileWartaReader: React.FC<MobileWartaReaderProps> = ({
 
             {/* Pemakai Sopo Godang */}
             <section className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-4 sm:p-5 space-y-3">
-              <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-stone-100 pb-2.5">
                 <h3 className="text-base font-bold text-[#0B2545]">Daftar Pemakai Sopo Godang</h3>
-                <span className="text-xs font-semibold text-stone-500">
+                <span className="text-xs font-semibold text-stone-500 shrink-0">
                   {sopo_godang.filter((s) => s.nama && s.nama !== '-').length} Jadwal
                 </span>
               </div>

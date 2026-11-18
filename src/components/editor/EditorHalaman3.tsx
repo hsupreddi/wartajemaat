@@ -822,7 +822,7 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
           </div>
 
           {/* Search & Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2 top-2" />
               <input
@@ -929,7 +929,7 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
 
         {/* Tabel Penerimaan */}
         <div className="overflow-x-auto border border-stone-300 rounded max-h-[550px] overflow-y-auto">
-          <table className="w-full text-xs font-mono-num">
+          <table className="w-full min-w-[820px] text-xs font-mono-num">
             <thead className="bg-stone-100 text-stone-800 border-b border-stone-300 sticky top-0 z-10 font-sans">
               <tr>
                 <th className="py-1.5 px-2 text-center w-12">No</th>
@@ -1197,41 +1197,46 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
 
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {pelean_taon.map((pt, idx) => (
-              <div key={pt.id || idx} className="flex items-center gap-2 text-xs">
+              <div
+                key={pt.id || idx}
+                className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs p-2 sm:p-0 bg-stone-50 sm:bg-transparent rounded border sm:border-0 border-stone-200"
+              >
                 <input
                   type="text"
                   disabled={disabled}
                   value={pt.nama}
                   onChange={(e) => handleUpdatePeleanTaon(idx, 'nama', e.target.value)}
                   placeholder="Keluarga / Nama"
-                  className="flex-1 px-2 py-1 border border-stone-300 rounded"
+                  className="flex-1 px-2 py-1.5 sm:py-1 border border-stone-300 rounded bg-white"
                 />
-                <input
-                  type="text"
-                  disabled={disabled}
-                  value={pt.lingkungan}
-                  onChange={(e) => handleUpdatePeleanTaon(idx, 'lingkungan', e.target.value)}
-                  placeholder="Wijk"
-                  className="w-24 px-2 py-1 border border-stone-300 rounded"
-                />
-                <input
-                  type="text"
-                  disabled={disabled}
-                  value={formatRupiah(pt.jumlah)}
-                  onChange={(e) =>
-                    handleUpdatePeleanTaon(idx, 'jumlah', parseRupiahInput(e.target.value))
-                  }
-                  placeholder="Rp"
-                  className="w-28 px-2 py-1 border border-stone-300 rounded font-mono-num text-right font-semibold"
-                />
-                {!disabled && (
-                  <button
-                    onClick={() => handleDeletePeleanTaon(idx)}
-                    className="p-1 text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    disabled={disabled}
+                    value={pt.lingkungan}
+                    onChange={(e) => handleUpdatePeleanTaon(idx, 'lingkungan', e.target.value)}
+                    placeholder="Wijk"
+                    className="flex-1 sm:w-24 sm:flex-none px-2 py-1.5 sm:py-1 border border-stone-300 rounded bg-white"
+                  />
+                  <input
+                    type="text"
+                    disabled={disabled}
+                    value={formatRupiah(pt.jumlah)}
+                    onChange={(e) =>
+                      handleUpdatePeleanTaon(idx, 'jumlah', parseRupiahInput(e.target.value))
+                    }
+                    placeholder="Rp"
+                    className="flex-1 sm:w-28 sm:flex-none px-2 py-1.5 sm:py-1 border border-stone-300 rounded font-mono-num text-right font-semibold bg-white"
+                  />
+                  {!disabled && (
+                    <button
+                      onClick={() => handleDeletePeleanTaon(idx)}
+                      className="p-1.5 sm:p-1 text-red-500 hover:text-red-700 shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -1610,7 +1615,7 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
             </datalist>
 
             <div className={`border border-stone-300 rounded-lg overflow-x-auto bg-white transition-opacity ${!showSumbanganNatal ? 'opacity-55' : ''}`}>
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[600px] text-xs">
                 <thead className="bg-stone-100 text-stone-800 font-bold border-b border-stone-300">
                   <tr>
                     <th className="w-10 py-1.5 px-2 text-center">No</th>
@@ -1916,7 +1921,7 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs font-mono-num">
+          <table className="w-full min-w-[580px] text-xs font-mono-num">
             <thead className="bg-stone-800 text-white font-sans font-bold">
               <tr>
                 <th className="py-2 px-2 text-left">Pos Dana Huria</th>

@@ -161,15 +161,15 @@ export const WartaEditorPage: React.FC = () => {
             <div className="flex items-center bg-white/10 p-0.5 rounded-lg border border-white/20 text-xs shrink-0">
               <button
                 onClick={() => setEditorMode('wizard')}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 cursor-pointer min-h-[36px] ${
+                className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 cursor-pointer min-h-[38px] ${
                   editorMode === 'wizard' ? 'bg-amber-400 text-stone-950' : 'text-stone-200 hover:text-white'
                 }`}
               >
-                <Compass className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Wizard</span> 6 Langkah
+                <Compass className="w-3.5 h-3.5" /> <span>Wizard</span> <span className="hidden sm:inline">6 Langkah</span>
               </button>
               <button
                 onClick={() => setEditorMode('tabs')}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1 cursor-pointer min-h-[36px] ${
+                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition flex items-center gap-1 cursor-pointer min-h-[38px] ${
                   editorMode === 'tabs' ? 'bg-amber-400 text-stone-950' : 'text-stone-200 hover:text-white'
                 }`}
               >
@@ -283,11 +283,11 @@ export const WartaEditorPage: React.FC = () => {
         ) : (
           <>
             {/* Navigation Tabs */}
-            <div className="flex items-center justify-between border-b border-stone-200 mb-6 overflow-x-auto gap-2">
+            <div className="flex items-center justify-between border-b border-stone-200 mb-6 overflow-x-auto scrollbar-none gap-2">
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setActiveTab('hal1')}
-                  className={`px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${
+                  className={`px-3.5 sm:px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap flex items-center gap-1.5 min-h-[44px] cursor-pointer ${
                     activeTab === 'hal1'
                       ? 'border-blue-600 text-blue-700 bg-white shadow-xs rounded-t'
                       : 'border-transparent text-stone-600 hover:text-stone-900'
@@ -300,7 +300,7 @@ export const WartaEditorPage: React.FC = () => {
 
                 <button
                   onClick={() => setActiveTab('hal2')}
-                  className={`px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${
+                  className={`px-3.5 sm:px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap flex items-center gap-1.5 min-h-[44px] cursor-pointer ${
                     activeTab === 'hal2'
                       ? 'border-blue-600 text-blue-700 bg-white shadow-xs rounded-t'
                       : 'border-transparent text-stone-600 hover:text-stone-900'
@@ -313,7 +313,7 @@ export const WartaEditorPage: React.FC = () => {
 
                 <button
                   onClick={() => setActiveTab('hal3')}
-                  className={`px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${
+                  className={`px-3.5 sm:px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap flex items-center gap-1.5 min-h-[44px] cursor-pointer ${
                     activeTab === 'hal3'
                       ? 'border-blue-600 text-blue-700 bg-white shadow-xs rounded-t'
                       : 'border-transparent text-stone-600 hover:text-stone-900'
@@ -327,7 +327,7 @@ export const WartaEditorPage: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('preview')}
-                className={`px-4 py-2 text-xs md:text-sm font-bold rounded-md transition flex items-center gap-1.5 shrink-0 ${
+                className={`px-3.5 sm:px-4 py-2 text-xs md:text-sm font-bold rounded-md transition flex items-center gap-1.5 shrink-0 min-h-[40px] cursor-pointer ${
                   activeTab === 'preview'
                     ? 'bg-blue-600 text-white shadow'
                     : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
@@ -341,7 +341,7 @@ export const WartaEditorPage: React.FC = () => {
             {/* Role permission info banner */}
             {(isLiturgiDisabled && (activeTab === 'hal1' || activeTab === 'hal2')) ||
             (isKeuanganDisabled && activeTab === 'hal3') ? (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md flex items-center justify-between text-xs text-amber-800">
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs text-amber-800">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
