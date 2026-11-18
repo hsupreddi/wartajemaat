@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   BookOpen,
@@ -16,7 +16,11 @@ import {
   Music,
   ChevronRight,
   X,
-  Building
+  Building,
+  Menu,
+  Home,
+  Printer,
+  ShieldCheck
 } from 'lucide-react';
 import churchHeroImg from '../../assets/images/hkbp_hutaraja_church_1794043812545.jpg';
 import { FullWartaData, JadwalTetapItem, PengaturanHuria, UserRole, WartaRecord } from '../../types';
@@ -76,8 +80,27 @@ export const MobilePublicPortal: React.FC<MobilePublicPortalProps> = ({
   onNotify
 }) => {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [pengumumanQuery, setPengumumanQuery] = useState('');
+
+  useEffect(() => {
+    if (!menuOpen && !searchOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen, searchOpen]);
+
+  const handleQuickNavigate = (view: MobilePortalView, section?: MobileReaderSection) => {
+    setMenuOpen(false);
+    onChangeView(view, section);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleShareActiveWarta = async (viaWhatsApp = false) => {
     if (!selectedWarta) return;
@@ -164,57 +187,69 @@ export const MobilePublicPortal: React.FC<MobilePublicPortalProps> = ({
     : [];
 
   return (
-    <div className="lg:hidden min-h-screen bg-[#F7F5F0] text-stone-900 pb-24">
-      {/* Compact Mobile Top App Bar (52px) */}
-      <header className="sticky top-0 z-40 h-[52px] bg-[#0B2545]/95 backdrop-blur-md text-white border-b border-amber-500/20 px-3 flex items-center justify-between gap-2 pt-safe">
-        <button
-          type="button"
-          onClick={() => {
-            onChangeView('beranda');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer"
-        >
-          <HkbpCrossLogo className="w-8 h-8 shrink-0" />
-          <div className="min-w-0">
-            <div className="text-xs font-display font-bold tracking-wide uppercase text-white truncate">
-              E-Warta HKBP Hutaraja
-            </div>
-            <div className="text-[10px] text-amber-200/90 truncate">
-              Distrik VI Dairi · Ressort Hutaraja
-            </div>
-          </div>
-        </button>
-
-        <div className="flex items-center gap-1 shrink-0">
-          <PWAInstallButton
-            variant="header"
-            onInstalled={() => onNotify('Aplikasi E-Warta HKBP berhasil dipasang di HP.')}
-          />
+    <div className="lg:hidden min-h-screen bg-[#F7F5F0] text-stone-900 pb-24 pt-[calc(52px+env(safe-area-inset-top,0px))]">
+      {/* Fixed Sticky Mobile Top App Bar (52px + safe area) */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[#0B2545]/95 backdrop-blur-md text-white border-b border-amber-500/20 pt-safe shadow-md">
+        <div className="max-w-3xl mx-auto h-[52px] px-2.5 sm:px-4 flex items-center justify-between gap-1.5">
           <button
             type="button"
-            onClick={() => setSearchOpen(true)}
-            aria-label="Cari Warta atau Pengumuman"
-            className="min-w-[44px] min-h-[44px] rounded-xl text-stone-200 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer"
+            onClick={() => handleQuickNavigate('beranda')}
+            className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
           >
-            <Search className="w-5 h-5" />
+            <HkbpCrossLogo className="w-8 h-8 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-xs font-display font-bold tracking-wide uppercase text-white truncate">
+                E-Warta HKBP Hutaraja
+              </div>
+              <div className="text-[10px] text-amber-200/90 truncate">
+                Distrik VI Dairi · Ressort Hutaraja
+              </div>
+            </div>
           </button>
 
-          {selectedWarta && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            <PWAInstallButton
+              variant="header"
+              onInstalled={() => onNotify('Aplikasi E-Warta HKBP berhasil dipasang di HP.')}
+            />
             <button
               type="button"
-              disabled={isExportingPdf}
-              onClick={onDownloadPdf}
-              aria-label="Unduh PDF Warta"
-              className="min-w-[44px] min-h-[44px] rounded-xl text-emerald-300 hover:bg-white/10 flex items-center justify-center cursor-pointer disabled:opacity-50"
+              onClick={() => {
+                setMenuOpen(false);
+                setSearchOpen(true);
+              }}
+              aria-label="Cari Warta atau Pengumuman"
+              className="min-w-[40px] min-h-[44px] rounded-xl text-stone-200 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer"
             >
-              {isExportingPdf ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Download className="w-5 h-5" />
-              )}
+              <Search className="w-5 h-5" />
             </button>
-          )}
+
+            {selectedWarta && (
+              <button
+                type="button"
+                disabled={isExportingPdf}
+                onClick={onDownloadPdf}
+                aria-label="Unduh PDF Warta"
+                className="hidden xs:flex min-w-[40px] min-h-[44px] rounded-xl text-emerald-300 hover:bg-white/10 items-center justify-center cursor-pointer disabled:opacity-50"
+              >
+                {isExportingPdf ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Download className="w-5 h-5" />
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              aria-label="Daftar Menu Utama"
+              aria-expanded={menuOpen}
+              className="min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 flex items-center justify-center cursor-pointer transition"
+            >
+              {menuOpen ? <X className="w-5 h-5 text-amber-300" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -943,6 +978,263 @@ export const MobilePublicPortal: React.FC<MobilePublicPortalProps> = ({
                     )}
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Main Menu Drawer (Daftar Menu Utama via Hamburger Icon) */}
+      {menuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex justify-end"
+          onClick={() => setMenuOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Daftar Menu Utama E-Warta"
+        >
+          <div
+            className="w-full max-w-[320px] h-full bg-white text-stone-900 shadow-2xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="bg-[#0B2545] text-white px-4 py-3.5 pt-[calc(14px+env(safe-area-inset-top,0px))] border-b border-amber-500/25 flex items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <HkbpCrossLogo className="w-8 h-8 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-display font-bold uppercase tracking-wide text-white truncate">
+                    Daftar Menu Utama
+                  </div>
+                  <div className="text-[11px] text-amber-200/90 truncate">
+                    {selectedWarta
+                      ? `Minggu ${selectedWarta.warta.goar_minggu}`
+                      : 'E-Warta HKBP Hutaraja'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Tutup Menu Utama"
+                className="min-w-[44px] min-h-[44px] rounded-xl text-stone-200 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Navigation Links */}
+            <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
+              <nav aria-label="Menu Utama" className="space-y-1">
+                <div className="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                  Navigasi Jemaat
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickNavigate('beranda')}
+                  className={`w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left transition cursor-pointer ${
+                    activeView === 'beranda'
+                      ? 'bg-[#0B2545] text-white font-bold shadow-xs'
+                      : 'text-stone-800 hover:bg-stone-100 font-semibold'
+                  }`}
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <Home className={`w-4.5 h-4.5 shrink-0 ${activeView === 'beranda' ? 'text-amber-300' : 'text-[#0B2545]'}`} />
+                    <span>Beranda</span>
+                  </span>
+                  <ChevronRight className={`w-4 h-4 shrink-0 ${activeView === 'beranda' ? 'text-amber-300' : 'text-stone-400'}`} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickNavigate('baca', 'liturgi')}
+                  className={`w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left transition cursor-pointer ${
+                    activeView === 'baca'
+                      ? 'bg-[#0B2545] text-white font-bold shadow-xs'
+                      : 'text-stone-800 hover:bg-stone-100 font-semibold'
+                  }`}
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <BookOpen className={`w-4.5 h-4.5 shrink-0 ${activeView === 'baca' ? 'text-amber-300' : 'text-[#0B2545]'}`} />
+                    <span>Baca Warta Minggu Ini</span>
+                  </span>
+                  <ChevronRight className={`w-4 h-4 shrink-0 ${activeView === 'baca' ? 'text-amber-300' : 'text-stone-400'}`} />
+                </button>
+
+                {/* Quick Sub-Sections of Warta */}
+                <div className="grid grid-cols-2 gap-1.5 pl-2 pr-1 py-1">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickNavigate('baca', 'liturgi')}
+                    className={`min-h-[40px] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left border transition cursor-pointer ${
+                      activeView === 'baca' && activeReaderSection === 'liturgi'
+                        ? 'bg-amber-50 border-amber-300 text-[#0B2545]'
+                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    Tata Ibadah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickNavigate('baca', 'warta')}
+                    className={`min-h-[40px] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left border transition cursor-pointer ${
+                      activeView === 'baca' && activeReaderSection === 'warta'
+                        ? 'bg-amber-50 border-amber-300 text-[#0B2545]'
+                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    Tingting Huria
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickNavigate('baca', 'keuangan')}
+                    className={`min-h-[40px] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left border transition cursor-pointer ${
+                      activeView === 'baca' && activeReaderSection === 'keuangan'
+                        ? 'bg-amber-50 border-amber-300 text-[#0B2545]'
+                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    Keuangan Huria
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickNavigate('baca', 'ultah')}
+                    className={`min-h-[40px] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left border transition cursor-pointer ${
+                      activeView === 'baca' && activeReaderSection === 'ultah'
+                        ? 'bg-amber-50 border-amber-300 text-[#0B2545]'
+                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    Ulang Tahun
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickNavigate('kegiatan')}
+                  className={`w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left transition cursor-pointer ${
+                    activeView === 'kegiatan'
+                      ? 'bg-[#0B2545] text-white font-bold shadow-xs'
+                      : 'text-stone-800 hover:bg-stone-100 font-semibold'
+                  }`}
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <Calendar className={`w-4.5 h-4.5 shrink-0 ${activeView === 'kegiatan' ? 'text-amber-300' : 'text-amber-700'}`} />
+                    <span>Jadwal &amp; Kegiatan</span>
+                  </span>
+                  <ChevronRight className={`w-4 h-4 shrink-0 ${activeView === 'kegiatan' ? 'text-amber-300' : 'text-stone-400'}`} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickNavigate('pengumuman')}
+                  className={`w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left transition cursor-pointer ${
+                    activeView === 'pengumuman'
+                      ? 'bg-[#0B2545] text-white font-bold shadow-xs'
+                      : 'text-stone-800 hover:bg-stone-100 font-semibold'
+                  }`}
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <Megaphone className={`w-4.5 h-4.5 shrink-0 ${activeView === 'pengumuman' ? 'text-amber-300' : 'text-indigo-700'}`} />
+                    <span>Pengumuman Gereja</span>
+                  </span>
+                  <ChevronRight className={`w-4 h-4 shrink-0 ${activeView === 'pengumuman' ? 'text-amber-300' : 'text-stone-400'}`} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenArchive();
+                  }}
+                  className="w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left text-stone-800 hover:bg-stone-100 font-semibold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <Archive className="w-4.5 h-4.5 shrink-0 text-stone-600" />
+                    <span>Arsip Warta Jemaat</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 shrink-0 text-stone-400" />
+                </button>
+              </nav>
+
+              {selectedWarta && (
+                <div className="pt-3 border-t border-stone-200 space-y-1.5">
+                  <div className="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                    Dokumen &amp; Bagikan
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isExportingPdf}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDownloadPdf();
+                    }}
+                    className="w-full min-h-[46px] px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-sm flex items-center justify-between gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      {isExportingPdf ? (
+                        <Loader2 className="w-4.5 h-4.5 animate-spin shrink-0" />
+                      ) : (
+                        <Download className="w-4.5 h-4.5 shrink-0" />
+                      )}
+                      <span>{isExportingPdf ? 'Menyiapkan PDF...' : 'Unduh Dokumen PDF'}</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 shrink-0 text-emerald-700" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpenPrintA4(selectedWarta.warta.id);
+                    }}
+                    className="w-full min-h-[46px] px-3 py-2 rounded-xl hover:bg-stone-100 text-stone-800 font-semibold text-sm flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Printer className="w-4.5 h-4.5 text-[#0B2545] shrink-0" />
+                      <span>Tampilan Kertas A4</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 shrink-0 text-stone-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleShareActiveWarta(true);
+                    }}
+                    className="w-full min-h-[46px] px-3 py-2 rounded-xl hover:bg-stone-100 text-stone-800 font-semibold text-sm flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <MessageCircle className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+                      <span>Bagikan ke WhatsApp</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 shrink-0 text-stone-400" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Action: Portal Pengurus */}
+            <div className="p-3.5 border-t border-stone-200 bg-stone-50 pb-[calc(14px+env(safe-area-inset-bottom,0px))] shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenAdminOrLogin();
+                }}
+                className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#0B2545] hover:bg-[#133868] text-white text-sm font-bold flex items-center justify-between gap-2 cursor-pointer"
+              >
+                <span className="flex items-center gap-2.5">
+                  <ShieldCheck className="w-4.5 h-4.5 text-amber-400 shrink-0" />
+                  <span>
+                    {currentRole !== 'publik'
+                      ? `Dashboard Pengurus (${currentRole})`
+                      : 'Masuk Portal Pengurus'}
+                  </span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-amber-400 shrink-0" />
+              </button>
             </div>
           </div>
         </div>

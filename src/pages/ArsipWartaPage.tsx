@@ -17,7 +17,10 @@ import {
   Share2,
   X,
   Home,
-  ShieldCheck
+  ShieldCheck,
+  Menu,
+  Megaphone,
+  ChevronRight
 } from 'lucide-react';
 import { formatTanggalIndo, formatTanggalLengkap, BULAN_INDONESIA } from '../lib/dateUtils';
 import { exportWartaToPdf } from '../lib/pdfExport';
@@ -36,6 +39,7 @@ export const ArsipWartaPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [isLoading, setIsLoading] = useState(true);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [archiveToast, setArchiveToast] = useState<string | null>(null);
 
@@ -143,37 +147,51 @@ export const ArsipWartaPage: React.FC = () => {
       )}
 
       {/* DEDICATED MOBILE & TABLET ARCHIVE EXPERIENCE (< 1024px) */}
-      <div className="lg:hidden min-h-screen bg-[#F7F5F0] text-stone-900 pb-24">
-        <header className="sticky top-0 z-40 h-[52px] bg-[#0B2545] text-white border-b border-amber-500/20 px-3 flex items-center justify-between gap-2 pt-safe">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              aria-label="Kembali ke Beranda"
-              className="min-w-[44px] min-h-[44px] rounded-xl text-stone-200 hover:bg-white/10 flex items-center justify-center cursor-pointer shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="min-w-0">
-              <h1 className="text-sm font-bold text-white truncate">Arsip Warta Jemaat</h1>
-              <p className="text-[10.5px] text-amber-200/90 truncate">
-                {filtered.length} edisi tersedia
-              </p>
+      <div className="lg:hidden min-h-screen bg-[#F7F5F0] text-stone-900 pb-24 pt-[calc(52px+env(safe-area-inset-top,0px))]">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-[#0B2545]/95 backdrop-blur-md text-white border-b border-amber-500/20 pt-safe shadow-md">
+          <div className="max-w-3xl mx-auto h-[52px] px-2.5 sm:px-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                aria-label="Kembali ke Beranda"
+                className="min-w-[44px] min-h-[44px] rounded-xl text-stone-200 hover:bg-white/10 flex items-center justify-center cursor-pointer shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div className="min-w-0">
+                <h1 className="text-sm font-bold text-white truncate">Arsip Warta Jemaat</h1>
+                <p className="text-[10.5px] text-amber-200/90 truncate">
+                  {filtered.length} edisi tersedia
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setFilterSheetOpen(true)}
+                className="min-h-[40px] px-2.5 py-1.5 rounded-xl bg-white/12 hover:bg-white/20 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Filter className="w-4 h-4 text-amber-400" />
+                <span>Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                aria-label="Daftar Menu Utama"
+                aria-expanded={mobileMenuOpen}
+                className="min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 flex items-center justify-center cursor-pointer shrink-0"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5 text-amber-300" /> : <Menu className="w-5 h-5" />}
+              </button>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setFilterSheetOpen(true)}
-            className="min-h-[40px] px-3 py-1.5 rounded-xl bg-white/12 hover:bg-white/20 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
-          >
-            <Filter className="w-4 h-4 text-amber-400" />
-            <span>Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</span>
-          </button>
         </header>
 
         {/* Sticky Search Bar */}
-        <div className="sticky top-[52px] z-30 bg-[#F7F5F0]/95 backdrop-blur-md px-3.5 py-2.5 border-b border-stone-200">
+        <div className="sticky top-[calc(52px+env(safe-area-inset-top,0px))] z-30 bg-[#F7F5F0]/95 backdrop-blur-md px-3.5 py-2.5 border-b border-stone-200">
           <div className="max-w-3xl mx-auto relative">
             <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5" />
             <input
@@ -449,6 +467,135 @@ export const ArsipWartaPage: React.FC = () => {
             </button>
           </div>
         </nav>
+
+        {/* Quick Main Menu Drawer */}
+        {mobileMenuOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex justify-end"
+            onClick={() => setMobileMenuOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Daftar Menu Utama E-Warta"
+          >
+            <div
+              className="w-full max-w-[320px] h-full bg-white text-stone-900 shadow-2xl flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-[#0B2545] text-white px-4 py-3.5 pt-[calc(14px+env(safe-area-inset-top,0px))] border-b border-amber-500/25 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <HkbpCrossLogo className="w-8 h-8 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-xs font-display font-bold uppercase tracking-wide text-white truncate">
+                      Daftar Menu Utama
+                    </div>
+                    <div className="text-[11px] text-amber-200/90 truncate">
+                      E-Warta HKBP Hutaraja
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Tutup Menu Utama"
+                  className="min-w-[44px] min-h-[44px] rounded-xl text-stone-200 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <nav aria-label="Menu Utama" className="flex-1 overflow-y-auto p-3.5 space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/');
+                  }}
+                  className="w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left text-stone-800 hover:bg-stone-100 font-semibold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <Home className="w-4.5 h-4.5 text-[#0B2545] shrink-0" />
+                    <span>Beranda</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/?view=baca');
+                  }}
+                  className="w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left text-stone-800 hover:bg-stone-100 font-semibold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <BookOpen className="w-4.5 h-4.5 text-[#0B2545] shrink-0" />
+                    <span>Baca Warta Minggu Ini</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/?view=kegiatan');
+                  }}
+                  className="w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left text-stone-800 hover:bg-stone-100 font-semibold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <Calendar className="w-4.5 h-4.5 text-amber-700 shrink-0" />
+                    <span>Jadwal &amp; Kegiatan</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/?view=pengumuman');
+                  }}
+                  className="w-full min-h-[48px] px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 text-left text-stone-800 hover:bg-stone-100 font-semibold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <Megaphone className="w-4.5 h-4.5 text-indigo-700 shrink-0" />
+                    <span>Pengumuman Gereja</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full min-h-[48px] px-3 py-2.5 rounded-xl bg-[#0B2545] text-white font-bold flex items-center justify-between gap-3 text-left transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-3 text-sm">
+                    <Archive className="w-4.5 h-4.5 text-amber-300 shrink-0" />
+                    <span>Arsip Warta Jemaat</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-amber-300 shrink-0" />
+                </button>
+              </nav>
+
+              <div className="p-3.5 border-t border-stone-200 bg-stone-50 pb-[calc(14px+env(safe-area-inset-bottom,0px))] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate(isStaff ? '/admin' : '/login');
+                  }}
+                  className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#0B2545] hover:bg-[#133868] text-white text-sm font-bold flex items-center justify-between gap-2 cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <ShieldCheck className="w-4.5 h-4.5 text-amber-400 shrink-0" />
+                    <span>{isStaff ? `Dashboard Pengurus (${currentRole})` : 'Masuk Portal Pengurus'}</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-amber-400 shrink-0" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* PRESERVED DESKTOP ARCHIVE EXPERIENCE (>= 1024px) */}

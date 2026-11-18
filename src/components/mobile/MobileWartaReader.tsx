@@ -253,7 +253,7 @@ export const MobileWartaReader: React.FC<MobileWartaReaderProps> = ({
       }`}
     >
       {/* Top Reading Progress Bar + Compact Sticky Section Bar */}
-      <div className="sticky top-[52px] z-30 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-xs">
+      <div className="sticky top-[calc(52px+env(safe-area-inset-top,0px))] z-30 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-xs">
         {/* Progress Indicator */}
         <div className="w-full h-[2.5px] bg-stone-100">
           <div

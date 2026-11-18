@@ -180,7 +180,7 @@ export const PublicPortalPage: React.FC = () => {
     <>
       {/* Toast Notification (Shared Mobile & Desktop) */}
       {shareToast && (
-        <div className="fixed top-16 lg:top-20 right-4 left-4 lg:left-auto z-50 bg-stone-900 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-stone-700 text-xs font-semibold flex items-center gap-2">
+        <div className="fixed top-[calc(60px+env(safe-area-inset-top,0px))] lg:top-20 right-4 left-4 lg:left-auto z-50 bg-stone-900 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-stone-700 text-xs font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{shareToast}</span>
         </div>
