@@ -125,6 +125,27 @@ export async function listMingguLiturgi(): Promise<MingguLiturgi[]> {
 }
 
 /**
+ * Synchronous cached list helper for immediate display lookup (falls back to official 63 seed)
+ */
+export function getCachedMingguLiturgiList(): MingguLiturgi[] {
+  return getLocalList();
+}
+
+/**
+ * Synchronous cached lookup by name (supports custom added Goar ni Minggu)
+ */
+export function findCachedMingguByName(nama: string): MingguLiturgi | undefined {
+  const clean = (nama || '').trim().toUpperCase();
+  if (!clean) return undefined;
+  return getLocalList().find(
+    (m) =>
+      m.nama_minggu.toUpperCase() === clean ||
+      `MINGGU ${m.nama_minggu.toUpperCase()}` === clean ||
+      clean === `MINGGU ${m.nama_minggu.toUpperCase()}`
+  );
+}
+
+/**
  * Find single liturgical Sunday by name (case-insensitive)
  */
 export async function findMingguByName(nama: string): Promise<MingguLiturgi | undefined> {
@@ -142,19 +163,24 @@ export async function findMingguByName(nama: string): Promise<MingguLiturgi | un
  */
 export async function upsertMingguLiturgi(item: MingguLiturgi): Promise<MingguLiturgi> {
   const list = getLocalList();
-  const existingIdx = list.findIndex((m) => m.id === item.id || m.no_urut === item.no_urut);
+  const trimmedId = item.id?.trim();
+  const existingIdx = trimmedId ? list.findIndex((m) => m.id === trimmedId) : -1;
+  const maxNoUrut = list.reduce((max, m) => Math.max(max, m.no_urut || 0), 0);
+
+  const resolvedItem: MingguLiturgi = {
+    ...item,
+    id: trimmedId || `minggu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    no_urut: Number(item.no_urut) > 0 ? Number(item.no_urut) : maxNoUrut + 1,
+    nama_minggu: item.nama_minggu.trim(),
+    warna_liturgi: item.warna_liturgi || 'Hijau'
+  };
 
   let updatedList: MingguLiturgi[];
   if (existingIdx >= 0) {
     updatedList = [...list];
-    updatedList[existingIdx] = { ...updatedList[existingIdx], ...item };
+    updatedList[existingIdx] = { ...updatedList[existingIdx], ...resolvedItem };
   } else {
-    const newItem: MingguLiturgi = {
-      ...item,
-      id: item.id || `minggu-${Date.now()}`,
-      no_urut: item.no_urut || list.length + 1
-    };
-    updatedList = [...list, newItem];
+    updatedList = [...list, resolvedItem];
   }
 
   setLocalList(updatedList);
@@ -162,16 +188,16 @@ export async function upsertMingguLiturgi(item: MingguLiturgi): Promise<MingguLi
   if (isSupabaseConfigured && supabase) {
     try {
       const payload = {
-        id: item.id,
-        no_urut: item.no_urut,
-        nama_minggu: item.nama_minggu,
-        arti_indonesia: item.arti_indonesia || null,
-        arti_batak: item.arti_batak || null,
-        warna_liturgi: item.warna_liturgi || 'Hijau',
-        topik_default: item.topik_default || null,
-        ayat_default: item.ayat_default || null,
-        ayat_ref_default: item.ayat_ref_default || null,
-        keterangan: item.keterangan || null,
+        id: resolvedItem.id,
+        no_urut: resolvedItem.no_urut,
+        nama_minggu: resolvedItem.nama_minggu,
+        arti_indonesia: resolvedItem.arti_indonesia || null,
+        arti_batak: resolvedItem.arti_batak || null,
+        warna_liturgi: resolvedItem.warna_liturgi || 'Hijau',
+        topik_default: resolvedItem.topik_default || null,
+        ayat_default: resolvedItem.ayat_default || null,
+        ayat_ref_default: resolvedItem.ayat_ref_default || null,
+        keterangan: resolvedItem.keterangan || null,
         updated_at: new Date().toISOString()
       };
 
@@ -184,7 +210,7 @@ export async function upsertMingguLiturgi(item: MingguLiturgi): Promise<MingguLi
     }
   }
 
-  return item;
+  return resolvedItem;
 }
 
 /**

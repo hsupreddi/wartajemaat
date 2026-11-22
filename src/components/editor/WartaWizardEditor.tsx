@@ -1338,8 +1338,8 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     <label className="block text-xs font-bold text-stone-800">
                       Goar ni Minggu (Kalender Liturgi HKBP):
                     </label>
-                    <span className="text-[10px] bg-blue-50 text-blue-900 font-bold px-1.5 py-0.2 rounded border border-blue-200">
-                      Pilih dari 63 Minggu
+                    <span className="text-[10px] text-blue-900 font-bold">
+                      Pilih / Tambah Manual
                     </span>
                   </div>
                   <MingguLiturgiDropdown

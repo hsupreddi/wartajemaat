@@ -49,6 +49,7 @@ import { HkbpTransformasiLogo } from '../components/logos/HkbpTransformasiLogo';
 import { UserManagement } from '../components/admin/UserManagement';
 import { KopLogoEditor } from '../components/admin/KopLogoEditor';
 import { MingguLiturgiDropdown, getLiturgiColorBadge } from '../components/common/MingguLiturgiDropdown';
+import { MingguLiturgiManager } from '../components/admin/MingguLiturgiManager';
 import { MingguLiturgi } from '../types';
 import { GrafikPendapatanMingguan } from '../components/dashboard/GrafikPendapatanMingguan';
 import { MobileConfirmModal } from '../components/mobile/MobileConfirmModal';
@@ -61,6 +62,7 @@ export const AdminDashboardPage: React.FC = () => {
     currentUser,
     isLoading: isAuthLoading,
     signInAsDemo,
+    canEditLiturgi,
     canPublish,
     canManageSettings,
     canManageUsers,
@@ -69,7 +71,7 @@ export const AdminDashboardPage: React.FC = () => {
   } = useAuth();
 
   const [activeMenu, setActiveMenu] = useState<
-    'warta' | 'tren_keuangan' | 'ringkasan' | 'arsip' | 'users' | 'kop'
+    'warta' | 'kalender' | 'tren_keuangan' | 'ringkasan' | 'arsip' | 'users' | 'kop'
   >('warta');
 
   const [wartasList, setWartasList] = useState<WartaRecord[]>([]);
@@ -94,8 +96,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const showAdminToast = (type: 'success' | 'error', message: string) => {
-    setAdminToast({ type, message });
+  const showAdminToast = (type: 'success' | 'error' | 'info' | 'warning', message: string) => {
+    setAdminToast({ type: type === 'error' || type === 'warning' ? 'error' : 'success', message });
     setTimeout(() => setAdminToast(null), 3500);
   };
 
@@ -395,6 +397,21 @@ export const AdminDashboardPage: React.FC = () => {
               <Archive className="w-4 h-4 text-amber-400 shrink-0" />
               <span>Arsip Warta</span>
             </button>
+
+            {/* Admin & Sekretaris: Kalender Liturgi (Goar ni Minggu) */}
+            {(canEditLiturgi || canManageSettings) && (
+              <button
+                onClick={() => setActiveMenu('kalender')}
+                className={`px-3.5 py-2.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap min-h-[44px] ${
+                  activeMenu === 'kalender'
+                    ? 'bg-[#0B2545] text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                }`}
+              >
+                <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Goar ni Minggu</span>
+              </button>
+            )}
 
             {/* Admin-only Modules */}
             {canManageUsers && (
@@ -750,6 +767,13 @@ export const AdminDashboardPage: React.FC = () => {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TAB: KALENDER LITURGI / GOAR NI MINGGU */}
+        {activeMenu === 'kalender' && (canEditLiturgi || canManageSettings) && (
+          <div className="space-y-6 animate-in fade-in">
+            <MingguLiturgiManager onNotify={showAdminToast} />
           </div>
         )}
 
@@ -1239,16 +1263,32 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <label className="block text-xs font-bold text-stone-800">
                     Goar ni Minggu (Kalender Liturgi HKBP):
                   </label>
-                  <span className="text-[10px] bg-blue-50 text-blue-900 font-bold px-1.5 py-0.2 rounded border border-blue-200">
-                    Pilih dari 63 Minggu
-                  </span>
+                  {(canEditLiturgi || canManageSettings) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        setActiveMenu('kalender');
+                      }}
+                      className="text-[11px] font-bold text-blue-800 hover:text-blue-950 hover:underline cursor-pointer"
+                    >
+                      Kelola Kalender
+                    </button>
+                  )}
                 </div>
                 <MingguLiturgiDropdown
                   value={newGoar}
+                  onAddedMinggu={(item) => {
+                    setSelectedMingguInfo(item);
+                    showAdminToast(
+                      'success',
+                      `Goar ni Minggu "${item.nama_minggu}" berhasil ditambahkan ke Kalender Liturgi.`
+                    );
+                  }}
                   onChange={(nama, item) => {
                     setNewGoar(nama);
                     if (item) {
@@ -1256,6 +1296,8 @@ export const AdminDashboardPage: React.FC = () => {
                       if (item.topik_default) {
                         setNewTopik(item.topik_default);
                       }
+                    } else {
+                      setSelectedMingguInfo(null);
                     }
                   }}
                 />

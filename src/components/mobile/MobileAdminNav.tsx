@@ -4,7 +4,7 @@ import { Layers, BarChart3, Settings, Globe, Plus } from 'lucide-react';
 interface MobileAdminNavProps {
   currentPage: 'dashboard' | 'master';
   activeMenu?: string;
-  onSelectDashboardMenu?: (menu: 'warta' | 'tren_keuangan' | 'ringkasan' | 'arsip' | 'users' | 'kop') => void;
+  onSelectDashboardMenu?: (menu: 'warta' | 'kalender' | 'tren_keuangan' | 'ringkasan' | 'arsip' | 'users' | 'kop') => void;
   onCreateWarta?: () => void;
   onGoDashboard: () => void;
   onGoMaster: () => void;

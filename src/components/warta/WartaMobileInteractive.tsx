@@ -3,7 +3,7 @@ import { FullWartaData, PengaturanHuria, JadwalTetapItem } from '../../types';
 import { formatRupiah } from '../../lib/format';
 import { getPrintablePenerimaanRows, getPrintablePengeluaranRows, getHamauliateonTransitoriList } from '../../lib/financialMath';
 import { formatTanggalIndo, formatTanggalLengkap } from '../../lib/dateUtils';
-import { OFFICIAL_HKBP_MINGGU_LITURGI } from '../../lib/masterMingguData';
+import { findCachedMingguByName } from '../../lib/mingguLiturgiApi';
 import { getLiturgiColorBadge } from '../common/MingguLiturgiDropdown';
 import {
   BookOpen,
@@ -88,13 +88,7 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
 
         <div className="relative z-10 space-y-3">
           {(() => {
-            const cleanGoar = (warta.goar_minggu || '').trim().toUpperCase();
-            const infoLiturgi = OFFICIAL_HKBP_MINGGU_LITURGI.find(
-              (m) =>
-                m.nama_minggu.toUpperCase() === cleanGoar ||
-                `MINGGU ${m.nama_minggu.toUpperCase()}` === cleanGoar ||
-                cleanGoar === `MINGGU ${m.nama_minggu.toUpperCase()}`
-            );
+            const infoLiturgi = findCachedMingguByName(warta.goar_minggu || '');
             const badge = getLiturgiColorBadge(infoLiturgi?.warna_liturgi);
 
             return (

@@ -25,7 +25,7 @@ import {
 import churchHeroImg from '../../assets/images/hkbp_hutaraja_church_1794043812545.jpg';
 import { FullWartaData, JadwalTetapItem, PengaturanHuria, UserRole, WartaRecord } from '../../types';
 import { formatTanggalIndo, formatTanggalLengkap } from '../../lib/dateUtils';
-import { OFFICIAL_HKBP_MINGGU_LITURGI } from '../../lib/masterMingguData';
+import { findCachedMingguByName } from '../../lib/mingguLiturgiApi';
 import { HkbpCrossLogo } from '../logos/HkbpCrossLogo';
 import { HkbpTransformasiLogo } from '../logos/HkbpTransformasiLogo';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -152,12 +152,7 @@ export const MobilePublicPortal: React.FC<MobilePublicPortalProps> = ({
     }
   };
 
-  const cleanGoar = (selectedWarta?.warta.goar_minggu || '').trim().toUpperCase();
-  const infoLiturgi = OFFICIAL_HKBP_MINGGU_LITURGI.find(
-    (m) =>
-      m.nama_minggu.toUpperCase() === cleanGoar ||
-      `MINGGU ${m.nama_minggu.toUpperCase()}` === cleanGoar
-  );
+  const infoLiturgi = findCachedMingguByName(selectedWarta?.warta.goar_minggu || '');
 
   const totalRuasAktif = selectedWarta
     ? (selectedWarta.warta.ruas_sm || 0) +

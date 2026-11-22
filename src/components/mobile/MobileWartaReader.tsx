@@ -30,7 +30,7 @@ import {
   getPrintablePengeluaranRows,
   getHamauliateonTransitoriList
 } from '../../lib/financialMath';
-import { OFFICIAL_HKBP_MINGGU_LITURGI } from '../../lib/masterMingguData';
+import { findCachedMingguByName } from '../../lib/mingguLiturgiApi';
 import { getLiturgiColorBadge } from '../common/MingguLiturgiDropdown';
 import {
   MobileReaderSection,
@@ -147,12 +147,7 @@ export const MobileWartaReader: React.FC<MobileWartaReaderProps> = ({
 
   const scale = FONT_SCALE_CONFIG[fontScale];
 
-  const cleanGoar = (warta.goar_minggu || '').trim().toUpperCase();
-  const infoLiturgi = OFFICIAL_HKBP_MINGGU_LITURGI.find(
-    (m) =>
-      m.nama_minggu.toUpperCase() === cleanGoar ||
-      `MINGGU ${m.nama_minggu.toUpperCase()}` === cleanGoar
-  );
+  const infoLiturgi = findCachedMingguByName(warta.goar_minggu || '');
   const badge = getLiturgiColorBadge(infoLiturgi?.warna_liturgi);
 
   const sectionTabs: {

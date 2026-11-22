@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { OFFICIAL_HKBP_MINGGU_LITURGI } from '../masterMingguData';
 import {
   listMingguLiturgi,
+  findCachedMingguByName,
   upsertMingguLiturgi,
   deleteMingguLiturgi,
   resetMingguLiturgiToDefault,
@@ -101,5 +102,46 @@ describe('Minggu Liturgi API and Local Storage CRUD (mingguLiturgiApi.ts)', () =
     await resetMingguLiturgiToDefault();
     const resetList = await listMingguLiturgi();
     expect(resetList.length).toBe(63);
+  });
+
+  it('adds a custom Goar ni Minggu manually without overwriting existing entries even on duplicate no_urut', async () => {
+    const created = await upsertMingguLiturgi({
+      id: '',
+      no_urut: 1, // deliberately collides with Advent I to ensure ID-only matching
+      nama_minggu: 'Minggu Olahraga & Pemuda',
+      arti_indonesia: 'Minggu Pelayanan Naposo Bulung',
+      arti_batak: 'Minggu Parhobason Naposo',
+      warna_liturgi: 'Merah',
+      topik_default: 'Naposo na Marsihohot'
+    });
+
+    expect(created.id).toBeTruthy();
+    const list = await listMingguLiturgi();
+    expect(list.length).toBe(64);
+    expect(list.some((m) => m.nama_minggu === 'Advent I')).toBe(true);
+    expect(list.some((m) => m.id === created.id && m.nama_minggu === 'Minggu Olahraga & Pemuda')).toBe(true);
+
+    const foundDirect = findCachedMingguByName('Minggu Olahraga & Pemuda');
+    expect(foundDirect?.warna_liturgi).toBe('Merah');
+    expect(foundDirect?.arti_batak).toBe('Minggu Parhobason Naposo');
+  });
+
+  it('auto-assigns max no_urut + 1 when adding a custom Sunday with no_urut = 0 after earlier deletion', async () => {
+    const initial = await listMingguLiturgi();
+    await deleteMingguLiturgi(initial[0].id); // 62 items remain, max no_urut is still 63
+
+    const created = await upsertMingguLiturgi({
+      id: '',
+      no_urut: 0,
+      nama_minggu: 'Pesta Ulang Tahun Huria',
+      warna_liturgi: 'Putih'
+    });
+
+    expect(created.no_urut).toBe(64);
+    const list = await listMingguLiturgi();
+    expect(list.length).toBe(63);
+    const foundWithPrefix = findCachedMingguByName('MINGGU PESTA ULANG TAHUN HURIA');
+    expect(foundWithPrefix?.id).toBe(created.id);
+    expect(foundWithPrefix?.warna_liturgi).toBe('Putih');
   });
 });

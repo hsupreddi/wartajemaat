@@ -100,9 +100,10 @@ export const MingguLiturgiManager: React.FC<MingguLiturgiManagerProps> = ({ onNo
 
     setIsSaving(true);
     try {
+      const maxNo = items.reduce((max, m) => Math.max(max, m.no_urut || 0), 0);
       const payload: MingguLiturgi = {
-        id: editingItem.id || `minggu-${Date.now()}`,
-        no_urut: Number(editingItem.no_urut) || items.length + 1,
+        id: editingItem.id || `minggu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        no_urut: Number(editingItem.no_urut) || maxNo + 1,
         nama_minggu: editingItem.nama_minggu.trim(),
         warna_liturgi: editingItem.warna_liturgi || 'Hijau',
         arti_indonesia: editingItem.arti_indonesia || '',
@@ -208,10 +209,10 @@ export const MingguLiturgiManager: React.FC<MingguLiturgiManagerProps> = ({ onNo
         <div>
           <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0B2545] bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 mb-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-800" />
-            <span>Kalender Liturgi HKBP (63 Minggu Gerejawi)</span>
+            <span>Kalender Liturgi HKBP ({items.length} Minggu Terdaftar)</span>
           </div>
           <h2 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight">
-            Database Nama-Nama Minggu HKBP
+            Database Goar ni Minggu HKBP
           </h2>
           <p className="text-xs text-stone-600 max-w-2xl mt-1 leading-relaxed">
             Data ini menjadi sumber otomatis menu dropdown saat menyusun warta baru maupun mengedit liturgi ibadah.
@@ -252,9 +253,10 @@ export const MingguLiturgiManager: React.FC<MingguLiturgiManagerProps> = ({ onNo
           </button>
 
           <button
-            onClick={() =>
+            onClick={() => {
+              const maxNo = items.reduce((max, m) => Math.max(max, m.no_urut || 0), 0);
               setEditingItem({
-                no_urut: items.length + 1,
+                no_urut: maxNo + 1,
                 nama_minggu: '',
                 warna_liturgi: 'Hijau',
                 arti_indonesia: '',
@@ -262,12 +264,12 @@ export const MingguLiturgiManager: React.FC<MingguLiturgiManagerProps> = ({ onNo
                 topik_default: '',
                 ayat_default: '',
                 ayat_ref_default: ''
-              })
-            }
+              });
+            }}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-extrabold shadow-md transition cursor-pointer min-h-[40px]"
           >
             <Plus className="w-4 h-4 text-stone-950" />
-            <span>Tambah Minggu</span>
+            <span>Tambah Goar ni Minggu</span>
           </button>
         </div>
       </div>
@@ -625,13 +627,13 @@ export const MingguLiturgiManager: React.FC<MingguLiturgiManagerProps> = ({ onNo
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                 <div className="sm:col-span-4">
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    No. Urut (1-63)
+                    No. Urut
                   </label>
                   <input
                     type="number"
                     required
                     min={1}
-                    max={100}
+                    max={999}
                     value={editingItem.no_urut || ''}
                     onChange={(e) =>
                       setEditingItem({ ...editingItem, no_urut: parseInt(e.target.value, 10) })
