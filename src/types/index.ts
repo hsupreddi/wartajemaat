@@ -222,6 +222,7 @@ export interface WartaRecord {
   ulang_tahun_snapshot?: UlangTahunItem[];
   teks_ucapan_ulang_tahun?: string;
   tampilkan_partangiangan?: boolean;
+  tampilkan_acara_partangiangan?: boolean;
   tampilkan_sumbangan_natal?: boolean;
   created_by?: string;
   created_at?: string;

@@ -28,6 +28,7 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
   const kemajelisanItems = jadwalTetap.filter((j) => j.kelompok === 'kemajelisan');
 
   const totalRuas = (warta.ruas_sm || 0) + (warta.ruas_pagi || 0) + (warta.ruas_siang || 0);
+  const showAcaraPartangiangan = warta.tampilkan_acara_partangiangan !== false;
 
   return (
     <div className="a4-page bg-white text-stone-900 p-4 md:p-[8mm_10mm] print:p-0 flex flex-col justify-between min-h-[297mm] print:min-h-[274mm] print:h-auto box-border">
@@ -172,9 +173,9 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
 
           {/* KOLOM KANAN: 77% Width */}
           <main className="w-[77%] flex flex-col justify-between gap-2.5">
-            {/* Top Section: Acara Minggu & Acara Partangiangan SIDE-BY-SIDE */}
-            <div className="grid grid-cols-2 gap-2 avoid-break">
-              {/* ACARA MINGGU (Col 1) */}
+            {/* Top Section: Acara Minggu & Acara Partangiangan (Melebar penuh saat Acara Partangiangan disembunyikan) */}
+            <div className={showAcaraPartangiangan ? 'grid grid-cols-2 gap-2 avoid-break' : 'grid grid-cols-1 avoid-break'}>
+              {/* ACARA MINGGU (Col 1 - full width if Acara Partangiangan hidden) */}
               <div className="border border-stone-400">
                 <div className="bg-stone-200 text-stone-900 font-bold px-2 py-1 text-center uppercase tracking-wider text-[8pt] border-b border-stone-400">
                   Acara Minggu
@@ -184,32 +185,44 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                     ? data.acara_minggu_columns
                     : DEFAULT_ACARA_MINGGU_COLUMNS;
                   return (
-                    <table className="w-full table-fixed border-collapse text-[7.1pt] leading-tight">
+                    <table
+                      className={`w-full table-fixed border-collapse ${
+                        showAcaraPartangiangan ? 'text-[7.1pt] leading-tight' : 'text-[7.7pt] leading-snug'
+                      }`}
+                    >
                       <colgroup>
-                        <col className="w-[20px]" />
+                        <col className={showAcaraPartangiangan ? 'w-[20px]' : 'w-[28px]'} />
                         {cols.map((c, ci) => (
                           <col
                             key={c.key}
                             className={
                               c.key === 'keterangan'
-                                ? 'w-[48px]'
+                                ? showAcaraPartangiangan
+                                  ? 'w-[48px]'
+                                  : 'w-[120px]'
                                 : c.key === 'uraian' || c.key === 'tata_ibadah' || ci === 0
                                   ? ''
-                                  : 'w-[56px]'
+                                  : showAcaraPartangiangan
+                                    ? 'w-[56px]'
+                                    : 'w-[100px]'
                             }
                           />
                         ))}
                       </colgroup>
                       <thead>
                         <tr className="bg-stone-100 text-stone-800 border-b border-stone-300">
-                          <th className="py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
+                          <th className={`${showAcaraPartangiangan ? 'py-1 px-0.5' : 'py-1.5 px-1'} text-center font-bold border-r border-stone-300`}>No</th>
                           {cols.map((c, ci) => (
                             <th
                               key={c.key}
-                              className={`py-1 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${
+                              className={`${showAcaraPartangiangan ? 'py-1' : 'py-1.5'} font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${
                                 c.key === 'keterangan'
-                                  ? 'px-0.5 text-center text-[6.2pt] tracking-tight'
-                                  : 'px-1.5 text-left'
+                                  ? showAcaraPartangiangan
+                                    ? 'px-0.5 text-center text-[6.2pt] tracking-tight'
+                                    : 'px-2 text-right text-[7pt] tracking-wide'
+                                  : showAcaraPartangiangan
+                                    ? 'px-1.5 text-left'
+                                    : 'px-2 text-left'
                               }`}
                             >
                               {c.label}
@@ -220,16 +233,20 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
                       <tbody className="divide-y divide-stone-200">
                         {acara_minggu.map((item, idx) => (
                           <tr key={item.id || idx} className="hover:bg-stone-50">
-                            <td className="py-0.5 px-0.5 text-center font-medium text-stone-600 border-r border-stone-200 align-top">
+                            <td className={`${showAcaraPartangiangan ? 'py-0.5 px-0.5' : 'py-1 px-1'} text-center font-medium text-stone-600 border-r border-stone-200 align-top`}>
                               {item.urutan || idx + 1}.
                             </td>
                             {cols.map((c, ci) => (
                               <td
                                 key={c.key}
-                                className={`py-0.5 align-top ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${
+                                className={`${showAcaraPartangiangan ? 'py-0.5' : 'py-1'} align-top ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${
                                   c.key === 'keterangan'
-                                    ? 'px-1 text-right font-semibold text-stone-700 text-[6.5pt] leading-tight break-words'
-                                    : 'px-1.5 text-stone-900 font-medium leading-[1.25]'
+                                    ? showAcaraPartangiangan
+                                      ? 'px-1 text-right font-semibold text-stone-700 text-[6.5pt] leading-tight break-words'
+                                      : 'px-2 text-right font-semibold text-stone-700 text-[7.2pt] leading-snug break-words'
+                                    : showAcaraPartangiangan
+                                      ? 'px-1.5 text-stone-900 font-medium leading-[1.25]'
+                                      : 'px-2 text-stone-900 font-medium leading-[1.3]'
                                 }`}
                               >
                                 {item[c.key] || ''}
@@ -244,73 +261,75 @@ export const Page1TataIbadah: React.FC<Page1TataIbadahProps> = ({
               </div>
 
               {/* ACARA PARTANGIANGAN (Col 2) */}
-              <div className="border border-stone-400">
-                <div className="bg-stone-200 text-stone-900 font-bold px-2 py-1 text-center uppercase tracking-wider text-[8pt] border-b border-stone-400">
-                  Acara Partangiangan
-                </div>
-                {(() => {
-                  const cols = data.acara_partangiangan_columns && data.acara_partangiangan_columns.length > 0
-                    ? data.acara_partangiangan_columns
-                    : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
-                  return (
-                    <table className="w-full table-fixed border-collapse text-[7.1pt] leading-tight">
-                      <colgroup>
-                        <col className="w-[20px]" />
-                        {cols.map((c, ci) => (
-                          <col
-                            key={c.key}
-                            className={
-                              c.key === 'keterangan'
-                                ? 'w-[48px]'
-                                : c.key === 'uraian' || c.key === 'tata_ibadah' || ci === 0
-                                  ? ''
-                                  : 'w-[56px]'
-                            }
-                          />
-                        ))}
-                      </colgroup>
-                      <thead>
-                        <tr className="bg-stone-100 text-stone-800 border-b border-stone-300">
-                          <th className="py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
+              {showAcaraPartangiangan && (
+                <div className="border border-stone-400">
+                  <div className="bg-stone-200 text-stone-900 font-bold px-2 py-1 text-center uppercase tracking-wider text-[8pt] border-b border-stone-400">
+                    Acara Partangiangan
+                  </div>
+                  {(() => {
+                    const cols = data.acara_partangiangan_columns && data.acara_partangiangan_columns.length > 0
+                      ? data.acara_partangiangan_columns
+                      : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
+                    return (
+                      <table className="w-full table-fixed border-collapse text-[7.1pt] leading-tight">
+                        <colgroup>
+                          <col className="w-[20px]" />
                           {cols.map((c, ci) => (
-                            <th
+                            <col
                               key={c.key}
-                              className={`py-1 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${
+                              className={
                                 c.key === 'keterangan'
-                                  ? 'px-0.5 text-center text-[6.2pt] tracking-tight'
-                                  : 'px-1.5 text-left'
-                              }`}
-                            >
-                              {c.label}
-                            </th>
+                                  ? 'w-[48px]'
+                                  : c.key === 'uraian' || c.key === 'tata_ibadah' || ci === 0
+                                    ? ''
+                                    : 'w-[56px]'
+                              }
+                            />
                           ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-stone-200">
-                        {acara_partangiangan.map((item, idx) => (
-                          <tr key={item.id || idx} className="hover:bg-stone-50">
-                            <td className="py-0.5 px-0.5 text-center font-medium text-stone-600 border-r border-stone-200 align-top">
-                              {item.urutan || idx + 1}.
-                            </td>
+                        </colgroup>
+                        <thead>
+                          <tr className="bg-stone-100 text-stone-800 border-b border-stone-300">
+                            <th className="py-1 px-0.5 text-center font-bold border-r border-stone-300">No</th>
                             {cols.map((c, ci) => (
-                              <td
+                              <th
                                 key={c.key}
-                                className={`py-0.5 align-top ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${
+                                className={`py-1 font-bold ${ci < cols.length - 1 ? 'border-r border-stone-300' : ''} ${
                                   c.key === 'keterangan'
-                                    ? 'px-1 text-right font-semibold text-stone-700 text-[6.5pt] leading-tight break-words'
-                                    : 'px-1.5 text-stone-900 font-medium leading-[1.25]'
+                                    ? 'px-0.5 text-center text-[6.2pt] tracking-tight'
+                                    : 'px-1.5 text-left'
                                 }`}
                               >
-                                {item[c.key] || ''}
-                              </td>
+                                {c.label}
+                              </th>
                             ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  );
-                })()}
-              </div>
+                        </thead>
+                        <tbody className="divide-y divide-stone-200">
+                          {acara_partangiangan.map((item, idx) => (
+                            <tr key={item.id || idx} className="hover:bg-stone-50">
+                              <td className="py-0.5 px-0.5 text-center font-medium text-stone-600 border-r border-stone-200 align-top">
+                                {item.urutan || idx + 1}.
+                              </td>
+                              {cols.map((c, ci) => (
+                                <td
+                                  key={c.key}
+                                  className={`py-0.5 align-top ${ci < cols.length - 1 ? 'border-r border-stone-200' : ''} ${
+                                    c.key === 'keterangan'
+                                      ? 'px-1 text-right font-semibold text-stone-700 text-[6.5pt] leading-tight break-words'
+                                      : 'px-1.5 text-stone-900 font-medium leading-[1.25]'
+                                  }`}
+                                >
+                                  {item[c.key] || ''}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
             {/* KOTAK AYAT MINGGU (Centered scripture box) */}

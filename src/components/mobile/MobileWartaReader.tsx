@@ -579,50 +579,52 @@ export const MobileWartaReader: React.FC<MobileWartaReaderProps> = ({
             </section>
 
             {/* Acara Partangiangan Accordion */}
-            <section className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowPartangianganLiturgi(!showPartangianganLiturgi)}
-                className="w-full min-h-[56px] p-4 flex items-center justify-between gap-3 text-left hover:bg-stone-50 cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Building className="w-4 h-4 text-[#0B2545] shrink-0" />
-                  <div>
-                    <div className="text-sm font-bold text-stone-900">
-                      Acara Partangiangan Lingkungan
-                    </div>
-                    <div className="text-xs text-stone-500">
-                      {acara_partangiangan.length} bagian ibadah keluarga wijk
+            {warta.tampilkan_acara_partangiangan !== false && (
+              <section className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowPartangianganLiturgi(!showPartangianganLiturgi)}
+                  className="w-full min-h-[56px] p-4 flex items-center justify-between gap-3 text-left hover:bg-stone-50 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Building className="w-4 h-4 text-[#0B2545] shrink-0" />
+                    <div>
+                      <div className="text-sm font-bold text-stone-900">
+                        Acara Partangiangan Lingkungan
+                      </div>
+                      <div className="text-xs text-stone-500">
+                        {acara_partangiangan.length} bagian ibadah keluarga wijk
+                      </div>
                     </div>
                   </div>
-                </div>
-                {showPartangianganLiturgi ? (
-                  <ChevronUp className="w-5 h-5 text-stone-500 shrink-0" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-stone-500 shrink-0" />
-                )}
-              </button>
+                  {showPartangianganLiturgi ? (
+                    <ChevronUp className="w-5 h-5 text-stone-500 shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-stone-500 shrink-0" />
+                  )}
+                </button>
 
-              {showPartangianganLiturgi && (
-                <ol className="px-4 pb-4 divide-y divide-stone-100 border-t border-stone-100">
-                  {acara_partangiangan.map((ap, idx) => (
-                    <li key={ap.id || idx} className="py-2.5 flex items-start gap-2.5">
-                      <span className="text-xs font-mono-num font-bold text-stone-400 pt-1 shrink-0">
-                        {idx + 1}.
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className={`${scale.bodyClass} text-stone-800`}>{ap.uraian}</p>
-                        {ap.keterangan && (
-                          <span className="text-xs font-semibold text-amber-800">
-                            {ap.keterangan}
-                          </span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
+                {showPartangianganLiturgi && (
+                  <ol className="px-4 pb-4 divide-y divide-stone-100 border-t border-stone-100">
+                    {acara_partangiangan.map((ap, idx) => (
+                      <li key={ap.id || idx} className="py-2.5 flex items-start gap-2.5">
+                        <span className="text-xs font-mono-num font-bold text-stone-400 pt-1 shrink-0">
+                          {idx + 1}.
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`${scale.bodyClass} text-stone-800`}>{ap.uraian}</p>
+                          {ap.keterangan && (
+                            <span className="text-xs font-semibold text-amber-800">
+                              {ap.keterangan}
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            )}
           </div>
         )}
 

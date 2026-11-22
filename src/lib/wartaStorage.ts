@@ -255,6 +255,8 @@ function normalizeWartaRecord(raw: any): WartaRecord {
       raw.teks_ucapan_ulang_tahun ?? raw.table_columns?.teks_ucapan_ulang_tahun ?? undefined,
     tampilkan_partangiangan:
       raw.tampilkan_partangiangan ?? raw.table_columns?.tampilkan_partangiangan ?? true,
+    tampilkan_acara_partangiangan:
+      raw.tampilkan_acara_partangiangan ?? raw.table_columns?.tampilkan_acara_partangiangan ?? true,
     tampilkan_sumbangan_natal:
       raw.tampilkan_sumbangan_natal ?? raw.table_columns?.tampilkan_sumbangan_natal ?? true,
     created_by: raw.created_by,
@@ -479,6 +481,8 @@ export async function getWartaById(id: string): Promise<FullWartaData | null> {
       if (data.hamauliateon && data.hamauliateon.length > 0) {
         data.penerimaan = syncHamauliateonToPenerimaanRows(data.penerimaan, data.hamauliateon);
       }
+      data.warta.tampilkan_partangiangan = data.warta.tampilkan_partangiangan ?? true;
+      data.warta.tampilkan_acara_partangiangan = data.warta.tampilkan_acara_partangiangan ?? true;
       data.warta.tampilkan_sumbangan_natal = data.warta.tampilkan_sumbangan_natal ?? true;
       data.sumbangan_natal = Array.isArray(data.sumbangan_natal) ? data.sumbangan_natal : [];
       data.penerimaan = syncSumbanganNatalToPenerimaanRows(
@@ -548,6 +552,7 @@ export async function saveWarta(data: FullWartaData): Promise<void> {
       tableColumnsPayload.teks_ucapan_ulang_tahun = data.warta.teks_ucapan_ulang_tahun;
     }
     tableColumnsPayload.tampilkan_partangiangan = data.warta.tampilkan_partangiangan !== false;
+    tableColumnsPayload.tampilkan_acara_partangiangan = data.warta.tampilkan_acara_partangiangan !== false;
     tableColumnsPayload.tampilkan_sumbangan_natal = data.warta.tampilkan_sumbangan_natal !== false;
     tableColumnsPayload.sumbangan_natal = data.sumbangan_natal || [];
     const hamTransitoriMap: Record<string, any[]> = {};
@@ -932,6 +937,7 @@ export async function createNewWarta(
     teks_ucapan_ulang_tahun:
       pengaturan.teks_ucapan_ulang_tahun || DEFAULT_PENGATURAN.teks_ucapan_ulang_tahun,
     tampilkan_partangiangan: true,
+    tampilkan_acara_partangiangan: true,
     tampilkan_sumbangan_natal: prevShowSumbanganNatal,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()

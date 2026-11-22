@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FullWartaData, PetugasMaster } from '../../types';
-import { Plus, Trash2, ArrowUp, ArrowDown, Calendar, Users, Music, UserCheck } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Calendar, Users, Music, UserCheck, Eye, EyeOff } from 'lucide-react';
 import { MingguLiturgiDropdown } from '../common/MingguLiturgiDropdown';
 import { PetugasSelectCell } from './PetugasSelectCell';
 import { listMasterPetugas } from '../../lib/petugasApi';
@@ -415,65 +415,119 @@ export const EditorHalaman1: React.FC<EditorHalaman1Props> = ({ data, onChange, 
       </div>
 
       {/* 4. ACARA PARTANGIANGAN */}
-      <div className="bg-white p-5 rounded-lg border border-stone-200 shadow-sm space-y-3">
-        <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-          <div>
-            <h3 className="font-bold text-stone-900 text-sm md:text-base">
-              Acara Partangiangan (Daftar Dinamis)
-            </h3>
-            <p className="text-xs text-stone-500">
-              Tata ibadah partangiangan lingkungan (9 butir liturgis).
-            </p>
-          </div>
-          {!disabled && (
-            <button
-              onClick={handleAddAcaraPart}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-xs font-semibold transition"
-            >
-              <Plus className="w-3.5 h-3.5" /> Tambah Butir
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
-          {acara_partangiangan.map((item, idx) => (
-            <div
-              key={item.id || idx}
-              className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 sm:p-1.5 bg-stone-50 rounded border border-stone-200"
-            >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="w-6 text-center text-xs font-bold text-stone-500 shrink-0">{idx + 1}.</span>
-                <input
-                  type="text"
-                  disabled={disabled}
-                  value={item.uraian}
-                  onChange={(e) => handleUpdateAcaraPart(idx, 'uraian', e.target.value)}
-                  placeholder="Uraian Partangiangan"
-                  className="flex-1 min-w-0 px-2 py-1.5 sm:py-1 text-xs bg-white border border-stone-300 rounded focus:outline-none"
-                />
+      {(() => {
+        const showAcaraPartangiangan = warta.tampilkan_acara_partangiangan !== false;
+        return (
+          <div className="bg-white p-5 rounded-lg border border-stone-200 shadow-sm space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-stone-900 text-sm md:text-base">
+                    Acara Partangiangan (Daftar Dinamis)
+                  </h3>
+                  {!showAcaraPartangiangan && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300 rounded">
+                      Tidak Ditampilkan di Warta
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-stone-500">
+                  Tata ibadah partangiangan lingkungan ({acara_partangiangan.length} butir liturgis).
+                </p>
               </div>
-              <div className="flex items-center gap-1.5 pl-8 sm:pl-0">
-                <input
-                  type="text"
-                  disabled={disabled}
-                  value={item.keterangan || ''}
-                  onChange={(e) => handleUpdateAcaraPart(idx, 'keterangan', e.target.value)}
-                  placeholder="Keterangan"
-                  className="flex-1 sm:w-32 sm:flex-none px-2 py-1.5 sm:py-1 text-xs bg-white border border-stone-300 rounded sm:text-right"
-                />
-                {!disabled && (
+              {!disabled && (
+                <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => handleDeleteAcaraPart(idx)}
-                    className="p-1.5 sm:p-1 text-red-500 hover:text-red-700 shrink-0"
+                    type="button"
+                    onClick={handleAddAcaraPart}
+                    disabled={!showAcaraPartangiangan}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-xs font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5" /> Tambah Butir
                   </button>
-                )}
-              </div>
+                  <div
+                    className="inline-flex items-center rounded border border-stone-300 bg-stone-100 p-0.5"
+                    role="group"
+                    aria-label="Tampilkan atau sembunyikan Tabel Acara Partangiangan Lingkungan"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => updateWartaField('tampilkan_acara_partangiangan', true)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                        showAcaraPartangiangan
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Tampilkan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateWartaField('tampilkan_acara_partangiangan', false)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                        !showAcaraPartangiangan
+                          ? 'bg-amber-600 text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <EyeOff className="w-3.5 h-3.5" /> Tidak Tampilkan
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
+
+            {!showAcaraPartangiangan && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2">
+                <EyeOff className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  Tabel <strong>Acara Partangiangan Lingkungan</strong> sedang <strong>tidak ditampilkan</strong> pada halaman cetak warta maupun portal jemaat. Tabel Acara Minggu otomatis diperlebar mengisi ruang agar tata letak tetap rapi, dan data di bawah tetap tersimpan aman.
+                </span>
+              </div>
+            )}
+
+            <div className={`space-y-1.5 max-h-[300px] overflow-y-auto pr-1 transition-opacity ${!showAcaraPartangiangan ? 'opacity-55' : ''}`}>
+              {acara_partangiangan.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 sm:p-1.5 bg-stone-50 rounded border border-stone-200"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="w-6 text-center text-xs font-bold text-stone-500 shrink-0">{idx + 1}.</span>
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      value={item.uraian}
+                      onChange={(e) => handleUpdateAcaraPart(idx, 'uraian', e.target.value)}
+                      placeholder="Uraian Partangiangan"
+                      className="flex-1 min-w-0 px-2 py-1.5 sm:py-1 text-xs bg-white border border-stone-300 rounded focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 pl-8 sm:pl-0">
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      value={item.keterangan || ''}
+                      onChange={(e) => handleUpdateAcaraPart(idx, 'keterangan', e.target.value)}
+                      placeholder="Keterangan"
+                      className="flex-1 sm:w-32 sm:flex-none px-2 py-1.5 sm:py-1 text-xs bg-white border border-stone-300 rounded sm:text-right"
+                    />
+                    {!disabled && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAcaraPart(idx)}
+                        className="p-1.5 sm:p-1 text-red-500 hover:text-red-700 shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 5. PARHOBAS MINGGU (6 Baris x 3 Sesi) */}
       <div className="bg-white p-5 rounded-lg border border-stone-200 shadow-sm space-y-3">

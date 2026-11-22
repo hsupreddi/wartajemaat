@@ -1592,45 +1592,94 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
               </div>
 
               {/* Acara Partangiangan */}
-              <div className="space-y-2 pt-3 border-t border-stone-200">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wide">
-                      Tabel Acara Partangiangan Lingkungan
-                    </h4>
-                    <span className="text-[11px] text-stone-500">{acara_partangiangan.length} Baris Terdaftar</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={handleAddAcaraPartangianganRow}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 rounded-md font-semibold transition cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Tambah Baris
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openAddColumn('acara_partangiangan', 'Acara Partangiangan', ['Ayat / BN', 'Keterangan Khusus'])}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 rounded-md font-semibold transition cursor-pointer"
-                    >
-                      <Columns className="w-3.5 h-3.5" /> Tambah Kolom
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleResetAcaraPartangiangan}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded cursor-pointer"
-                    >
-                      <RotateCcw className="w-3 h-3" /> Reset
-                    </button>
-                  </div>
-                </div>
+              {(() => {
+                const showAcaraPartangiangan = warta.tampilkan_acara_partangiangan !== false;
+                const cols = data.acara_partangiangan_columns && data.acara_partangiangan_columns.length > 0
+                  ? data.acara_partangiangan_columns
+                  : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
 
-                {(() => {
-                  const cols = data.acara_partangiangan_columns && data.acara_partangiangan_columns.length > 0
-                    ? data.acara_partangiangan_columns
-                    : DEFAULT_ACARA_PARTANGIANGAN_COLUMNS;
-                  return (
-                    <div className="border border-stone-300 rounded-lg overflow-x-auto">
+                return (
+                  <div className="space-y-2 pt-3 border-t border-stone-200">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wide">
+                            Tabel Acara Partangiangan Lingkungan
+                          </h4>
+                          {!showAcaraPartangiangan && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300 rounded">
+                              Disembunyikan dari Warta
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-stone-500">{acara_partangiangan.length} Baris Terdaftar</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleAddAcaraPartangianganRow}
+                          disabled={!showAcaraPartangiangan}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 rounded-md font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Tambah Baris
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openAddColumn('acara_partangiangan', 'Acara Partangiangan', ['Ayat / BN', 'Keterangan Khusus'])}
+                          disabled={!showAcaraPartangiangan}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 rounded-md font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Columns className="w-3.5 h-3.5" /> Tambah Kolom
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetAcaraPartangiangan}
+                          disabled={!showAcaraPartangiangan}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <RotateCcw className="w-3 h-3" /> Reset
+                        </button>
+                        <div
+                          className="inline-flex items-center rounded border border-stone-300 bg-stone-100 p-0.5 shadow-2xs"
+                          role="group"
+                          aria-label="Tampilkan atau sembunyikan Tabel Acara Partangiangan Lingkungan di warta"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => updateWarta({ tampilkan_acara_partangiangan: true })}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                              showAcaraPartangiangan
+                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                : 'text-stone-600 hover:text-stone-900'
+                            }`}
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Tampilkan
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateWarta({ tampilkan_acara_partangiangan: false })}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded transition cursor-pointer ${
+                              !showAcaraPartangiangan
+                                ? 'bg-amber-600 text-white shadow-2xs'
+                                : 'text-stone-600 hover:text-stone-900'
+                            }`}
+                          >
+                            <EyeOff className="w-3.5 h-3.5" /> Tidak Tampilkan
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!showAcaraPartangiangan && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2">
+                        <EyeOff className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                        <span>
+                          Tabel <strong>Acara Partangiangan Lingkungan</strong> sedang <strong>tidak ditampilkan</strong> pada halaman cetak warta maupun portal jemaat. Tabel Acara Minggu otomatis diperlebar mengisi ruang agar tata letak tetap rapi, dan data baris di bawah tetap tersimpan aman.
+                        </span>
+                      </div>
+                    )}
+
+                    <div className={`border border-stone-300 rounded-lg overflow-x-auto transition-opacity ${!showAcaraPartangiangan ? 'opacity-55' : ''}`}>
                       <table className="w-full min-w-[540px] text-xs">
                         <thead className="bg-stone-100 border-b border-stone-300 text-stone-800">
                           <tr>
@@ -1687,9 +1736,9 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                         </tbody>
                       </table>
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

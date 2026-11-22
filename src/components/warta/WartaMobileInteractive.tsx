@@ -344,47 +344,49 @@ export const WartaMobileInteractive: React.FC<WartaMobileInteractiveProps> = ({
           </div>
 
           {/* Acara Partangiangan Accordion */}
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
-            <button
-              onClick={() => setShowPartangianganLiturgi(!showPartangianganLiturgi)}
-              className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50 transition cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Building className="w-4 h-4 text-stone-700" />
-                <div>
-                  <h4 className="font-bold text-xs sm:text-sm text-stone-900">
-                    Susunan Acara Partangiangan Lingkungan
-                  </h4>
-                  <p className="text-[11px] text-stone-500">
-                    Tata ibadah persekutuan keluarga di wijk ({acara_partangiangan.length} baris)
-                  </p>
-                </div>
-              </div>
-              {showPartangianganLiturgi ? (
-                <ChevronUp className="w-4 h-4 text-stone-500" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-stone-500" />
-              )}
-            </button>
-
-            {showPartangianganLiturgi && (
-              <div className="p-4 pt-0 border-t border-stone-100 divide-y divide-stone-100">
-                {acara_partangiangan.map((ap, idx) => (
-                  <div key={ap.id || idx} className="py-2 flex items-center justify-between text-xs gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-stone-400 font-mono-num w-5 text-right">{idx + 1}.</span>
-                      <span className="font-medium text-stone-800">{ap.uraian}</span>
-                    </div>
-                    {ap.keterangan && (
-                      <span className="text-[10px] text-stone-500 font-semibold px-2 py-0.5 bg-stone-100 rounded">
-                        {ap.keterangan}
-                      </span>
-                    )}
+          {warta.tampilkan_acara_partangiangan !== false && (
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
+              <button
+                onClick={() => setShowPartangianganLiturgi(!showPartangianganLiturgi)}
+                className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Building className="w-4 h-4 text-stone-700" />
+                  <div>
+                    <h4 className="font-bold text-xs sm:text-sm text-stone-900">
+                      Susunan Acara Partangiangan Lingkungan
+                    </h4>
+                    <p className="text-[11px] text-stone-500">
+                      Tata ibadah persekutuan keluarga di wijk ({acara_partangiangan.length} baris)
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                </div>
+                {showPartangianganLiturgi ? (
+                  <ChevronUp className="w-4 h-4 text-stone-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-stone-500" />
+                )}
+              </button>
+
+              {showPartangianganLiturgi && (
+                <div className="p-4 pt-0 border-t border-stone-100 divide-y divide-stone-100">
+                  {acara_partangiangan.map((ap, idx) => (
+                    <div key={ap.id || idx} className="py-2 flex items-center justify-between text-xs gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-stone-400 font-mono-num w-5 text-right">{idx + 1}.</span>
+                        <span className="font-medium text-stone-800">{ap.uraian}</span>
+                      </div>
+                      {ap.keterangan && (
+                        <span className="text-[10px] text-stone-500 font-semibold px-2 py-0.5 bg-stone-100 rounded">
+                          {ap.keterangan}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
