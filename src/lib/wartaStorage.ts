@@ -684,7 +684,7 @@ export async function saveWarta(data: FullWartaData): Promise<void> {
       kode: it.kode,
       kelompok: it.kelompok || '1.1',
       no_tampilan: it.no_tampilan || '',
-      urutan: Number(it.urutan ?? idx + 1),
+      urutan: idx + 1,
       uraian: it.uraian || '',
       aturan_alokasi: it.aturan_alokasi || 'split_45_55',
       is_sentralisasi: Boolean(it.is_sentralisasi),

@@ -12,7 +12,12 @@ import {
   SUMBANGAN_NATAL_KODE,
   calculateSumbanganNatalTotal,
   calculateSumbanganNatalBreakdown,
-  syncSumbanganNatalToPenerimaanRows
+  syncSumbanganNatalToPenerimaanRows,
+  getNextNoTampilanForKelompok,
+  insertPenerimaanItemByKelompok,
+  insertManyPenerimaanItemsByKelompok,
+  movePenerimaanItem,
+  sortPenerimaanItemsByKelompok
 } from '../keuangan';
 import {
   formatRupiah,
@@ -443,6 +448,100 @@ describe('HKBP Financial Calculations (keuangan.ts)', () => {
 
     const rekap = calculateRekapitulasi(defaultWarta.warta, updatedRows, defaultWarta.pengeluaran);
     expect(rekap.is_balanced).toBe(true);
+  });
+
+  it('inserts new Penerimaan rows at the end of their matching kelompok (1.1, 1.2, 1.3) with sequential urutan and next number', () => {
+    const defaultWarta = getInitialFullWarta();
+    const baseRows = defaultWarta.penerimaan;
+
+    const nextNo11 = getNextNoTampilanForKelompok(baseRows, '1.1');
+    expect(nextNo11).toBe('1.1.11');
+
+    const withNew11 = insertPenerimaanItemByKelompok(baseRows, {
+      ...baseRows[0],
+      id: 'new-11-partangiangan',
+      kode: 'NEW_11_PART',
+      kelompok: '1.1',
+      no_tampilan: nextNo11,
+      uraian: 'Pelean Partangiangan Rekreasi',
+      jumlah: 410000
+    });
+
+    // Must sit right after 1.1.10 and right before 1.2.1 (never appended after 1.3.20)
+    const idx1110 = withNew11.findIndex((r) => r.no_tampilan === '1.1.10');
+    const idxNew11 = withNew11.findIndex((r) => r.id === 'new-11-partangiangan');
+    const idx121 = withNew11.findIndex((r) => r.no_tampilan === '1.2.1');
+    expect(idxNew11).toBe(idx1110 + 1);
+    expect(idx121).toBe(idxNew11 + 1);
+    expect(withNew11.every((r, idx) => r.urutan === idx + 1)).toBe(true);
+
+    // Batch insert multiple rows across different groups
+    const nextNo12 = getNextNoTampilanForKelompok(withNew11, '1.2');
+    expect(nextNo12).toBe('1.2.18');
+    const withBatch = insertManyPenerimaanItemsByKelompok(withNew11, [
+      {
+        ...baseRows[0],
+        id: 'new-11-kas-sos',
+        kode: 'NEW_11_SOS',
+        kelompok: '1.1',
+        no_tampilan: getNextNoTampilanForKelompok(withNew11, '1.1'),
+        uraian: 'Kas Sosial Huria Partangiangan',
+        jumlah: 400000
+      },
+      {
+        ...baseRows[0],
+        id: 'new-12-syukur',
+        kode: 'NEW_12_SYUKUR',
+        kelompok: '1.2',
+        no_tampilan: nextNo12,
+        uraian: 'Persembahan Khusus Akhir Tahun',
+        jumlah: 250000
+      }
+    ]);
+    const idx1112 = withBatch.findIndex((r) => r.id === 'new-11-kas-sos');
+    const idx121Updated = withBatch.findIndex((r) => r.no_tampilan === '1.2.1');
+    const idx1218 = withBatch.findIndex((r) => r.id === 'new-12-syukur');
+    const idx131 = withBatch.findIndex((r) => r.no_tampilan === '1.3.1');
+    expect(idx1112).toBe(idx121Updated - 1);
+    expect(idx1218).toBe(idx131 - 1);
+
+    // Empty group canonical placement: inserting 1.2 when only 1.1 and 1.3 exist places 1.2 in between
+    const only11And13 = [
+      { kelompok: '1.1', no_tampilan: '1.1.1', urutan: 1, label: 'a' },
+      { kelompok: '1.3', no_tampilan: '1.3.1', urutan: 2, label: 'c' }
+    ];
+    const withMiddle12 = insertPenerimaanItemByKelompok(only11And13, {
+      kelompok: '1.2',
+      no_tampilan: '1.2.1',
+      urutan: 99,
+      label: 'b'
+    });
+    expect(withMiddle12.map((r) => r.label)).toEqual(['a', 'b', 'c']);
+    expect(withMiddle12.map((r) => r.urutan)).toEqual([1, 2, 3]);
+  });
+
+  it('supports unconstrained row moving and repairs misordered groups via sortPenerimaanItemsByKelompok', () => {
+    const rows = [
+      { id: 'r1', kelompok: '1.1', no_tampilan: '1.1.1', urutan: 1 },
+      { id: 'r2', kelompok: '1.2', no_tampilan: '1.2.1', urutan: 2 },
+      { id: 'r3', kelompok: '1.3', no_tampilan: '1.3.20', urutan: 3 },
+      { id: 'r4', kelompok: '1.1', no_tampilan: '1.1.11', urutan: 4 },
+      { id: 'r5', kelompok: '1.1', no_tampilan: '1.1.12', urutan: 5 }
+    ];
+
+    // Free reordering allows moving any row anywhere and keeps sequential urutan
+    const moved = movePenerimaanItem(rows, 4, 1);
+    expect(moved.map((r) => r.id)).toEqual(['r1', 'r5', 'r2', 'r3', 'r4']);
+    expect(moved.map((r) => r.urutan)).toEqual([1, 2, 3, 4, 5]);
+
+    // No-op when bounds invalid
+    expect(movePenerimaanItem(rows, -1, 2)).toEqual(rows);
+    expect(movePenerimaanItem(rows, 2, 2)).toEqual(rows);
+
+    // Rapikan Grup repairs misplaced 1.1.11 & 1.1.12 back into 1.1 while preserving intra-group order
+    const sorted = sortPenerimaanItemsByKelompok(rows);
+    expect(sorted.map((r) => r.no_tampilan)).toEqual(['1.1.1', '1.1.11', '1.1.12', '1.2.1', '1.3.20']);
+    expect(sorted.map((r) => r.urutan)).toEqual([1, 2, 3, 4, 5]);
   });
 });
 

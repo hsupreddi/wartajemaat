@@ -10,6 +10,11 @@ import {
   calculateHamauliateonTransitoriSum,
   SUMBANGAN_NATAL_KODE,
   calculateSumbanganNatalBreakdown,
+  getNextNoTampilanForKelompok,
+  insertPenerimaanItemByKelompok,
+  insertManyPenerimaanItemsByKelompok,
+  movePenerimaanItem,
+  sortPenerimaanItemsByKelompok,
   syncSumbanganNatalToPenerimaanRows,
   recalculatePenerimaanRows,
   calculatePengeluaranTotals,
@@ -19,7 +24,7 @@ import { MASTER_KATEGORI_PENERIMAAN } from '../../lib/mockData';
 import { getPreviousWeekSumbanganNatal } from '../../lib/wartaStorage';
 import { formatTanggalIndo } from '../../lib/dateUtils';
 import { notify } from '../../lib/jemaatApi';
-import { Plus, Trash2, CheckCircle2, AlertCircle, DollarSign, ArrowRight, Search, Filter, Columns, ChevronDown, Eye, EyeOff, Layers, History } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertCircle, DollarSign, ArrowRight, Search, Filter, Columns, ChevronDown, Eye, EyeOff, Layers, History, GripVertical, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { TambahPenerimaanModal, TambahPengeluaranModal } from './TambahPosKeuanganModal';
 
 interface EditorHalaman3Props {
@@ -36,6 +41,9 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
   const [showOnlyNonZero, setShowOnlyNonZero] = useState<boolean>(false);
   const [showExtraNoteCol, setShowExtraNoteCol] = useState<boolean>(false);
   const [showAddMenu, setShowAddMenu] = useState<boolean>(false);
+  const [dragPenArmedIdx, setDragPenArmedIdx] = useState<number | null>(null);
+  const [dragPenFromIdx, setDragPenFromIdx] = useState<number | null>(null);
+  const [dragPenOverIdx, setDragPenOverIdx] = useState<number | null>(null);
   const [isAddPenModalOpen, setIsAddPenModalOpen] = useState<boolean>(false);
   const [isAddPengModalOpen, setIsAddPengModalOpen] = useState<boolean>(false);
   const [isPullingPrevSumbangan, setIsPullingPrevSumbangan] = useState<boolean>(false);
@@ -178,11 +186,7 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
   };
 
   const handleAddPenerimaanRow = (kelompok: '1.1' | '1.2' | '1.3') => {
-    const existingInGroup = penerimaan.filter(
-      p => p.kelompok === kelompok || (p.no_tampilan && p.no_tampilan.startsWith(kelompok))
-    );
-    const nextSubNo = existingInGroup.length + 1;
-    const noTampilan = `${kelompok}.${nextSubNo}`;
+    const noTampilan = getNextNoTampilanForKelompok(penerimaan, kelompok);
 
     let defaultUraian = 'Persembahan Baru';
     let defaultAturan: AturanAlokasi = 'split_45_55';
@@ -214,12 +218,24 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
     };
 
     setShowAddMenu(false);
-    updatePenerimaanAndRecalc([...penerimaan, newRow]);
+    updatePenerimaanAndRecalc(insertPenerimaanItemByKelompok(penerimaan, newRow));
+  };
+
+  const handleMovePenerimaanRow = (fromIndex: number, toIndex: number) => {
+    const updated = movePenerimaanItem(penerimaan, fromIndex, toIndex);
+    if (updated === penerimaan) return;
+    updatePenerimaanAndRecalc(updated);
+  };
+
+  const handleSortPenerimaanByGroup = () => {
+    updatePenerimaanAndRecalc(sortPenerimaanItemsByKelompok(penerimaan));
+    notify('success', 'Baris penerimaan berhasil dirapikan sesuai kelompok (1.1, 1.2, 1.3).');
   };
 
   const handleDeletePenerimaanRow = (index: number) => {
-    const target = penerimaan[index];
-    const updated = penerimaan.filter((_, idx) => idx !== index);
+    const updated = penerimaan
+      .filter((_, idx) => idx !== index)
+      .map((r, idx) => ({ ...r, urutan: idx + 1 }));
     updatePenerimaanAndRecalc(updated);
   };
 
@@ -866,7 +882,16 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
 
             {/* Tambah Baris Dropdown & Modal */}
             {!disabled && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleSortPenerimaanByGroup}
+                  className="px-2 py-1 text-xs rounded border bg-white text-stone-700 hover:bg-stone-100 border-stone-300 flex items-center gap-1 transition cursor-pointer"
+                  title="Susun ulang baris agar rapi per kelompok 1.1, 1.2, 1.3"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                  <span>Rapikan Grup</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsAddPenModalOpen(true)}
@@ -932,7 +957,7 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
           <table className="w-full min-w-[820px] text-xs font-mono-num">
             <thead className="bg-stone-100 text-stone-800 border-b border-stone-300 sticky top-0 z-10 font-sans">
               <tr>
-                <th className="py-1.5 px-2 text-center w-12">No</th>
+                <th className="py-1.5 px-2 text-center w-24">Urut / No</th>
                 <th className="py-1.5 px-2 text-left">Uraian Penerimaan</th>
                 <th className="py-1.5 px-2 text-center w-28">Sentralisasi?</th>
                 <th className="py-1.5 px-2 text-right w-32">Jumlah (Rp)</th>
@@ -991,7 +1016,7 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
 
                 let lastGroup = '';
 
-                return filteredRows.map(({ row, originalIndex }) => {
+                return filteredRows.map(({ row, originalIndex }, filteredIdx) => {
                   const isAutoSource =
                     row.kode === 'PEL_TAON' ||
                     row.kode === 'HAM_LAIN' ||
@@ -1011,6 +1036,11 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
                   else if (groupKey === '1.2') headerTitle = '1.2 PERSEMBAHAN LAINNYA';
                   else if (groupKey === '1.3') headerTitle = '1.3 PENERIMAAN TRANSITORI';
 
+                  const prevTargetIdx = filteredIdx > 0 ? filteredRows[filteredIdx - 1].originalIndex : -1;
+                  const nextTargetIdx = filteredIdx < filteredRows.length - 1 ? filteredRows[filteredIdx + 1].originalIndex : -1;
+                  const isDragSource = dragPenFromIdx === originalIndex;
+                  const isDragTarget = dragPenOverIdx === originalIndex && dragPenFromIdx !== null && dragPenFromIdx !== originalIndex;
+
                   return (
                     <React.Fragment key={row.id || originalIndex}>
                       {showHeader && (
@@ -1020,9 +1050,83 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
                           </td>
                         </tr>
                       )}
-                      <tr className="hover:bg-stone-50 transition">
-                        <td className="py-1.5 px-2 text-center text-stone-600 font-sans font-medium whitespace-nowrap">
-                          {row.no_tampilan || `${originalIndex + 1}.`}
+                      <tr
+                        draggable={!disabled && dragPenArmedIdx === originalIndex}
+                        onDragStart={(e) => {
+                          if (disabled) return;
+                          setDragPenFromIdx(originalIndex);
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', String(originalIndex));
+                        }}
+                        onDragOver={(e) => {
+                          if (disabled || dragPenFromIdx === null) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                          if (dragPenOverIdx !== originalIndex) {
+                            setDragPenOverIdx(originalIndex);
+                          }
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (!disabled && dragPenFromIdx !== null && dragPenFromIdx !== originalIndex) {
+                            handleMovePenerimaanRow(dragPenFromIdx, originalIndex);
+                          }
+                          setDragPenFromIdx(null);
+                          setDragPenOverIdx(null);
+                          setDragPenArmedIdx(null);
+                        }}
+                        onDragEnd={() => {
+                          setDragPenFromIdx(null);
+                          setDragPenOverIdx(null);
+                          setDragPenArmedIdx(null);
+                        }}
+                        className={`hover:bg-stone-50 transition ${
+                          isDragSource ? 'opacity-45 bg-blue-50' : ''
+                        } ${isDragTarget ? 'border-t-2 border-t-blue-600 bg-blue-50/40' : ''}`}
+                      >
+                        <td className="py-1.5 px-1.5 text-center text-stone-600 font-sans font-medium whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-0.5">
+                            {!disabled && (
+                              <button
+                                type="button"
+                                onMouseEnter={() => setDragPenArmedIdx(originalIndex)}
+                                onMouseLeave={() => {
+                                  if (dragPenFromIdx === null) setDragPenArmedIdx(null);
+                                }}
+                                onTouchStart={() => setDragPenArmedIdx(originalIndex)}
+                                className="p-0.5 text-stone-400 hover:text-stone-700 cursor-grab active:cursor-grabbing"
+                                title="Seret untuk menggeser urutan baris"
+                                aria-label="Seret baris"
+                              >
+                                <GripVertical className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <span className="min-w-[36px] text-center">{row.no_tampilan || `${originalIndex + 1}.`}</span>
+                            {!disabled && (
+                              <div className="flex flex-col">
+                                <button
+                                  type="button"
+                                  disabled={prevTargetIdx < 0}
+                                  onClick={() => prevTargetIdx >= 0 && handleMovePenerimaanRow(originalIndex, prevTargetIdx)}
+                                  className="p-0.5 text-stone-400 hover:text-blue-700 disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none"
+                                  title="Geser baris ke atas"
+                                  aria-label="Geser ke atas"
+                                >
+                                  <ArrowUp className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={nextTargetIdx < 0}
+                                  onClick={() => nextTargetIdx >= 0 && handleMovePenerimaanRow(originalIndex, nextTargetIdx)}
+                                  className="p-0.5 text-stone-400 hover:text-blue-700 disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none"
+                                  title="Geser baris ke bawah"
+                                  aria-label="Geser ke bawah"
+                                >
+                                  <ArrowDown className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="py-1.5 px-2 font-sans font-medium text-stone-900">
                           <input
@@ -2058,9 +2162,11 @@ export const EditorHalaman3: React.FC<EditorHalaman3Props> = ({ data, onChange, 
         isOpen={isAddPenModalOpen}
         onClose={() => setIsAddPenModalOpen(false)}
         existingRows={penerimaan}
-        onAddRow={(newRow) => updatePenerimaanAndRecalc([...penerimaan, newRow])}
+        onAddRow={(newRow) =>
+          updatePenerimaanAndRecalc(insertPenerimaanItemByKelompok(penerimaan, newRow))
+        }
         onSyncFromMaster={(missingRows) =>
-          updatePenerimaanAndRecalc([...penerimaan, ...missingRows])
+          updatePenerimaanAndRecalc(insertManyPenerimaanItemsByKelompok(penerimaan, missingRows))
         }
       />
       <TambahPengeluaranModal

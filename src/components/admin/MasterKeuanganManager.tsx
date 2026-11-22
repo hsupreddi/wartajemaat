@@ -21,8 +21,18 @@ import {
   DollarSign,
   ArrowUpRight,
   ArrowDownLeft,
-  Info
+  Info,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
+import {
+  getNextNoTampilanForKelompok,
+  insertPenerimaanItemByKelompok,
+  movePenerimaanItem,
+  sortPenerimaanItemsByKelompok
+} from '../../lib/financialMath';
 import { MobileConfirmModal } from '../mobile/MobileConfirmModal';
 
 interface MasterKeuanganManagerProps {
@@ -44,6 +54,9 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
   const [newPenAturan, setNewPenAturan] = useState<AturanAlokasi>('split_45_55');
   const [newPenSentral, setNewPenSentral] = useState(true);
   const [newPenPemb, setNewPenPemb] = useState(false);
+  const [dragPenArmedIdx, setDragPenArmedIdx] = useState<number | null>(null);
+  const [dragPenFromIdx, setDragPenFromIdx] = useState<number | null>(null);
+  const [dragPenOverIdx, setDragPenOverIdx] = useState<number | null>(null);
 
   // Form state: Tambah Pengeluaran
   const [newPengUraian, setNewPengUraian] = useState('');
@@ -67,11 +80,8 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
       });
   }, []);
 
-  const suggestNextNo = (kelompok: string, list: KategoriPenerimaanMaster[]) => {
-    const count = list.filter(
-      (it) => it.kelompok === kelompok || (it.no_tampilan || '').startsWith(kelompok)
-    ).length;
-    return `${kelompok}.${count + 1}`;
+  const suggestNextNo = (kelompok: '1.1' | '1.2' | '1.3', list: KategoriPenerimaanMaster[]) => {
+    return getNextNoTampilanForKelompok(list, kelompok);
   };
 
   // Handlers Penerimaan
@@ -96,15 +106,37 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
       dialihkan_ke_pembangunan: newPenPemb
     };
 
-    const updated = [...penerimaanList, newItem];
+    const updated = insertPenerimaanItemByKelompok(penerimaanList, newItem);
     setPenerimaanList(updated);
     try {
       await saveMasterKategoriPenerimaan(updated);
       setNewPenUraian('');
       setNewPenNo('');
-      onNotify?.('success', `Jenis penerimaan "${uraian}" ditambahkan ke Master Pos.`);
+      onNotify?.('success', `Jenis penerimaan "${uraian}" ditambahkan pada kelompok ${newPenKelompok}.`);
     } catch (err: any) {
       onNotify?.('error', err?.message || 'Gagal menyimpan jenis penerimaan ke Supabase.');
+    }
+  };
+
+  const handleMoveMasterPenerimaan = async (fromIndex: number, toIndex: number) => {
+    const updated = movePenerimaanItem(penerimaanList, fromIndex, toIndex);
+    if (updated === penerimaanList) return;
+    setPenerimaanList(updated);
+    try {
+      await saveMasterKategoriPenerimaan(updated);
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal menyimpan urutan master penerimaan ke Supabase.');
+    }
+  };
+
+  const handleSortMasterByGroup = async () => {
+    const updated = sortPenerimaanItemsByKelompok(penerimaanList);
+    setPenerimaanList(updated);
+    try {
+      await saveMasterKategoriPenerimaan(updated);
+      onNotify?.('success', 'Urutan master penerimaan dirapikan sesuai kelompok 1.1, 1.2, 1.3.');
+    } catch (err: any) {
+      onNotify?.('error', err?.message || 'Gagal merapikan master penerimaan ke Supabase.');
     }
   };
 
@@ -453,21 +485,41 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
               ))}
             </div>
 
-            <div className="relative min-w-[200px]">
-              <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-2" />
-              <input
-                type="text"
-                placeholder="Cari uraian atau nomor pos..."
-                value={searchPen}
-                onChange={(e) => setSearchPen(e.target.value)}
-                className="w-full pl-8 pr-3 py-1 text-xs border border-stone-300 rounded-lg bg-white"
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSortMasterByGroup}
+                title="Susun ulang baris agar rapi per kelompok 1.1, 1.2, 1.3"
+                className="px-2.5 py-1 text-xs rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-100 font-semibold inline-flex items-center gap-1 cursor-pointer"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span>Rapikan Grup</span>
+              </button>
+              <div className="relative min-w-[200px]">
+                <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-2" />
+                <input
+                  type="text"
+                  placeholder="Cari uraian atau nomor pos..."
+                  value={searchPen}
+                  onChange={(e) => setSearchPen(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1 text-xs border border-stone-300 rounded-lg bg-white"
+                />
+              </div>
             </div>
           </div>
 
           {/* Mobile Cards: Master Penerimaan (< 768px) */}
           <div className="block md:hidden space-y-2.5">
-            {filteredPenerimaan.map((item) => {
+            {filteredPenerimaan.map((item, filteredIdx) => {
+              const originalIdx = penerimaanList.findIndex((p) => p.id === item.id);
+              const prevTargetIdx =
+                filteredIdx > 0
+                  ? penerimaanList.findIndex((p) => p.id === filteredPenerimaan[filteredIdx - 1].id)
+                  : -1;
+              const nextTargetIdx =
+                filteredIdx < filteredPenerimaan.length - 1
+                  ? penerimaanList.findIndex((p) => p.id === filteredPenerimaan[filteredIdx + 1].id)
+                  : -1;
               const isAutoLocked = item.kode === 'PEL_TAON' || item.kode === 'HAM_LAIN';
               const isSentral =
                 item.kode === 'HAM_LAIN' || item.no_tampilan === '1.2.17'
@@ -503,18 +555,46 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
                         <option value="1.3">1.3 Transitori</option>
                       </select>
                     </div>
-                    <button
-                      type="button"
-                      disabled={isAutoLocked}
-                      onClick={() => handleDeletePenerimaan(item.id, item.uraian)}
-                      className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border ${
-                        isAutoLocked
-                          ? 'border-stone-200 text-stone-300 bg-stone-100 cursor-not-allowed'
-                          : 'border-rose-200 bg-white text-rose-600 hover:bg-rose-50 cursor-pointer'
-                      }`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={prevTargetIdx < 0 || originalIdx < 0}
+                        onClick={() =>
+                          originalIdx >= 0 &&
+                          prevTargetIdx >= 0 &&
+                          handleMoveMasterPenerimaan(originalIdx, prevTargetIdx)
+                        }
+                        className="min-w-[36px] min-h-[38px] flex items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
+                        title="Geser ke atas"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={nextTargetIdx < 0 || originalIdx < 0}
+                        onClick={() =>
+                          originalIdx >= 0 &&
+                          nextTargetIdx >= 0 &&
+                          handleMoveMasterPenerimaan(originalIdx, nextTargetIdx)
+                        }
+                        className="min-w-[36px] min-h-[38px] flex items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
+                        title="Geser ke bawah"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isAutoLocked}
+                        onClick={() => handleDeletePenerimaan(item.id, item.uraian)}
+                        className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border ${
+                          isAutoLocked
+                            ? 'border-stone-200 text-stone-300 bg-stone-100 cursor-not-allowed'
+                            : 'border-rose-200 bg-white text-rose-600 hover:bg-rose-50 cursor-pointer'
+                        }`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -587,7 +667,7 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
             <table className="w-full text-xs">
               <thead className="bg-stone-100 text-stone-800 border-b border-stone-200 font-bold sticky top-0 z-10">
                 <tr>
-                  <th className="py-2 px-2 text-center w-20">No. Pos</th>
+                  <th className="py-2 px-2 text-center w-28">Urut / No. Pos</th>
                   <th className="py-2 px-2 text-left w-28">Kelompok</th>
                   <th className="py-2 px-2 text-left">Uraian Jenis Penerimaan</th>
                   <th className="py-2 px-2 text-left w-36">Pos Kas Tujuan</th>
@@ -597,7 +677,21 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {filteredPenerimaan.map((item) => {
+                {filteredPenerimaan.map((item, filteredIdx) => {
+                  const originalIdx = penerimaanList.findIndex((p) => p.id === item.id);
+                  const prevTargetIdx =
+                    filteredIdx > 0
+                      ? penerimaanList.findIndex((p) => p.id === filteredPenerimaan[filteredIdx - 1].id)
+                      : -1;
+                  const nextTargetIdx =
+                    filteredIdx < filteredPenerimaan.length - 1
+                      ? penerimaanList.findIndex((p) => p.id === filteredPenerimaan[filteredIdx + 1].id)
+                      : -1;
+                  const isDragSource = dragPenFromIdx === originalIdx;
+                  const isDragTarget =
+                    dragPenOverIdx === originalIdx &&
+                    dragPenFromIdx !== null &&
+                    dragPenFromIdx !== originalIdx;
                   const isAutoLocked = item.kode === 'PEL_TAON' || item.kode === 'HAM_LAIN';
                   const isSentral =
                     item.kode === 'HAM_LAIN' || item.no_tampilan === '1.2.17'
@@ -606,16 +700,93 @@ export const MasterKeuanganManager: React.FC<MasterKeuanganManagerProps> = ({ on
                       ? item.is_sentralisasi
                       : item.aturan_alokasi === 'split_45_55';
                   return (
-                    <tr key={item.id} className="hover:bg-stone-50">
-                      <td className="py-1.5 px-2">
-                        <input
-                          type="text"
-                          value={item.no_tampilan || ''}
-                          onChange={(e) =>
-                            handleUpdatePenerimaan(item.id, { no_tampilan: e.target.value })
-                          }
-                          className="w-full px-1.5 py-1 border border-stone-200 rounded text-center font-mono text-[11px]"
-                        />
+                    <tr
+                      key={item.id}
+                      draggable={dragPenArmedIdx === originalIdx}
+                      onDragStart={(e) => {
+                        if (originalIdx < 0) return;
+                        setDragPenFromIdx(originalIdx);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', String(originalIdx));
+                      }}
+                      onDragOver={(e) => {
+                        if (dragPenFromIdx === null || originalIdx < 0) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (dragPenOverIdx !== originalIdx) {
+                          setDragPenOverIdx(originalIdx);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (dragPenFromIdx !== null && originalIdx >= 0 && dragPenFromIdx !== originalIdx) {
+                          handleMoveMasterPenerimaan(dragPenFromIdx, originalIdx);
+                        }
+                        setDragPenFromIdx(null);
+                        setDragPenOverIdx(null);
+                        setDragPenArmedIdx(null);
+                      }}
+                      onDragEnd={() => {
+                        setDragPenFromIdx(null);
+                        setDragPenOverIdx(null);
+                        setDragPenArmedIdx(null);
+                      }}
+                      className={`hover:bg-stone-50 transition ${
+                        isDragSource ? 'opacity-45 bg-blue-50' : ''
+                      } ${isDragTarget ? 'border-t-2 border-t-blue-600 bg-blue-50/40' : ''}`}
+                    >
+                      <td className="py-1.5 px-1.5">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onMouseEnter={() => originalIdx >= 0 && setDragPenArmedIdx(originalIdx)}
+                            onMouseLeave={() => {
+                              if (dragPenFromIdx === null) setDragPenArmedIdx(null);
+                            }}
+                            onTouchStart={() => originalIdx >= 0 && setDragPenArmedIdx(originalIdx)}
+                            className="p-0.5 text-stone-400 hover:text-stone-700 cursor-grab active:cursor-grabbing shrink-0"
+                            title="Seret untuk menggeser urutan baris"
+                            aria-label="Seret baris"
+                          >
+                            <GripVertical className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="text"
+                            value={item.no_tampilan || ''}
+                            onChange={(e) =>
+                              handleUpdatePenerimaan(item.id, { no_tampilan: e.target.value })
+                            }
+                            className="w-full min-w-[46px] px-1 py-1 border border-stone-200 rounded text-center font-mono text-[11px]"
+                          />
+                          <div className="flex flex-col shrink-0">
+                            <button
+                              type="button"
+                              disabled={prevTargetIdx < 0 || originalIdx < 0}
+                              onClick={() =>
+                                originalIdx >= 0 &&
+                                prevTargetIdx >= 0 &&
+                                handleMoveMasterPenerimaan(originalIdx, prevTargetIdx)
+                              }
+                              className="p-0.5 text-stone-400 hover:text-blue-700 disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none"
+                              title="Geser ke atas"
+                            >
+                              <ArrowUp className="w-2.5 h-2.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={nextTargetIdx < 0 || originalIdx < 0}
+                              onClick={() =>
+                                originalIdx >= 0 &&
+                                nextTargetIdx >= 0 &&
+                                handleMoveMasterPenerimaan(originalIdx, nextTargetIdx)
+                              }
+                              className="p-0.5 text-stone-400 hover:text-blue-700 disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none"
+                              title="Geser ke bawah"
+                            >
+                              <ArrowDown className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        </div>
                       </td>
                       <td className="py-1.5 px-2">
                         <select

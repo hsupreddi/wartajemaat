@@ -29,6 +29,11 @@ import {
   calculateHuriaSentralSplit,
   SUMBANGAN_NATAL_KODE,
   calculateSumbanganNatalBreakdown,
+  getNextNoTampilanForKelompok,
+  insertPenerimaanItemByKelompok,
+  insertManyPenerimaanItemsByKelompok,
+  movePenerimaanItem,
+  sortPenerimaanItemsByKelompok,
   syncSumbanganNatalToPenerimaanRows
 } from '../../lib/keuangan';
 import { getPreviousWeekSumbanganNatal } from '../../lib/wartaStorage';
@@ -66,7 +71,11 @@ import {
   Database,
   RefreshCw,
   History,
-  Loader2
+  Loader2,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import { AddColumnModal } from '../common/AddColumnModal';
 import { TambahPenerimaanModal, TambahPengeluaranModal } from './TambahPosKeuanganModal';
@@ -122,6 +131,9 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   const [showOnlyNonZero, setShowOnlyNonZero] = useState<boolean>(false);
   const [showPenerimaanNoteCol, setShowPenerimaanNoteCol] = useState<boolean>(false);
   const [showPenerimaanAddMenu, setShowPenerimaanAddMenu] = useState<boolean>(false);
+  const [dragPenArmedIdx, setDragPenArmedIdx] = useState<number | null>(null);
+  const [dragPenFromIdx, setDragPenFromIdx] = useState<number | null>(null);
+  const [dragPenOverIdx, setDragPenOverIdx] = useState<number | null>(null);
   const [isAddPenModalOpen, setIsAddPenModalOpen] = useState<boolean>(false);
   const [isAddPengModalOpen, setIsAddPengModalOpen] = useState<boolean>(false);
   const [masterPetugas, setMasterPetugas] = useState<PetugasMaster[]>(MASTER_PETUGAS);
@@ -703,11 +715,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
   };
 
   const handleAddPenerimaanRow = (kelompok: '1.1' | '1.2' | '1.3') => {
-    const existingInGroup = penerimaan.filter(
-      p => p.kelompok === kelompok || (p.no_tampilan && p.no_tampilan.startsWith(kelompok))
-    );
-    const nextSubNo = existingInGroup.length + 1;
-    const noTampilan = `${kelompok}.${nextSubNo}`;
+    const noTampilan = getNextNoTampilanForKelompok(penerimaan, kelompok);
 
     let defaultUraian = 'Persembahan Baru';
     let defaultAturan: AturanAlokasi = 'split_45_55';
@@ -738,7 +746,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
       transitori: 0
     };
 
-    const updatedRows = [...penerimaan, newRow];
+    const updatedRows = insertPenerimaanItemByKelompok(penerimaan, newRow);
     const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedRows);
     const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
     setShowPenerimaanAddMenu(false);
@@ -749,8 +757,34 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
     });
   };
 
+  const handleMovePenerimaanRow = (fromIndex: number, toIndex: number) => {
+    const updatedRows = movePenerimaanItem(penerimaan, fromIndex, toIndex);
+    if (updatedRows === penerimaan) return;
+    const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedRows);
+    const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
+    onChange({
+      ...data,
+      penerimaan: recalculated,
+      rekapitulasi: rekap
+    });
+  };
+
+  const handleSortPenerimaanByGroup = () => {
+    const updatedRows = sortPenerimaanItemsByKelompok(penerimaan);
+    const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedRows);
+    const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
+    onChange({
+      ...data,
+      penerimaan: recalculated,
+      rekapitulasi: rekap
+    });
+    notify('success', 'Baris penerimaan berhasil dirapikan sesuai kelompok (1.1, 1.2, 1.3).');
+  };
+
   const handleDeletePenerimaanRow = (index: number) => {
-    const updatedRows = penerimaan.filter((_, idx) => idx !== index);
+    const updatedRows = penerimaan
+      .filter((_, idx) => idx !== index)
+      .map((r, idx) => ({ ...r, urutan: idx + 1 }));
     const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedRows);
     const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
     onChange({
@@ -2427,6 +2461,15 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                     </button>
                     <button
                       type="button"
+                      onClick={handleSortPenerimaanByGroup}
+                      title="Susun ulang baris agar rapi per kelompok 1.1, 1.2, 1.3"
+                      className="px-2 py-1 text-[11px] rounded border bg-white text-stone-700 hover:bg-stone-100 border-stone-300 flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <ArrowUpDown className="w-3 h-3" />
+                      <span>Rapikan Grup</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setIsAddPenModalOpen(true)}
                       className="px-2 py-1 text-[11px] bg-blue-700 text-white hover:bg-blue-800 rounded font-bold flex items-center gap-1 cursor-pointer"
                     >
@@ -2485,7 +2528,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                   <table className="w-full text-[11px]">
                     <thead className="bg-stone-100 sticky top-0 z-10 border-b border-stone-300 font-bold text-stone-800">
                       <tr>
-                        <th className="w-11 py-1 px-1 text-center">No</th>
+                        <th className="w-24 py-1 px-1 text-center">Urut / No</th>
                         <th className="py-1 px-2 text-left min-w-[160px]">Uraian Penerimaan</th>
                         <th className="w-28 py-1 px-1 text-center">Sentralisasi?</th>
                         <th className="w-28 py-1 px-1.5 text-right">Jumlah (Rp)</th>
@@ -2536,7 +2579,7 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
 
                         let lastGroup = '';
 
-                        return filtered.map(({ r, originalIndex }) => {
+                        return filtered.map(({ r, originalIndex }, filteredIdx) => {
                           const isAutoSource =
                             r.kode === 'PEL_TAON' ||
                             r.kode === 'HAM_LAIN' ||
@@ -2558,6 +2601,11 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                               ? '1.2 PERSEMBAHAN LAINNYA'
                               : '1.3 PENERIMAAN TRANSITORI';
 
+                          const prevTargetIdx = filteredIdx > 0 ? filtered[filteredIdx - 1].originalIndex : -1;
+                          const nextTargetIdx = filteredIdx < filtered.length - 1 ? filtered[filteredIdx + 1].originalIndex : -1;
+                          const isDragSource = dragPenFromIdx === originalIndex;
+                          const isDragTarget = dragPenOverIdx === originalIndex && dragPenFromIdx !== null && dragPenFromIdx !== originalIndex;
+
                           return (
                             <React.Fragment key={r.id || originalIndex}>
                               {showHeader && (
@@ -2567,9 +2615,78 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
                                   </td>
                                 </tr>
                               )}
-                              <tr className="hover:bg-stone-50">
+                              <tr
+                                draggable={dragPenArmedIdx === originalIndex}
+                                onDragStart={(e) => {
+                                  setDragPenFromIdx(originalIndex);
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  e.dataTransfer.setData('text/plain', String(originalIndex));
+                                }}
+                                onDragOver={(e) => {
+                                  if (dragPenFromIdx === null) return;
+                                  e.preventDefault();
+                                  e.dataTransfer.dropEffect = 'move';
+                                  if (dragPenOverIdx !== originalIndex) {
+                                    setDragPenOverIdx(originalIndex);
+                                  }
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  if (dragPenFromIdx !== null && dragPenFromIdx !== originalIndex) {
+                                    handleMovePenerimaanRow(dragPenFromIdx, originalIndex);
+                                  }
+                                  setDragPenFromIdx(null);
+                                  setDragPenOverIdx(null);
+                                  setDragPenArmedIdx(null);
+                                }}
+                                onDragEnd={() => {
+                                  setDragPenFromIdx(null);
+                                  setDragPenOverIdx(null);
+                                  setDragPenArmedIdx(null);
+                                }}
+                                className={`hover:bg-stone-50 transition ${
+                                  isDragSource ? 'opacity-45 bg-blue-50' : ''
+                                } ${isDragTarget ? 'border-t-2 border-t-blue-600 bg-blue-50/40' : ''}`}
+                              >
                                 <td className="py-1 px-1 text-center text-stone-500 font-medium whitespace-nowrap">
-                                  {r.no_tampilan || `${originalIndex + 1}.`}
+                                  <div className="flex items-center justify-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      onMouseEnter={() => setDragPenArmedIdx(originalIndex)}
+                                      onMouseLeave={() => {
+                                        if (dragPenFromIdx === null) setDragPenArmedIdx(null);
+                                      }}
+                                      onTouchStart={() => setDragPenArmedIdx(originalIndex)}
+                                      className="p-0.5 text-stone-400 hover:text-stone-700 cursor-grab active:cursor-grabbing"
+                                      title="Seret untuk menggeser urutan baris"
+                                      aria-label="Seret baris"
+                                    >
+                                      <GripVertical className="w-3 h-3" />
+                                    </button>
+                                    <span className="min-w-[34px] text-center">{r.no_tampilan || `${originalIndex + 1}.`}</span>
+                                    <div className="flex flex-col">
+                                      <button
+                                        type="button"
+                                        disabled={prevTargetIdx < 0}
+                                        onClick={() => prevTargetIdx >= 0 && handleMovePenerimaanRow(originalIndex, prevTargetIdx)}
+                                        className="p-0.5 text-stone-400 hover:text-blue-700 disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none"
+                                        title="Geser baris ke atas"
+                                        aria-label="Geser ke atas"
+                                      >
+                                        <ArrowUp className="w-2.5 h-2.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={nextTargetIdx < 0}
+                                        onClick={() => nextTargetIdx >= 0 && handleMovePenerimaanRow(originalIndex, nextTargetIdx)}
+                                        className="p-0.5 text-stone-400 hover:text-blue-700 disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none"
+                                        title="Geser baris ke bawah"
+                                        aria-label="Geser ke bawah"
+                                      >
+                                        <ArrowDown className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                  </div>
                                 </td>
                                 <td className="py-1 px-2 font-medium text-stone-900">
                                   <input
@@ -3648,13 +3765,13 @@ export const WartaWizardEditor: React.FC<WartaWizardEditorProps> = ({
         onClose={() => setIsAddPenModalOpen(false)}
         existingRows={penerimaan}
         onAddRow={(newRow) => {
-          const updatedRows = [...penerimaan, newRow];
+          const updatedRows = insertPenerimaanItemByKelompok(penerimaan, newRow);
           const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedRows);
           const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
           onChange({ ...data, penerimaan: recalculated, rekapitulasi: rekap });
         }}
         onSyncFromMaster={(missingRows) => {
-          const updatedRows = [...penerimaan, ...missingRows];
+          const updatedRows = insertManyPenerimaanItemsByKelompok(penerimaan, missingRows);
           const { updatedRows: recalculated } = recalculatePenerimaanRows(updatedRows);
           const rekap = calculateRekapitulasi(warta, recalculated, pengeluaran);
           onChange({ ...data, penerimaan: recalculated, rekapitulasi: rekap });

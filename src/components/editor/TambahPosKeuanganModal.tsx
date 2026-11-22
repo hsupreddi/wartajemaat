@@ -13,7 +13,7 @@ import {
   getMasterKategoriPengeluaran,
   saveMasterKategoriPengeluaran
 } from '../../lib/wartaStorage';
-import { formatRupiah, parseRupiahInput } from '../../lib/financialMath';
+import { formatRupiah, parseRupiahInput, getNextNoTampilanForKelompok } from '../../lib/financialMath';
 import { Plus, X, CheckCircle2, BookmarkPlus, Layers } from 'lucide-react';
 
 interface TambahPenerimaanModalProps {
@@ -49,11 +49,8 @@ export const TambahPenerimaanModal: React.FC<TambahPenerimaanModalProps> = ({
 
   if (!isOpen) return null;
 
-  const suggestNo = (kel: string) => {
-    const count = existingRows.filter(
-      (p) => p.kelompok === kel || (p.no_tampilan && p.no_tampilan.startsWith(kel))
-    ).length;
-    return `${kel}.${count + 1}`;
+  const suggestNo = (kel: '1.1' | '1.2' | '1.3') => {
+    return getNextNoTampilanForKelompok(existingRows, kel);
   };
 
   const existingCodes = new Set(existingRows.map((r) => r.kode));

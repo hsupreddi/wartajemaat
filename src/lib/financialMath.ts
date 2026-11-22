@@ -225,6 +225,130 @@ export function calculateSumbanganNatalBreakdown(items?: SumbanganNatalItem[]): 
   };
 }
 
+export function getPenerimaanRowKelompok(
+  item: { kelompok?: string; no_tampilan?: string },
+  fallbackIndex?: number
+): '1.1' | '1.2' | '1.3' {
+  const kel = (item.kelompok || '').trim();
+  if (kel === '1.1' || kel === '1.2' || kel === '1.3') return kel;
+  const no = (item.no_tampilan || '').trim();
+  if (no.startsWith('1.1')) return '1.1';
+  if (no.startsWith('1.2')) return '1.2';
+  if (no.startsWith('1.3')) return '1.3';
+  if (typeof fallbackIndex === 'number') {
+    if (fallbackIndex < 10) return '1.1';
+    if (fallbackIndex < 27) return '1.2';
+    return '1.3';
+  }
+  return '1.1';
+}
+
+export function getNextNoTampilanForKelompok(
+  rows: Array<{ kelompok?: string; no_tampilan?: string }>,
+  kelompok: '1.1' | '1.2' | '1.3'
+): string {
+  const inGroup = rows.filter((r, idx) => getPenerimaanRowKelompok(r, idx) === kelompok);
+  let maxSuffix = inGroup.length;
+  for (const r of inGroup) {
+    const no = (r.no_tampilan || '').trim();
+    if (no.startsWith(`${kelompok}.`)) {
+      const num = parseInt(no.slice(kelompok.length + 1), 10);
+      if (!Number.isNaN(num) && num > maxSuffix) {
+        maxSuffix = num;
+      }
+    }
+  }
+  return `${kelompok}.${maxSuffix + 1}`;
+}
+
+/**
+ * Insert a new Penerimaan item at the end of its matching kelompok section (1.1, 1.2, or 1.3),
+ * keeping canonical group order (1.1 < 1.2 < 1.3) if the target group is currently empty,
+ * and re-indexing sequential `urutan` (1..N).
+ */
+export function insertPenerimaanItemByKelompok<
+  T extends { kelompok?: string; no_tampilan?: string; urutan?: number }
+>(rows: T[], newItem: T): T[] {
+  const targetKel = getPenerimaanRowKelompok(newItem);
+  const groupOrder: Record<'1.1' | '1.2' | '1.3', number> = {
+    '1.1': 1,
+    '1.2': 2,
+    '1.3': 3
+  };
+
+  let insertIndex = -1;
+  for (let i = 0; i < rows.length; i++) {
+    if (getPenerimaanRowKelompok(rows[i], i) === targetKel) {
+      insertIndex = i + 1;
+    }
+  }
+
+  if (insertIndex === -1) {
+    const targetRank = groupOrder[targetKel];
+    const firstLaterIdx = rows.findIndex(
+      (r, idx) => groupOrder[getPenerimaanRowKelompok(r, idx)] > targetRank
+    );
+    insertIndex = firstLaterIdx >= 0 ? firstLaterIdx : rows.length;
+  }
+
+  const next = [
+    ...rows.slice(0, insertIndex),
+    { ...newItem, kelompok: targetKel },
+    ...rows.slice(insertIndex)
+  ];
+
+  return next.map((r, idx) => ({ ...r, urutan: idx + 1 }));
+}
+
+export function insertManyPenerimaanItemsByKelompok<
+  T extends { kelompok?: string; no_tampilan?: string; urutan?: number }
+>(rows: T[], newItems: T[]): T[] {
+  return newItems.reduce((acc, item) => insertPenerimaanItemByKelompok(acc, item), rows);
+}
+
+/**
+ * Move any Penerimaan row freely from `fromIndex` to `toIndex` and re-index `urutan` (1..N).
+ */
+export function movePenerimaanItem<T extends { urutan?: number }>(
+  rows: T[],
+  fromIndex: number,
+  toIndex: number
+): T[] {
+  if (
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= rows.length ||
+    toIndex >= rows.length
+  ) {
+    return rows;
+  }
+  const next = [...rows];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next.map((r, idx) => ({ ...r, urutan: idx + 1 }));
+}
+
+/**
+ * Group existing Penerimaan rows into canonical order 1.1 -> 1.2 -> 1.3
+ * while preserving relative order inside each group.
+ */
+export function sortPenerimaanItemsByKelompok<
+  T extends { kelompok?: string; no_tampilan?: string; urutan?: number }
+>(rows: T[]): T[] {
+  const g11: T[] = [];
+  const g12: T[] = [];
+  const g13: T[] = [];
+  rows.forEach((r, idx) => {
+    const k = getPenerimaanRowKelompok(r, idx);
+    const normalized = { ...r, kelompok: k };
+    if (k === '1.1') g11.push(normalized);
+    else if (k === '1.2') g12.push(normalized);
+    else g13.push(normalized);
+  });
+  return [...g11, ...g12, ...g13].map((r, idx) => ({ ...r, urutan: idx + 1 }));
+}
+
 /**
  * Sync Sumbangan Natal Diakoni Sosial into Penerimaan rows (100% allocated to Kas Sosial Huria).
  * Only new donations for the active week (!dari_minggu_lalu) are added to weekly Kas Sosial Huria

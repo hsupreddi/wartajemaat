@@ -117,7 +117,7 @@ export const Page3TintingParhepengon: React.FC<Page3Props> = ({ data, pengaturan
                     else title = `${kel} LAIN-LAIN`;
 
                     rendered.push(
-                      <tr key={`sec-${kel}`} className="bg-stone-200 text-stone-900 font-bold border-y border-stone-400">
+                      <tr key={`sec-${kel}-${idx}`} className="bg-stone-200 text-stone-900 font-bold border-y border-stone-400">
                         <td colSpan={8} className="py-0.5 px-1.5 font-sans uppercase tracking-wide text-[6.5pt] bg-stone-200">
                           {title}
                         </td>
